@@ -169,28 +169,15 @@ p {
   gap: 32px;
 }
 .brand-mark {
-  width: 39px;
-  height: 42px;
-  position: relative;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
 }
-.brand-mark span {
-  font-family: Georgia, serif;
-  font-size: 47px;
-  line-height: 1;
-  font-style: italic;
-  transform: translateY(-5px);
-  color: var(--text);
-}
-.brand-mark i {
-  position: absolute;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-  bottom: 7px;
-  right: 2px;
+.brand-mark img {
+  display: block;
+  width: 44px;
+  height: 44px;
 }
 .rail-navigation,
 .rail-bottom {

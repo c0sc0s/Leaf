@@ -300,8 +300,7 @@ export default function App() {
       <div className="app-body">
         <nav className="rail" aria-label="应用导航">
           <button className="brand-mark" aria-label="Folio 我的书架" onClick={() => nav('all')}>
-            <span>f</span>
-            <i />
+            <img src={`${import.meta.env.BASE_URL}icon.png`} alt="" width="44" height="44" />
           </button>
           <div className="rail-navigation">
             <IconButton

@@ -39,6 +39,8 @@ else {
       .forEach((file) => void queueFile(file));
   });
   app.whenReady().then(() => {
+    const icon = path.join(__dirname, development ? '../public/icon.png' : '../dist/icon.png');
+    if (process.platform === 'darwin') app.dock.setIcon(icon);
     session.defaultSession.setPermissionRequestHandler((contents, permission, callback) =>
       callback(permission === 'clipboard-sanitized-write' && contents === window?.webContents),
     );
@@ -49,6 +51,7 @@ else {
       minHeight: 640,
       backgroundColor: '#f4f4f0',
       title: 'Folio',
+      icon,
       ...(process.platform === 'darwin'
         ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 20, y: 20 } }
         : {}),
