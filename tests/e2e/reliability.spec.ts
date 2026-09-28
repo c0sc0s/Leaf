@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
+import { openReaderSettings } from './readerMenu';
 async function openSpecimen(page: Page, count = 8) {
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
@@ -144,16 +145,17 @@ test('saves notes without blur, supports undo and redo, and preserves original i
       }),
     )
     .toBe('Saved while still editing');
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await note.blur();
+  await page.keyboard.press('ControlOrMeta+z');
   await expect(note).toHaveValue('');
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await page.keyboard.press('ControlOrMeta+z');
   await expect(page.locator('.note-card')).toHaveCount(0);
-  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await page.keyboard.press('ControlOrMeta+Shift+z');
   await expect(page.locator('.note-card')).toHaveCount(1);
-  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await page.keyboard.press('ControlOrMeta+Shift+z');
   await expect(note).toHaveValue('Saved while still editing');
-  await page.getByLabel('切换深色模式', { exact: true }).click();
-  await page.getByLabel('阅读偏好', { exact: true }).click();
+  await openReaderSettings(page);
+  await page.getByRole('radio', { name: '深色', exact: true }).click();
   await page.getByLabel('原版颜色', { exact: true }).selectOption('original');
   await expect(page.getByText('统一阅读字体', { exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: '关闭', exact: true }).click();
@@ -167,14 +169,15 @@ test('switches desktop page layouts, restores layout on reopen and edits saved a
   await page.setViewportSize({ width: 1280, height: 800 });
   await openSpecimen(page);
   await jump(page, 4);
-  await page.getByLabel('阅读布局', { exact: true }).selectOption('single');
+  await page.getByLabel('连续滚动', { exact: true }).click();
+  await expect(page.getByLabel('单页', { exact: true })).toHaveAttribute('aria-pressed', 'true');
   await ready(page, 4);
   await expect(page.locator('.pdf-paper[data-page="4"]')).toBeInViewport();
   await expect(page.locator('.pdf-paper[data-page="3"]')).not.toBeInViewport();
   await page.getByLabel('下一页', { exact: true }).click();
   await ready(page, 5);
   await expect(page.locator('.pdf-paper[data-page="5"]')).toBeInViewport();
-  await page.getByLabel('阅读布局', { exact: true }).selectOption('spread');
+  await page.getByLabel('双页', { exact: true }).click();
   await ready(page, 5);
   await ready(page, 6);
   await expect(page.locator('.pdf-paper[data-page="5"]')).toBeInViewport();
@@ -191,7 +194,11 @@ test('switches desktop page layouts, restores layout on reopen and edits saved a
   await ready(page, 7);
   await page.getByLabel('返回书架', { exact: true }).click();
   await page.getByRole('button', { name: '阅读 Reliable reading specimen', exact: true }).click();
-  await expect(page.getByLabel('阅读布局', { exact: true })).toHaveValue('spread');
+  await expect(page.getByLabel('双页', { exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByLabel('连续滚动', { exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
   await expect(page.locator('.zoom-label')).toHaveText('110%');
   await ready(page, 7);
   await expect(page.locator('.pdf-paper[data-page="8"]')).toBeInViewport();
@@ -204,10 +211,19 @@ test('switches desktop page layouts, restores layout on reopen and edits saved a
     el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
   });
   await page.getByLabel('写笔记', { exact: true }).click();
-  await page.getByLabel('批注颜色', { exact: true }).selectOption('green');
-  await page.getByLabel('批注类型', { exact: true }).selectOption('underline');
+  const card = page.locator('.note-card');
+  await card.getByRole('button', { name: '编辑批注', exact: true }).click();
+  await card.getByRole('button', { name: '绿色', exact: true }).click();
+  await card.getByRole('button', { name: '划线', exact: true }).click();
   await expect(page.locator('.annotation-overlay line')).toHaveAttribute('stroke', '#72b49a');
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
-  await expect(page.getByLabel('批注类型', { exact: true })).toHaveValue('highlight');
-  await expect(page.getByLabel('批注颜色', { exact: true })).toHaveValue('green');
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(card.getByRole('button', { name: '高光', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(card.getByRole('button', { name: '绿色', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
 });

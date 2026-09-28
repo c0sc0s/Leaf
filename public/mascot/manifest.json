@@ -1,0 +1,169 @@
+{
+  "version": 6,
+  "character": "Leaf 猫猫",
+  "brandColor": "#445A51",
+  "master": "assets/mascot/leaf-cat-master.png",
+  "format": "png",
+  "background": "transparent",
+  "assets": [
+    {
+      "id": "reading",
+      "file": "/mascot/reading.png",
+      "alt": "黑猫捧着书安静阅读",
+      "usage": "home-continue",
+      "size": [
+        96,
+        144
+      ],
+      "width": 1254,
+      "height": 1254,
+      "source": "assets/mascot/sources/reading.png"
+    },
+    {
+      "id": "empty-library",
+      "file": "/mascot/empty-library.png",
+      "alt": "黑猫扶着第一本书，轻轻招手",
+      "usage": "empty-library",
+      "size": [
+        168,
+        208
+      ],
+      "width": 1254,
+      "height": 1254,
+      "source": "assets/mascot/sources/empty-library.png"
+    },
+    {
+      "id": "empty-search",
+      "file": "/mascot/empty-search.png",
+      "alt": "黑猫侧头在书页中寻找线索",
+      "usage": "empty-search",
+      "size": [
+        144,
+        176
+      ],
+      "width": 1254,
+      "height": 1254,
+      "source": "assets/mascot/sources/empty-search.png"
+    },
+    {
+      "id": "empty-notes",
+      "file": "/mascot/empty-notes.png",
+      "alt": "黑猫拿着铅笔，准备在笔记本上记录想法",
+      "usage": "empty-notes",
+      "size": [
+        144,
+        176
+      ],
+      "width": 1254,
+      "height": 1254,
+      "source": "assets/mascot/sources/empty-notes.png"
+    },
+    {
+      "id": "empty-favorites",
+      "file": "/mascot/empty-favorites.png",
+      "alt": "黑猫抱着一本带爱心的书",
+      "usage": "empty-favorites",
+      "size": [
+        144,
+        176
+      ],
+      "width": 1254,
+      "height": 1254,
+      "source": "assets/mascot/sources/empty-favorites.png"
+    },
+    {
+      "id": "welcome-sleeping",
+      "file": "/mascot/welcome-sleeping.png",
+      "alt": "黑猫枕着书安静睡觉",
+      "usage": "welcome",
+      "size": [
+        184,
+        240
+      ],
+      "width": 1536,
+      "height": 1024,
+      "source": "assets/mascot/sources/welcome-sleeping.png"
+    },
+    {
+      "id": "empty-collection",
+      "file": "/mascot/empty-collection.png",
+      "alt": "黑猫把书放进收纳盒",
+      "usage": "empty-collection",
+      "size": [
+        168,
+        208
+      ],
+      "width": 1312,
+      "height": 1199,
+      "source": "assets/mascot/sources/empty-collection.png"
+    },
+    {
+      "id": "settings",
+      "file": "/mascot/settings.png",
+      "alt": "黑猫认真整理书上的书签",
+      "usage": "settings-header",
+      "size": [
+        72,
+        96
+      ],
+      "width": 1402,
+      "height": 1122,
+      "source": "assets/mascot/sources/settings.png"
+    },
+    {
+      "id": "empty-bookmarks",
+      "file": "/mascot/empty-bookmarks.png",
+      "alt": "黑猫捧着一枚绿色书签",
+      "usage": "sidebar-bookmarks",
+      "size": [
+        96,
+        112
+      ],
+      "width": 1254,
+      "height": 1254,
+      "source": "assets/mascot/sources/empty-bookmarks.png"
+    },
+    {
+      "id": "empty-tags",
+      "file": "/mascot/empty-tags.png",
+      "alt": "黑猫拨弄一枚空白纸标签",
+      "usage": "sidebar-tags-reserved",
+      "size": [
+        96,
+        112
+      ],
+      "width": 1303,
+      "height": 1207,
+      "source": "assets/mascot/sources/empty-tags.png"
+    },
+    {
+      "id": "empty-outline",
+      "file": "/mascot/empty-outline.png",
+      "alt": "黑猫侧头翻看书页",
+      "usage": "sidebar-outline",
+      "size": [
+        96,
+        112
+      ],
+      "width": 1254,
+      "height": 1254,
+      "source": "assets/mascot/sources/empty-outline.png"
+    },
+    {
+      "id": "not-found",
+      "file": "/mascot/not-found.png",
+      "alt": "黑猫坐在书旁，歪头寻找一张散落的书页",
+      "usage": "not-found",
+      "size": [
+        180,
+        220
+      ],
+      "width": 1254,
+      "height": 1254,
+      "source": "assets/mascot/sources/not-found.png"
+    }
+  ],
+  "eyewear": false,
+  "style": "original-illustration",
+  "themeIndependent": true
+}

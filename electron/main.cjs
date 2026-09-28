@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu, session } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, nativeTheme, session } = require('electron');
 const { readFile, writeFile, stat } = require('node:fs/promises');
 const path = require('node:path');
 const { existsSync } = require('node:fs');
@@ -62,7 +62,15 @@ else {
       title: 'Leaf',
       icon,
       ...(process.platform === 'darwin'
-        ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 18, y: 17 } }
+        ? {
+            titleBarStyle: 'hiddenInset',
+            trafficLightPosition: { x: 18, y: 17 },
+            // The renderer keeps its chrome translucent so this material shows through.
+            vibrancy: 'under-window',
+            // followWindow paints the material flat grey whenever another app has focus.
+            visualEffectState: 'active',
+            backgroundColor: '#00000000',
+          }
         : {}),
       webPreferences: {
         preload: path.join(__dirname, 'preload.cjs'),
@@ -104,6 +112,11 @@ else {
       if (result.canceled || !result.filePath) return false;
       await writeFile(result.filePath, data);
       return true;
+    });
+    ipcMain.on('theme:set', (event, theme) => {
+      if (!trusted(event)) return;
+      if (!['light', 'dark', 'system'].includes(theme)) throw new Error(`Unknown theme: ${theme}`);
+      nativeTheme.themeSource = theme;
     });
     ipcMain.on('renderer:ready', (event) => {
       if (!trusted(event)) return;

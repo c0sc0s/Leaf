@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import sharp from 'sharp';
+import { switchReaderToDark } from './readerMenu';
 
 test('composites overlapping legacy highlight rectangles at one consistent opacity in both themes', async ({
   page,
@@ -44,7 +45,7 @@ test('composites overlapping legacy highlight rectangles at one consistent opaci
   const paper = page.locator('.pdf-paper[data-page="1"]');
   await expect(paper).toHaveAttribute('aria-busy', 'false');
   for (const theme of ['light', 'dark']) {
-    if (theme === 'dark') await page.getByLabel('切换深色模式', { exact: true }).click();
+    if (theme === 'dark') await switchReaderToDark(page);
     const image = await sharp(await paper.screenshot())
       .removeAlpha()
       .raw()

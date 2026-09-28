@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { readFile } from 'node:fs/promises';
+import { switchReaderToDark } from './readerMenu';
 async function openBook(page: import('@playwright/test').Page) {
   await page.goto('/');
   await page.getByRole('button', { name: '阅读 The Art of Noticing', exact: true }).click();
@@ -38,7 +39,7 @@ test('renders PDFs, persists annotations, exports native PDF marks and restores 
   await expect(page.locator('.note-card')).toHaveCount(2);
   await page.getByLabel('第 2 页批注笔记').first().fill('A lasting thought');
   await page.getByLabel('第 2 页批注笔记').first().press('Tab');
-  await page.getByLabel('切换深色模式', { exact: true }).click();
+  await switchReaderToDark(page);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await expect(page.locator('.reading-canvas')).toHaveClass(/reader-dark/);
   await expect(page.locator('.pdf-paper[data-page="2"]')).toHaveClass(/dark-paper/);

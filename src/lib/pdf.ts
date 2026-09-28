@@ -97,7 +97,6 @@ export async function importPDF(blob: Blob, filename: string, password?: string)
       openedAt: 0,
       page: 1,
       favorite: false,
-      category: '未分类',
     };
   } finally {
     await task.destroy();

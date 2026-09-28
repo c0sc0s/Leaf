@@ -8,7 +8,10 @@ export interface ReadingLocation {
   xRatio?: number;
   screenY?: number;
 }
-export type ReadingLayout = 'continuous' | 'single' | 'spread';
+export interface ReadingLayout {
+  continuous: boolean;
+  spread: boolean;
+}
 export interface ReadingState extends ReadingLocation {
   layout: ReadingLayout;
   zoom: number;
@@ -28,7 +31,6 @@ export interface Book {
   bookmarks?: number[];
   bookmarkLocations?: Record<number, ReadingLocation>;
   sample?: boolean;
-  category: string;
 }
 export interface Annotation {
   id: string;
@@ -83,6 +85,7 @@ export interface DesktopAPI {
   saveFile: (name: string, data: Uint8Array) => Promise<boolean>;
   onOpenFile: (callback: (file: { name: string; data: Uint8Array }) => void) => () => void;
   ready: () => void;
+  setTheme: (theme: Settings['theme']) => void;
   platform: string;
 }
 declare global {

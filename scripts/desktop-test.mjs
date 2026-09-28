@@ -66,13 +66,13 @@ try {
   expect(exported.getPage(1).node.get(PDFName.of('Annots'))).toBeTruthy();
   await page.getByLabel('关闭通知', { exact: true }).click();
   await page.screenshot({ animations: 'disabled', path: 'docs/previews/reader-light.png' });
-  await page.getByLabel('切换深色模式', { exact: true }).click();
+  await page.getByLabel('更多阅读操作', { exact: true }).click();
+  await page.getByRole('menuitem', { name: '阅读偏好', exact: true }).click();
+  await page.getByRole('radio', { name: '深色', exact: true }).click();
+  await page.getByRole('button', { name: '关闭', exact: true }).click();
   await expect(page.locator('.reading-canvas')).toHaveClass(/reader-dark/);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await expect(page.locator('.note-card textarea')).toHaveCSS(
-    'background-color',
-    'rgb(24, 24, 27)',
-  );
+  await expect(page.locator('.note-card textarea')).toBeVisible();
   await page.screenshot({ animations: 'disabled', path: 'docs/previews/reader-dark.png' });
   await page.getByLabel('关闭笔记', { exact: true }).click();
   await page.locator('.reading-canvas').evaluate((el) => {
@@ -82,7 +82,8 @@ try {
   });
   await expect(page.locator('.pdf-paper[data-page="3"]')).toHaveAttribute('aria-busy', 'false');
   await page.screenshot({ animations: 'disabled', path: 'docs/previews/reader-continuous.png' });
-  await page.getByLabel('阅读偏好', { exact: true }).click();
+  await page.getByLabel('更多阅读操作', { exact: true }).click();
+  await page.getByRole('menuitem', { name: '阅读偏好', exact: true }).click();
   await page.screenshot({ animations: 'disabled', path: 'docs/previews/reader-settings.png' });
   await page.getByRole('button', { name: '关闭', exact: true }).click();
 

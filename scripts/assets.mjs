@@ -11,10 +11,14 @@ for (const [name, license] of [
   ['pdfjs-dist', 'LICENSE'],
   ['pdf-lib', 'LICENSE.md'],
   ['idb', 'LICENSE'],
-  ['lucide-react', 'LICENSE'],
-  ['@radix-ui/react-dialog', 'LICENSE'],
-  ['@radix-ui/react-dropdown-menu', 'LICENSE'],
-  ['@radix-ui/react-tooltip', 'LICENSE'],
+  ['radix-ui', 'LICENSE'],
+  ['shadcn', 'LICENSE.md'],
+  ['@hugeicons/react', 'LICENSE.md'],
+  ['@hugeicons/core-free-icons', 'LICENSE.md'],
+  ['@fontsource-variable/geist', 'LICENSE'],
+  ['class-variance-authority', 'LICENSE'],
+  ['clsx', 'license'],
+  ['tailwind-merge', 'LICENSE.md'],
 ]) {
   const text = await readFile(`node_modules/${name}/${license}`, 'utf8');
   await writeFile(`licenses/${name.replaceAll('/', '-')}.txt`, text.trimEnd() + '\n');
