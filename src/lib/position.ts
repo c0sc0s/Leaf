@@ -1,4 +1,5 @@
 import type { Book, ReadingLocation, ReadingState } from '../types';
+import { defaultLayout, parseLayout } from './layout';
 export function initialReadingState(book: Book): ReadingState {
   const fallback: ReadingState = {
     page: book.page,
@@ -6,13 +7,13 @@ export function initialReadingState(book: Book): ReadingState {
     xRatio: 0,
     screenY: 24,
     zoom: 1,
-    layout: 'continuous',
+    layout: defaultLayout,
   };
   try {
     const saved = JSON.parse(localStorage.getItem(`folio-position:${book.id}`) || 'null');
     if (!saved || !Number.isFinite(saved.page)) return fallback;
     return {
-      layout: saved.layout === 'single' || saved.layout === 'spread' ? saved.layout : 'continuous',
+      layout: parseLayout(saved.layout),
       page: Math.max(1, Math.min(book.pages, Math.floor(saved.page))),
       zoom: Math.max(0.5, Math.min(2, Number(saved.zoom) || 1)),
       ratio: Math.max(0, Math.min(1, Number(saved.ratio) || 0)),

@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('desktop', {
   openPDF: () => ipcRenderer.invoke('pdf:choose'),
   saveFile: (name, data) => ipcRenderer.invoke('file:save', name, data),
   ready: () => ipcRenderer.send('renderer:ready'),
+  setTheme: (theme) => ipcRenderer.send('theme:set', theme),
   onOpenFile: (callback) => {
     const open = (_event, file) => callback(file);
     const menu = () => window.dispatchEvent(new Event('leaf:open'));

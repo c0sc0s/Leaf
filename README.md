@@ -1,60 +1,62 @@
-# Leaf
+<div align="center">
+  <img src="public/icon.png" width="112" height="112" alt="Leaf：捧着书的黑猫" />
+  <h1>Leaf</h1>
+  <p><strong>把注意力，留给正在读的这一页。</strong></p>
+  <p>一款面向 macOS 与 Windows 的本地 PDF 阅读器。</p>
+  <p>
+    <img src="docs/readme/platforms.svg" alt="macOS 与 Windows 桌面应用" height="26" />
+    <img src="docs/readme/local.svg" alt="本地保存，离线阅读" height="26" />
+    <img src="docs/readme/themes.svg" alt="浅色与深色主题" height="26" />
+    <img src="docs/readme/annotations.svg" alt="支持 PDF 批注导出" height="26" />
+  </p>
+</div>
 
-一个跨 Windows / macOS、默认离线的 PDF 桌面阅读应用。紧凑工具栏与连续滚动把空间留给正文，支持浅色、深色和跟随系统。交互组件采用 Radix UI。
+<br />
 
-## 运行
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/previews/reader-dark.png" />
+    <img src="docs/previews/reader-light.png" alt="Leaf 阅读页：精简工具栏、PDF 正文与阅读笔记" width="100%" />
+  </picture>
+</p>
 
-需要 Node.js 22.13+ 与 npm。
+<p align="center"><sub>空间留给正文，想法留在页边。</sub></p>
 
-```sh
-npm ci
-npm run desktop
-```
+## 读进去，也接得上
 
-`npm ci` 准备本地 PDF 字体、CMap 和 WASM 资源；安装后可离线使用。浏览器预览运行 `npm run dev`。
+Leaf 把阅读、定位和批注放在一起。打开 PDF，接着上次的位置读；遇到值得留下的句子，选中、标记、写下想法。书籍、阅读进度与笔记都保存在本机，无需注册，也无需上传文档。
 
-## 功能
+|                    | 阅读体验                                                                       |
+| :----------------- | :----------------------------------------------------------------------------- |
+| **保留原版**       | 按 PDF 原有版面呈现文字、图片、图表和公式；有文字层的内容可以选择、复制。      |
+| **自在翻阅**       | 连续滚动、单页与双页布局，搭配适应宽度、缩放和专注阅读。                       |
+| **从上次继续**     | 记住具体阅读位置、缩放比例与页面布局，重新打开后接着读。                       |
+| **找到，也回得来** | 目录、缩略图、书签和带上下文的全文搜索；跳转之后可以返回刚才的位置。           |
+| **随手留下想法**   | 高亮、划线与笔记自动保存，支持改色、编辑、撤销和重做。                         |
+| **带走你的笔记**   | 导出带标准批注的 PDF，在其他支持批注的阅读器中查看；也可以导出 Markdown 笔记。 |
 
-- 本机书库：多文件导入、拖放、SHA-256 去重、真实首页封面、分类、收藏、最近阅读、搜索和网格/列表视图。
-- 原版布局：连续滚动、单页、双页。PDF.js 保留原始字体、图片、公式与版面；连续模式页面上下相连，滚动自动更新页码。仅绘制可见页与邻近页，支持适应宽度、缩放与跳页。
-- 位置：按书籍保存页码、页内文字位置、缩放和布局。目录、书签、搜索、笔记与 PDF 内部引用均可定位，并可返回原处。没有文字时使用页内比例定位。搜索逐条显示上下文与当前命中；支持印刷页码和进度条缩略图预览。
-- 批注：选中文字后高光、划线或写笔记；点已有高光即可改色、写笔记或删除。支持四种颜色、自动保存、撤销/重做、批注类型修改、标准 PDF 批注和 Markdown 导出。
-- 深浅主题：应用与 PDF 页面分别设置。深色页面转换整页颜色；核对图片或图表时可选择整页保持原始颜色。
-- 专注阅读：`F` 隐藏次要工具和侧栏，`Esc` 恢复。
-- 桌面集成：原生打开/保存对话框、单实例、PDF 文件关联、macOS 打开文件事件、Windows 启动参数和快捷键。
+## 一个属于你的书架
 
-首次进入提供 8 本原创演示 PDF，删除后不会再次自动添加。PDF 副本、书签和批注存入 IndexedDB；偏好与阅读位置保存在 localStorage。文件不上传。
+拖入文件，或一次导入多份 PDF。用分类、收藏和最近阅读整理书库，通过书名、作者快速查找；封面网格和列表视图随时切换。
 
-## 使用
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/previews/library-dark.png" />
+    <img src="docs/previews/library-light.png" alt="Leaf 书架：真实 PDF 封面、分类、收藏、最近阅读与搜索" width="100%" />
+  </picture>
+</p>
 
-打开书籍后直接连续滚动。页码输入、左右箭头用于快速定位；`PageUp/PageDown` 滚动一屏。搜索支持 `Cmd/Ctrl+F`，导入支持 `Cmd/Ctrl+O`。
+<p align="center"><sub>截图中的书籍为 Leaf 原创演示文档。</sub></p>
 
-顶栏提供搜索、缩放和笔记，导出位于更多菜单；左侧的页面、目录和书签分别切换。右侧笔记浮出时不改变正文宽度。
+## 白天清爽，夜晚柔和
 
-高光沿用上次颜色。更多菜单可明确开启连续高亮，`Esc` 退出；拖动选区接近阅读区边缘时以受限速度滚动。笔记在停止输入 250ms 后保存，离开输入框也会保存，成功时短暂显示“已保存”。笔记面板支持撤销/重做；输入框外可用 `Cmd/Ctrl+Z` 和 `Cmd/Ctrl+Shift+Z`，本次阅读保留最多 100 步操作历史。导出会等待已提交的批注保存操作完成。
+鼠尾草绿搭配简洁的中性色界面，支持浅色、深色和跟随系统。应用界面与 PDF 页面外观可以分别设置；查看照片、图表时，也可以让文档保持原始颜色。
 
-文件大小上限 512MB。密码保护的文件可输入密码阅读，密码不保存。pdf-lib 不支持修改加密文件，导出批注 PDF 前需解除保护。
+工具按需展开，笔记随手可记。让你把更多时间花在内容上。
 
-## 验证与打包
+---
 
-```sh
-npm test
-npx playwright install chromium
-npm run test:e2e
-npm run build
-npm run dist:mac
-npm run test:desktop
-npm run dist:win
-```
-
-安装包在 `release/`。macOS 构建主机当前架构的 DMG/ZIP，Windows 构建 x64 NSIS 安装程序。`.github/workflows/build.yml` 提供两平台构建测试。打包脚本生成未签名开发包；正式发布需配置签名、公证并在两平台实机验收。macOS 验证不能代替 Windows 原生运行验证。
-
-## 当前边界
-
-- 保留 PDF 原始排版，通过缩放改变显示大小；不改写正文字体、行距或版心。
-- 扫描件可阅读，但没有 OCR，不能选择原本不存在的文字层。缺失文字编码的 PDF 也可能无法准确复制。
-- PDF.js 负责字体与图形兼容性；不保证所有损坏或非标准文件均可显示。
-- 页面尺寸按需获取，未知页面先预留估计高度，更新时固定当前阅读锚点。超大文件的内存与响应速度取决于图片复杂度、页面尺寸和设备性能。
-- 暂不支持编辑正文、填写表单、数字签名、账户与跨设备同步、自动更新。
-
-实现细节见 [技术架构](docs/architecture.md)。
+<p align="center">
+  <strong>Leaf</strong> · 一只猫，一本书，一段专注的时间。<br />
+  <sub>本地保存 · 离线阅读 · 无需账户</sub>
+</p>

@@ -1,3 +1,8 @@
+import { NotFound } from '@/components/Mascot';
+import { useAppRoute } from '@/lib/useAppRoute';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   BookOpen,
@@ -12,13 +17,16 @@ import {
   X,
   Command,
   LockKeyhole,
-} from 'lucide-react';
+} from '@/components/icons';
+import { AnimatePresence, m } from 'motion/react';
 import type { Book, Settings } from './types';
+import { fade, pop, rise } from './lib/motion';
 import { storage } from './lib/db';
 import { importPDF } from './lib/pdf';
-import { Library, type LibraryView } from './components/Library';
-import { Reader } from './components/Reader';
-import { IconButton, Modal, SettingsModal, Spinner } from './components/UI';
+import { Library, type LibraryView } from './features/library/Library';
+import { Reader } from './features/reader/Reader';
+import { Exiting, IconButton, Modal, Spinner } from './components/UI';
+import { SettingsModal } from './features/settings/SettingsModal';
 const defaults: Settings = {
   theme: 'light',
   readerTheme: 'follow',
@@ -39,7 +47,6 @@ async function initialize() {
   if (books.length || localStorage.getItem('folio-initialized')) return books;
   const manifest = (await fetch('./samples/manifest.json').then((r) => r.json())) as {
     slug: string;
-    category: string;
   }[];
   const samples: Book[] = [];
   for (const entry of manifest) {
@@ -47,7 +54,6 @@ async function initialize() {
     if (!response.ok) throw new Error('示例文件加载失败');
     const book = await importPDF(await response.blob(), entry.slug + '.pdf');
     book.sample = true;
-    book.category = entry.category;
     book.addedAt = Date.now() - samples.length * 1000;
     await storage.putBook(book);
     samples.push(book);
@@ -56,6 +62,7 @@ async function initialize() {
   return samples;
 }
 export default function App() {
+  const route = useAppRoute();
   const [books, setBooks] = useState<Book[]>([]);
   const [settings, setSettings] = useState(readSettings);
   const [systemDark, setSystemDark] = useState(
@@ -111,6 +118,8 @@ export default function App() {
   }, [notify, refreshCounts]);
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    document.documentElement.classList.toggle('dark', dark);
+    window.desktop?.setTheme(settings.theme);
     localStorage.setItem('folio-settings', JSON.stringify(settings));
   }, [settings, dark]);
   const askPassword = useCallback(
@@ -244,6 +253,7 @@ export default function App() {
     }
   }
   const nav = (next: LibraryView) => {
+    if (route.notFound) route.home();
     if (active) closeReader();
     setView(next);
   };
@@ -278,29 +288,28 @@ export default function App() {
         );
       }}
     >
-      {!active && (
+      {(!active || route.notFound) && (
         <div
           className={`titlebar ${window.desktop?.platform === 'darwin' ? 'native-mac' : window.desktop?.platform === 'win32' ? 'native-win' : ''}`}
         >
-          <button className="app-brand" aria-label="Leaf 我的书架" onClick={() => nav('all')}>
+          <Button
+            variant="ghost"
+            className="app-brand"
+            aria-label="Leaf 我的书架"
+            onClick={() => nav('all')}
+          >
             <img src={`${import.meta.env.BASE_URL}icon.png`} alt="" width="24" height="24" />
             <span>Leaf</span>
-          </button>
-          <div className="titlebar-actions">
-            <IconButton
-              label={dark ? '切换浅色模式' : '切换深色模式'}
-              onClick={() => setSettings((s) => ({ ...s, theme: dark ? 'light' : 'dark' }))}
-            >
-              {dark ? <Sun size={16} /> : <Moon size={16} />}
-            </IconButton>
-            <IconButton label="设置" onClick={openSettings}>
-              <Settings2 size={16} />
-            </IconButton>
-          </div>
+          </Button>
         </div>
       )}
       <div className="app-body">
-        {active ? (
+        {route.notFound ? (
+          <NotFound
+            onHome={() => nav('all')}
+            onBack={route.canReturn ? () => history.back() : undefined}
+          />
+        ) : active ? (
           <Reader
             key={active.id}
             book={active}
@@ -309,7 +318,6 @@ export default function App() {
             onClose={closeReader}
             onUpdate={updateBook}
             onSettings={openSettings}
-            onToggleTheme={() => setSettings((s) => ({ ...s, theme: dark ? 'light' : 'dark' }))}
             notify={notify}
             askPassword={askPassword}
           />
@@ -326,7 +334,8 @@ export default function App() {
                     ['notes', '阅读笔记', NotebookPen],
                   ] as const
                 ).map(([v, label, Icon]) => (
-                  <button
+                  <Button
+                    variant="ghost"
                     className={view === v ? 'selected' : ''}
                     aria-current={view === v ? 'page' : undefined}
                     key={v}
@@ -334,7 +343,7 @@ export default function App() {
                   >
                     <Icon size={17} />
                     <span>{label}</span>
-                    <b>
+                    <Badge variant="secondary" className="ml-auto text-[11px]">
                       {v === 'all'
                         ? books.length
                         : v === 'favorites'
@@ -342,32 +351,23 @@ export default function App() {
                           : v === 'notes'
                             ? Object.values(counts).reduce((n, c) => n + c, 0)
                             : books.filter((b) => b.openedAt > 0).length}
-                    </b>
-                  </button>
-                ))}
-              </div>
-              <div className="sidebar-section-label collections-label">分类</div>
-              <div className="collections">
-                {(['设计与灵感', '技术与思考', '生活与阅读'] as const).map((v, i) => (
-                  <button
-                    key={v}
-                    className={view === v ? 'selected' : ''}
-                    aria-current={view === v ? 'page' : undefined}
-                    onClick={() => setView(v)}
-                  >
-                    <i className={`collection-dot dot-${i}`} />
-                    <span>{v}</span>
-                    <b>{books.filter((b) => b.category === v).length}</b>
-                  </button>
+                    </Badge>
+                  </Button>
                 ))}
               </div>
               <div className="sidebar-footer">
-                <span>
-                  <LockKeyhole size={13} /> 本地书库
-                </span>
-                <button className="about-link" onClick={() => setAbout(true)}>
+                <Button variant="ghost" className="about-link" onClick={() => setAbout(true)}>
                   关于 Leaf
-                </button>
+                </Button>
+                <IconButton
+                  label={dark ? '切换浅色模式' : '切换深色模式'}
+                  onClick={() => setSettings((s) => ({ ...s, theme: dark ? 'light' : 'dark' }))}
+                >
+                  {dark ? <Sun size={16} /> : <Moon size={16} />}
+                </IconButton>
+                <IconButton label="设置" onClick={openSettings}>
+                  <Settings2 size={16} />
+                </IconButton>
               </div>
             </aside>
             <main className="library-main">
@@ -382,6 +382,7 @@ export default function App() {
                   onOpen={(book) => setActive(book)}
                   onUpdate={updateBook}
                   onDelete={setDeleting}
+                  onBrowse={() => setView('all')}
                 />
               )}
             </main>
@@ -460,12 +461,12 @@ export default function App() {
         <Modal title="移除这本书？" onClose={() => setDeleting(null)}>
           <p>将从本机书库移除「{deleting.title}」及其批注。你导入前的原始文件不受影响。</p>
           <div className="modal-actions">
-            <button className="secondary" onClick={() => setDeleting(null)}>
+            <Button variant="outline" onClick={() => setDeleting(null)}>
               保留
-            </button>
-            <button className="danger-button" onClick={() => void deleteBook()}>
+            </Button>
+            <Button variant="destructive" onClick={() => void deleteBook()}>
               移除书籍和批注
-            </button>
+            </Button>
           </div>
         </Modal>
       )}
@@ -480,7 +481,7 @@ export default function App() {
               finishPassword(passwordValue);
             }}
           >
-            <input
+            <Input
               autoFocus
               className="password-input"
               type="password"
@@ -491,38 +492,46 @@ export default function App() {
             />
             <p className="small muted">密码仅在本次打开时使用，不会写入书库。</p>
             <div className="modal-actions">
-              <button type="button" className="secondary" onClick={() => finishPassword(null)}>
+              <Button variant="outline" type="button" onClick={() => finishPassword(null)}>
                 取消
-              </button>
-              <button className="primary" type="submit">
+              </Button>
+              <Button variant="default" type="submit">
                 打开 PDF
-              </button>
+              </Button>
             </div>
           </form>
         </Modal>
       )}
-      {busy && (
-        <div className="busy-overlay">
-          <Spinner text={busy} />
-        </div>
-      )}
-      {dragging && (
-        <div className="drop-overlay">
-          <div>
-            <Upload size={44} />
-            <h2>把新书放在这里</h2>
-            <p>松开鼠标，将 PDF 收入你的书架</p>
-          </div>
-        </div>
-      )}
-      {toast && (
-        <div className="toast" role="status">
-          <span>{toast}</span>
-          <button aria-label="关闭通知" onClick={() => setToast('')}>
-            <X size={14} />
-          </button>
-        </div>
-      )}
+      <AnimatePresence>
+        {busy && (
+          <Exiting key="busy">
+            <m.div className="busy-overlay" {...fade}>
+              <Spinner text={busy} />
+            </m.div>
+          </Exiting>
+        )}
+        {dragging && (
+          <Exiting key="drop">
+            <m.div className="drop-overlay" {...pop}>
+              <div>
+                <Upload size={44} />
+                <h2>把新书放在这里</h2>
+                <p>松开鼠标，将 PDF 收入你的书架</p>
+              </div>
+            </m.div>
+          </Exiting>
+        )}
+        {toast && (
+          <Exiting key="toast">
+            <m.div className="toast" role="status" layout {...rise}>
+              <span>{toast}</span>
+              <Button variant="ghost" aria-label="关闭通知" onClick={() => setToast('')}>
+                <X size={14} />
+              </Button>
+            </m.div>
+          </Exiting>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
