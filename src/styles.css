@@ -273,7 +273,8 @@ p {
   overflow: auto;
 }
 .library {
-  padding: 40px 48px 64px;
+  /* The titlebar above already supplies the top breathing room. */
+  padding: 8px 48px 64px;
   max-width: 1320px;
   margin: 0 auto;
 }
@@ -1735,7 +1736,7 @@ p {
     --library-sidebar-width: 196px;
   }
   .library {
-    padding: 32px;
+    padding: 8px 32px 32px;
   }
   .book-grid {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -1762,7 +1763,7 @@ p {
     display: none;
   }
   .library {
-    padding: 24px 20px;
+    padding: 8px 20px 24px;
   }
   .library-heading h1 {
     font-size: 21px;
