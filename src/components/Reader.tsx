@@ -18,11 +18,13 @@ import {
   Minus,
   Plus,
   SlidersHorizontal,
-  List,
-  LayoutGrid,
   ArrowUpRight,
   Check,
   LoaderCircle,
+  Sun,
+  Moon,
+  Maximize,
+  Minimize,
 } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type {
@@ -49,6 +51,7 @@ interface Props {
   onClose: () => void;
   onUpdate: (book: Book) => void;
   onSettings: () => void;
+  onToggleTheme: () => void;
   notify: (message: string) => void;
   askPassword: () => Promise<string | null>;
 }
@@ -64,6 +67,7 @@ export function Reader({
   onClose,
   onUpdate,
   onSettings,
+  onToggleTheme,
   notify,
   askPassword,
 }: Props) {
@@ -82,6 +86,10 @@ export function Reader({
   const [jump, setJump] = useState({ page: book.page, revision: 0 });
   const [color, setColor] = useState<MarkColor>('amber');
   const [left, setLeft] = useState(false);
+  const [focus, setFocus] = useState(false);
+  const searchInput = useRef<HTMLInputElement>(null);
+  const pageRef = useRef(page);
+  pageRef.current = page;
   const [right, setRight] = useState(false);
   const [tab, setTab] = useState<'pages' | 'outline' | 'search'>('pages');
   const [query, setQuery] = useState('');
@@ -106,6 +114,7 @@ export function Reader({
       setReport(true);
       return;
     }
+    setJump((j) => ({ page: pageRef.current, revision: j.revision + 1 }));
     setMode(next);
     onUpdate({ ...bookRef.current, readingMode: next });
   };
@@ -234,9 +243,7 @@ export function Reader({
   useEffect(() => {
     if (!pdf) return;
     let disposed = false;
-    if (mode === 'original') setContent(null);
     setSelection(null);
-    if (mode === 'original') scroller.current?.scrollTo(0, 0);
     void getContent(page)
       .then((c) => {
         if (!disposed) setContent(c);
@@ -272,36 +279,60 @@ export function Reader({
   }, [mode, document, jump]);
   const navigate = useCallback(
     (n: number) => {
-      setPage(Math.max(1, Math.min(book.pages, n)));
+      pageRef.current = Math.max(1, Math.min(book.pages, n));
+      setPage(pageRef.current);
       setJump((j) => ({ page: Math.max(1, Math.min(book.pages, n)), revision: j.revision + 1 }));
     },
-    [book.pages, mode],
+    [book.pages],
   );
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
-      if (
-        e.target instanceof HTMLElement &&
-        e.target.closest('input,textarea,select,[contenteditable]')
-      )
-        return;
-      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
-        e.preventDefault();
-        navigate(page + 1);
-      }
-      if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
-        e.preventDefault();
-        navigate(page - 1);
-      }
+      const target = e.target instanceof HTMLElement ? e.target : null;
+      if (target?.closest('[role=dialog],[role=menu]')) return;
       if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
         e.preventDefault();
+        setFocus(false);
         setLeft(true);
         setTab('search');
+        searchInput.current?.focus();
+        return;
       }
-      if (e.key === 'Escape') setSelection(null);
+      if (target?.closest('input,textarea,select,[contenteditable]')) return;
+      if (e.key === 'PageDown' || e.key === 'PageUp') {
+        e.preventDefault();
+        const container = scroller.current;
+        if (!container) return;
+        const direction = e.key === 'PageDown' ? 1 : -1;
+        const boundary =
+          direction > 0
+            ? container.scrollTop + container.clientHeight >= container.scrollHeight - 2
+            : container.scrollTop <= 2;
+        if (mode === 'original' && boundary) navigate(pageRef.current + direction);
+        else container.scrollBy({ top: direction * container.clientHeight * 0.9 });
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        navigate(pageRef.current + 1);
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        navigate(pageRef.current - 1);
+      }
+      if (e.key === 'Escape') {
+        setSelection(null);
+        setFocus(false);
+      }
+      if (e.key.toLowerCase() === 'f' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        setFocus((value) => !value);
+      }
     };
     window.document.addEventListener('keydown', listener);
     return () => window.document.removeEventListener('keydown', listener);
-  }, [navigate, page]);
+  }, [navigate, mode]);
+  useEffect(() => {
+    if (left && tab === 'search' && !focus) searchInput.current?.focus();
+  }, [left, tab, focus]);
   useEffect(() => {
     const epoch = ++searchEpoch.current;
     setResults([]);
@@ -427,16 +458,44 @@ export function Reader({
   const pageMarks = useMemo(() => marks.filter((m) => m.page === page), [marks, page]);
   const readerDark = settings.readerTheme === 'dark' || (settings.readerTheme === 'follow' && dark);
   return (
-    <div className="reader">
-      <header className="reader-header">
-        <div className="reader-title">
-          <IconButton label="返回书架" onClick={onClose}>
-            <ArrowLeft size={20} />
+    <div className={`reader ${focus ? 'reader-focus' : ''}`}>
+      <header
+        className={`reader-header ${window.desktop?.platform === 'darwin' ? 'native-mac' : ''}`}
+      >
+        <IconButton label="返回书架" onClick={onClose}>
+          <ArrowLeft size={18} />
+        </IconButton>
+        <div className="tool-group reader-navigation">
+          <IconButton
+            label="文档导航"
+            active={left && tab !== 'search'}
+            onClick={() => {
+              setLeft(!(left && tab !== 'search'));
+              if (tab === 'search') setTab('pages');
+            }}
+          >
+            <PanelLeft size={18} />
           </IconButton>
-          <div>
-            <strong>{book.title}</strong>
-            <span>{book.author}</span>
-          </div>
+          <IconButton
+            label="搜索 PDF"
+            active={left && tab === 'search'}
+            onClick={() => {
+              setLeft(!(left && tab === 'search'));
+              setTab('search');
+            }}
+          >
+            <Search size={17} />
+          </IconButton>
+          <IconButton
+            label={bookmarks.includes(page) ? '移除书签' : '添加书签'}
+            active={bookmarks.includes(page)}
+            onClick={toggleBookmark}
+          >
+            <Bookmark size={17} fill={bookmarks.includes(page) ? 'currentColor' : 'none'} />
+          </IconButton>
+        </div>
+        <div className="reader-title" title={`${book.title} · ${book.author}`}>
+          <strong>{book.title}</strong>
         </div>
         <div className="segmented reader-mode">
           <button
@@ -444,7 +503,7 @@ export function Reader({
             className={mode === 'original' ? 'selected' : ''}
             onClick={() => switchMode('original')}
           >
-            <FileText size={15} />
+            <FileText size={14} />
             原版阅读
           </button>
           <button
@@ -452,20 +511,33 @@ export function Reader({
             className={mode === 'reflow' ? 'selected' : ''}
             onClick={() => switchMode('reflow')}
           >
-            <BookOpen size={15} />
+            <BookOpen size={14} />
             统一阅读
           </button>
         </div>
-        <div className="tool-group">
+        <div className="tool-group reader-actions">
+          <IconButton label="阅读笔记" active={right} onClick={() => setRight(!right)}>
+            <NotebookPen size={18} />
+          </IconButton>
+          <IconButton label={dark ? '切换浅色模式' : '切换深色模式'} onClick={onToggleTheme}>
+            {dark ? <Sun size={17} /> : <Moon size={17} />}
+          </IconButton>
           <IconButton label="阅读偏好" onClick={onSettings}>
-            <SlidersHorizontal size={18} />
+            <SlidersHorizontal size={17} />
           </IconButton>
           <IconButton label="导出批注 PDF" disabled={exporting} onClick={() => void exportPDF()}>
-            {exporting ? <LoaderCircle size={18} className="spin" /> : <Download size={18} />}
+            {exporting ? <LoaderCircle size={17} className="spin" /> : <Download size={17} />}
+          </IconButton>
+          <IconButton
+            label={focus ? '退出专注阅读' : '专注阅读（F）'}
+            active={focus}
+            onClick={() => setFocus(!focus)}
+          >
+            {focus ? <Minimize size={17} /> : <Maximize size={17} />}
           </IconButton>
         </div>
       </header>
-      {report && (
+      {report && !focus && (
         <div className="document-report" role="region" aria-label="全书重排分析">
           <strong>
             {!document
@@ -489,122 +561,35 @@ export function Reader({
           <button onClick={() => setReport(false)}>收起说明</button>
         </div>
       )}
-      <div className="reader-toolbar">
-        <div className="tool-group">
-          <IconButton label="目录与搜索" active={left} onClick={() => setLeft(!left)}>
-            <PanelLeft size={18} />
-          </IconButton>
-          <IconButton
-            label="搜索 PDF"
-            active={left && tab === 'search'}
-            onClick={() => {
-              setLeft(true);
-              setTab('search');
-            }}
-          >
-            <Search size={17} />
-          </IconButton>
-          <span className="toolbar-separator" />
-          <IconButton
-            label={bookmarks.includes(page) ? '移除书签' : '添加书签'}
-            active={bookmarks.includes(page)}
-            onClick={toggleBookmark}
-          >
-            <Bookmark size={17} fill={bookmarks.includes(page) ? 'currentColor' : 'none'} />
-          </IconButton>
-        </div>
-        <div className="page-controls">
-          <IconButton label="上一页" disabled={page <= 1} onClick={() => navigate(page - 1)}>
-            <ChevronLeft size={17} />
-          </IconButton>
-          <input
-            aria-label="页码"
-            type="number"
-            min="1"
-            max={pdf?.numPages || book.pages}
-            value={pageInput}
-            onChange={(e) => setPageInput(e.target.value)}
-            onBlur={() => {
-              navigate(Number(pageInput) || 1);
-              setPageInput(String(Math.max(1, Math.min(book.pages, Number(pageInput) || 1))));
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') e.currentTarget.blur();
-            }}
-          />
-          <span>/ {pdf?.numPages || book.pages}</span>
-          <IconButton
-            label="下一页"
-            disabled={page >= book.pages}
-            onClick={() => navigate(page + 1)}
-          >
-            <ChevronRight size={17} />
-          </IconButton>
-        </div>
-        <div className="tool-group">
-          {mode === 'original' && (
-            <>
-              <IconButton
-                label="缩小"
-                disabled={zoom <= 0.5}
-                onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))}
-              >
-                <Minus size={15} />
-              </IconButton>
-              <button className="zoom-label" onClick={() => setZoom(1)} title="恢复适合页面">
-                {Math.round(zoom * 100)}%
-              </button>
-              <IconButton
-                label="放大"
-                disabled={zoom >= 2}
-                onClick={() => setZoom((z) => Math.min(2, z + 0.1))}
-              >
-                <Plus size={15} />
-              </IconButton>
-              <span className="toolbar-separator" />
-            </>
-          )}
-          <IconButton label="阅读笔记" active={right} onClick={() => setRight(!right)}>
-            <NotebookPen size={18} />
-          </IconButton>
-          <span className="note-number">{marks.length}</span>
-        </div>
-      </div>
       <div className="reader-body">
-        {left && (
+        {left && !focus && (
           <aside className="reader-sidebar">
-            <div className="sidebar-tabs">
-              <IconButton
-                label="页面缩略图"
-                active={tab === 'pages'}
-                onClick={() => setTab('pages')}
-              >
-                <LayoutGrid size={17} />
-              </IconButton>
-              <IconButton
-                label="文档目录"
-                active={tab === 'outline'}
-                onClick={() => setTab('outline')}
-              >
-                <List size={18} />
-              </IconButton>
-              <IconButton
-                label="文内搜索"
-                active={tab === 'search'}
-                onClick={() => setTab('search')}
-              >
-                <Search size={17} />
-              </IconButton>
-              <IconButton label="关闭目录" onClick={() => setLeft(false)}>
-                <X size={16} />
-              </IconButton>
-            </div>
+            {tab !== 'search' && (
+              <div className="sidebar-tabs" role="tablist" aria-label="文档导航视图">
+                <button
+                  role="tab"
+                  aria-selected={tab === 'pages'}
+                  aria-label="页面缩略图"
+                  onClick={() => setTab('pages')}
+                >
+                  页面
+                </button>
+                <button
+                  role="tab"
+                  aria-selected={tab === 'outline'}
+                  aria-label="文档目录"
+                  onClick={() => setTab('outline')}
+                >
+                  目录与书签
+                </button>
+              </div>
+            )}
             {tab === 'search' ? (
               <>
                 <div className="sidebar-search">
                   <Search size={15} />
                   <input
-                    autoFocus
+                    ref={searchInput}
                     placeholder="搜索文档中的文字"
                     aria-label="搜索文档内容"
                     value={query}
@@ -638,7 +623,6 @@ export function Reader({
               </>
             ) : tab === 'outline' ? (
               <div className="sidebar-scroll">
-                <h4>文档目录</h4>
                 {outline.length ? (
                   outline.map((o, i) => (
                     <button
@@ -741,7 +725,7 @@ export function Reader({
             <Spinner text="正在检查全书内容…" />
           )}
         </main>
-        {right && (
+        {right && !focus && (
           <aside className="notes-panel">
             <div className="notes-heading">
               <h3>
@@ -814,10 +798,6 @@ export function Reader({
         )}
       </div>
       <footer className="reader-status">
-        <span>
-          <span className="status-dot" />
-          已保存在本机
-        </span>
         <div className="document-status">
           <button onClick={() => setReport(!report)} aria-expanded={report}>
             {!document
@@ -830,7 +810,58 @@ export function Reader({
             <progress max={book.pages} value={analysisProgress} aria-label="全书解析进度" />
           )}
         </div>
-        <span>{Math.round((page / book.pages) * 100)}% 已读</span>
+        <div className="page-controls">
+          <IconButton label="上一页" disabled={page <= 1} onClick={() => navigate(page - 1)}>
+            <ChevronLeft size={17} />
+          </IconButton>
+          <input
+            aria-label="页码"
+            type="number"
+            min="1"
+            max={pdf?.numPages || book.pages}
+            value={pageInput}
+            onChange={(e) => setPageInput(e.target.value)}
+            onBlur={() => {
+              navigate(Number(pageInput) || 1);
+              setPageInput(String(Math.max(1, Math.min(book.pages, Number(pageInput) || 1))));
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur();
+            }}
+          />
+          <span>/ {pdf?.numPages || book.pages}</span>
+          <IconButton
+            label="下一页"
+            disabled={page >= book.pages}
+            onClick={() => navigate(page + 1)}
+          >
+            <ChevronRight size={17} />
+          </IconButton>
+        </div>
+        <div className="tool-group">
+          {mode === 'original' && (
+            <>
+              <IconButton
+                label="缩小"
+                disabled={zoom <= 0.5}
+                onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))}
+              >
+                <Minus size={15} />
+              </IconButton>
+              <button className="zoom-label" onClick={() => setZoom(1)} title="恢复适合页面">
+                {Math.round(zoom * 100)}%
+              </button>
+              <IconButton
+                label="放大"
+                disabled={zoom >= 2}
+                onClick={() => setZoom((z) => Math.min(2, z + 0.1))}
+              >
+                <Plus size={15} />
+              </IconButton>
+              <span className="toolbar-separator" />
+            </>
+          )}
+        </div>
       </footer>
       {selection && (
         <div
@@ -892,6 +923,9 @@ function Thumbnail({
   const canvas = useRef<HTMLCanvasElement>(null);
   const root = useRef<HTMLButtonElement>(null);
   const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (active) root.current?.scrollIntoView({ block: 'nearest' });
+  }, [active]);
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {

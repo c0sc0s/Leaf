@@ -1,10 +1,21 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { TextLayer } from 'pdfjs-dist';
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
 import type { Annotation, PageContent } from '../types';
 import { colors } from '../lib/export';
 import { captureSelection, type SelectionAnchor } from '../lib/selection';
 import { Spinner } from './UI';
+
+type Viewport = ReturnType<Awaited<ReturnType<PDFDocumentProxy['getPage']>>['getViewport']>;
+interface Frame {
+  scrollTop: number;
+  scrollLeft: number;
+  page: number;
+  content: PageContent;
+  viewport: Viewport;
+  canvas: HTMLCanvasElement;
+  layer: HTMLDivElement;
+}
 export function PDFPage({
   pdf,
   page,
@@ -24,25 +35,31 @@ export function PDFPage({
   onSelection: (a: SelectionAnchor | null) => void;
   onError: (message: string) => void;
 }) {
-  const viewportRef = useRef<ReturnType<
-    Awaited<ReturnType<PDFDocumentProxy['getPage']>>['getViewport']
-  > | null>(null);
   const outer = useRef<HTMLDivElement>(null);
   const wrapper = useRef<HTMLDivElement>(null);
-  const canvas = useRef<HTMLCanvasElement>(null);
-  const layer = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(740);
-  const [size, setSize] = useState({ width: 595, height: 842 });
-  const [rects, setRects] = useState<{ mark: Annotation; rect: number[] }[]>([]);
+  const visual = useRef<HTMLDivElement>(null);
+  const previous = useRef<Frame | null>(null);
+  const [width, setWidth] = useState(0);
+  const [frame, setFrame] = useState<Frame | null>(null);
   const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    const observer = new ResizeObserver((entries) =>
-      setWidth(Math.max(260, entries[0].contentRect.width - 72)),
-    );
-    if (outer.current) observer.observe(outer.current);
+  useLayoutEffect(() => {
+    const element = outer.current!;
+    const measure = () => {
+      const style = getComputedStyle(element);
+      setWidth(
+        Math.max(
+          260,
+          element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight),
+        ),
+      );
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
     return () => observer.disconnect();
   }, []);
   useEffect(() => {
+    if (!width || content.page !== page) return;
     let disposed = false;
     let render: RenderTask | undefined;
     let text: TextLayer | undefined;
@@ -50,34 +67,32 @@ export function PDFPage({
     async function draw() {
       try {
         const p = await pdf.getPage(page);
-        if (disposed || !canvas.current || !layer.current) return;
+        if (disposed) return;
         const base = p.getViewport({ scale: 1 });
-        const viewport = p.getViewport({ scale: (Math.min(width, 860) / base.width) * zoom });
-        viewportRef.current = viewport;
+        const viewport = p.getViewport({ scale: (Math.min(width, 1000) / base.width) * zoom });
         const ratio = Math.min(window.devicePixelRatio || 1, 2);
-        const c = canvas.current;
-        setSize({ width: viewport.width, height: viewport.height });
-        c.width = Math.ceil(viewport.width * ratio);
-        c.height = Math.ceil(viewport.height * ratio);
-        c.style.width = viewport.width + 'px';
-        c.style.height = viewport.height + 'px';
-        layer.current.replaceChildren();
-        layer.current.style.setProperty('--scale-factor', String(viewport.scale));
-        layer.current.style.setProperty('--total-scale-factor', String(viewport.scale));
-        layer.current.style.setProperty('--user-unit', '1');
+        // Render offscreen so a slow page never clears the last complete frame.
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.ceil(viewport.width * ratio);
+        canvas.height = Math.ceil(viewport.height * ratio);
+        canvas.style.width = viewport.width + 'px';
+        canvas.style.height = viewport.height + 'px';
+        const layer = document.createElement('div');
+        layer.className = 'textLayer';
+        layer.style.setProperty('--scale-factor', String(viewport.scale));
+        layer.style.setProperty('--total-scale-factor', String(viewport.scale));
+        layer.style.setProperty('--user-unit', '1');
         render = p.render({
-          canvas: c,
+          canvas,
           viewport,
           transform: ratio !== 1 ? [ratio, 0, 0, ratio, 0, 0] : undefined,
         });
         await render.promise;
         if (disposed) return;
         if (content.source === 'text') {
-          text = new TextLayer({
-            textContentSource: await p.getTextContent(),
-            container: layer.current,
-            viewport,
-          });
+          const source = await p.getTextContent();
+          if (disposed) return;
+          text = new TextLayer({ textContentSource: source, container: layer, viewport });
           await text.render();
           if (disposed) return;
           const original = [...content.tokens].sort((a, b) => a.originalIndex - b.originalIndex);
@@ -90,7 +105,7 @@ export function PDFPage({
               cursor = original.indexOf(token) + 1;
             }
           }
-        } else
+        } else {
           for (const token of content.tokens) {
             const span = document.createElement('span');
             span.textContent = token.text;
@@ -101,28 +116,19 @@ export function PDFPage({
               fontSize: token.height * viewport.scale + 'px',
               fontFamily: 'sans-serif',
             });
-            layer.current.appendChild(span);
+            layer.appendChild(span);
           }
+        }
         if (!disposed) {
-          setRects(
-            marks.flatMap((mark) =>
-              mark.rects.map((r) => {
-                const v = [
-                  ...viewport.convertToViewportPoint(r[0], r[1]),
-                  ...viewport.convertToViewportPoint(r[2], r[3]),
-                ];
-                return {
-                  mark,
-                  rect: [
-                    Math.min(v[0], v[2]),
-                    Math.min(v[1], v[3]),
-                    Math.abs(v[2] - v[0]),
-                    Math.abs(v[3] - v[1]),
-                  ],
-                };
-              }),
-            ),
-          );
+          setFrame({
+            page,
+            content,
+            viewport,
+            canvas,
+            layer,
+            scrollTop: outer.current?.parentElement?.scrollTop || 0,
+            scrollLeft: outer.current?.parentElement?.scrollLeft || 0,
+          });
           setLoading(false);
         }
       } catch (error) {
@@ -138,74 +144,114 @@ export function PDFPage({
       render?.cancel();
       text?.cancel();
     };
-  }, [pdf, page, content, width, zoom, marks, onError]);
+  }, [pdf, page, content, width, zoom, onError]);
+  useLayoutEffect(() => {
+    if (!frame || !visual.current || !outer.current) return;
+    const scroller = outer.current.parentElement!;
+    const old = previous.current;
+    visual.current.replaceChildren(frame.canvas, frame.layer);
+    if (old && old.page === frame.page) {
+      const scale = frame.viewport.width / old.viewport.width;
+      const padding = parseFloat(getComputedStyle(outer.current).paddingTop);
+      scroller.scrollTop = Math.max(0, (frame.scrollTop - padding) * scale + padding);
+      scroller.scrollLeft = frame.scrollLeft * scale;
+    } else scroller.scrollTo(0, 0);
+    previous.current = frame;
+  }, [frame]);
+  const rects = useMemo(
+    () =>
+      !frame || frame.page !== page
+        ? []
+        : marks.flatMap((mark) =>
+            mark.rects.map((r) => {
+              const v = [
+                ...frame.viewport.convertToViewportPoint(r[0], r[1]),
+                ...frame.viewport.convertToViewportPoint(r[2], r[3]),
+              ];
+              return {
+                mark,
+                rect: [
+                  Math.min(v[0], v[2]),
+                  Math.min(v[1], v[3]),
+                  Math.abs(v[2] - v[0]),
+                  Math.abs(v[3] - v[1]),
+                ],
+              };
+            }),
+          ),
+    [frame, page, marks],
+  );
+  const pending = loading || frame?.page !== page;
   return (
-    <div className="pdf-stage" ref={outer}>
-      {loading && (
-        <div className="page-loading">
-          <Spinner text="正在绘制书页…" />
-        </div>
+    <div className="pdf-stage" ref={outer} aria-busy={pending}>
+      {!frame && <Spinner text="正在绘制书页…" />}
+      {frame && (
+        <>
+          {pending && <div className="page-render-progress" aria-label="正在准备页面" />}
+          <div
+            className={`pdf-paper ${dark ? 'dark-paper' : ''}`}
+            ref={wrapper}
+            data-page={frame.page}
+            aria-busy={pending}
+            style={{ width: frame.viewport.width, height: frame.viewport.height }}
+            onMouseUp={() => {
+              if (!wrapper.current || pending) return;
+              const anchor = captureSelection(wrapper.current, frame.content);
+              const selected = window.getSelection();
+              if (anchor && selected?.rangeCount) {
+                const box = wrapper.current.getBoundingClientRect();
+                anchor.rects = Array.from(selected.getRangeAt(0).getClientRects())
+                  .filter((r) => r.width > 0.5 && r.height > 0.5)
+                  .map((r) => {
+                    const a = frame.viewport.convertToPdfPoint(
+                      r.left - box.left,
+                      r.bottom - box.top,
+                    );
+                    const b = frame.viewport.convertToPdfPoint(r.right - box.left, r.top - box.top);
+                    return [
+                      Math.min(a[0], b[0]),
+                      Math.min(a[1], b[1]),
+                      Math.max(a[0], b[0]),
+                      Math.max(a[1], b[1]),
+                    ];
+                  });
+              }
+              onSelection(anchor);
+            }}
+          >
+            <div className="pdf-visual" ref={visual} />
+            <svg
+              className="annotation-overlay"
+              width={frame.viewport.width}
+              height={frame.viewport.height}
+            >
+              {rects.map(({ mark, rect }, i) =>
+                mark.kind === 'highlight' ? (
+                  <rect
+                    key={mark.id + i}
+                    x={rect[0]}
+                    y={rect[1]}
+                    width={rect[2]}
+                    height={rect[3]}
+                    fill={colors[mark.color]}
+                    opacity=".38"
+                  />
+                ) : (
+                  <line
+                    key={mark.id + i}
+                    x1={rect[0]}
+                    y1={rect[1] + rect[3]}
+                    x2={rect[0] + rect[2]}
+                    y2={rect[1] + rect[3]}
+                    stroke={colors[mark.color]}
+                    strokeWidth="2"
+                  />
+                ),
+              )}
+            </svg>
+          </div>
+        </>
       )}
-      <div
-        className={`pdf-paper ${dark ? 'dark-paper' : ''}`}
-        ref={wrapper}
-        style={{ width: size.width, height: size.height }}
-        onMouseUp={() => {
-          if (!wrapper.current) return;
-          const anchor = captureSelection(wrapper.current, content);
-          const selected = window.getSelection();
-          if (anchor && selected?.rangeCount && viewportRef.current) {
-            const box = wrapper.current.getBoundingClientRect();
-            anchor.rects = Array.from(selected.getRangeAt(0).getClientRects())
-              .filter((r) => r.width > 0.5 && r.height > 0.5)
-              .map((r) => {
-                const p1 = viewportRef.current!.convertToPdfPoint(
-                    r.left - box.left,
-                    r.bottom - box.top,
-                  ),
-                  p2 = viewportRef.current!.convertToPdfPoint(r.right - box.left, r.top - box.top);
-                return [
-                  Math.min(p1[0], p2[0]),
-                  Math.min(p1[1], p2[1]),
-                  Math.max(p1[0], p2[0]),
-                  Math.max(p1[1], p2[1]),
-                ];
-              });
-          }
-          onSelection(anchor);
-        }}
-      >
-        <canvas ref={canvas} />
-        <svg className="annotation-overlay" width={size.width} height={size.height}>
-          {rects.map(({ mark, rect }, i) =>
-            mark.kind === 'highlight' ? (
-              <rect
-                key={mark.id + i}
-                x={rect[0]}
-                y={rect[1]}
-                width={rect[2]}
-                height={rect[3]}
-                fill={colors[mark.color]}
-                opacity=".38"
-              />
-            ) : (
-              <line
-                key={mark.id + i}
-                x1={rect[0]}
-                y1={rect[1] + rect[3]}
-                x2={rect[0] + rect[2]}
-                y2={rect[1] + rect[3]}
-                stroke={colors[mark.color]}
-                strokeWidth="2"
-              />
-            ),
-          )}
-        </svg>
-        <div ref={layer} className="textLayer" />
-      </div>
-      <div className="page-caption">
-        {page} <span>/</span> {pdf.numPages}
-      </div>
     </div>
   );
 }

@@ -282,25 +282,27 @@ export default function App() {
         );
       }}
     >
-      <div
-        className={`titlebar ${window.desktop?.platform === 'darwin' ? 'native-mac' : window.desktop?.platform === 'win32' ? 'native-win' : ''}`}
-      >
-        <button className="app-brand" aria-label="Folio 我的书架" onClick={() => nav('all')}>
-          <img src={`${import.meta.env.BASE_URL}icon.png`} alt="" width="24" height="24" />
-          <span>Folio</span>
-        </button>
-        <div className="titlebar-actions">
-          <IconButton
-            label={dark ? '切换浅色模式' : '切换深色模式'}
-            onClick={() => setSettings((s) => ({ ...s, theme: dark ? 'light' : 'dark' }))}
-          >
-            {dark ? <Sun size={16} /> : <Moon size={16} />}
-          </IconButton>
-          <IconButton label="设置" onClick={openSettings}>
-            <Settings2 size={16} />
-          </IconButton>
+      {!active && (
+        <div
+          className={`titlebar ${window.desktop?.platform === 'darwin' ? 'native-mac' : window.desktop?.platform === 'win32' ? 'native-win' : ''}`}
+        >
+          <button className="app-brand" aria-label="Folio 我的书架" onClick={() => nav('all')}>
+            <img src={`${import.meta.env.BASE_URL}icon.png`} alt="" width="24" height="24" />
+            <span>Folio</span>
+          </button>
+          <div className="titlebar-actions">
+            <IconButton
+              label={dark ? '切换浅色模式' : '切换深色模式'}
+              onClick={() => setSettings((s) => ({ ...s, theme: dark ? 'light' : 'dark' }))}
+            >
+              {dark ? <Sun size={16} /> : <Moon size={16} />}
+            </IconButton>
+            <IconButton label="设置" onClick={openSettings}>
+              <Settings2 size={16} />
+            </IconButton>
+          </div>
         </div>
-      </div>
+      )}
       <div className="app-body">
         {active ? (
           <Reader
@@ -311,6 +313,7 @@ export default function App() {
             onClose={closeReader}
             onUpdate={updateBook}
             onSettings={openSettings}
+            onToggleTheme={() => setSettings((s) => ({ ...s, theme: dark ? 'light' : 'dark' }))}
             notify={notify}
             askPassword={askPassword}
           />
@@ -412,7 +415,7 @@ export default function App() {
       {about && (
         <Modal title="关于 Folio" onClose={() => setAbout(false)}>
           <div className="about-logo">
-            Folio<span>1.2</span>
+            Folio<span>1.3</span>
           </div>
           <p>本地 PDF 阅读器，支持原版阅读、统一排版和文字批注。</p>
           <div className="about-features">
