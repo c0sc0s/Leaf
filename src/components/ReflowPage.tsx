@@ -1,7 +1,7 @@
 import { useRef } from 'react';
-import { ScanText, Info, FileImage, ArrowUpRight } from 'lucide-react';
-import type { Annotation, PageContent, Settings } from '../types';
-import { captureSelection, type SelectionAnchor } from '../lib/selection';
+import { Info, ArrowUpRight } from 'lucide-react';
+import type { Annotation, DocumentContent, Settings } from '../types';
+import { captureDocumentSelection, type DocumentSelection } from '../lib/selection';
 import { colors } from '../lib/export';
 function MarkedText({
   text,
@@ -64,25 +64,21 @@ function MarkedText({
   );
 }
 export function ReflowPage({
-  content,
+  document,
   marks,
   settings,
   title,
   query,
   onSelection,
-  onOCR,
   onOriginal,
-  ocrProgress,
 }: {
-  content: PageContent;
+  document: DocumentContent;
   marks: Annotation[];
   settings: Settings;
   title: string;
   query: string;
-  onSelection: (a: SelectionAnchor | null) => void;
-  onOCR: () => void;
+  onSelection: (a: DocumentSelection | null) => void;
   onOriginal: () => void;
-  ocrProgress: number | null;
 }) {
   const root = useRef<HTMLDivElement>(null);
   return (
@@ -96,78 +92,94 @@ export function ReflowPage({
         }}
       >
         <div className="reflow-kicker">
-          {title} <span>第 {content.page} 页</span>
+          {title}
+          <span>整本统一阅读 · {document.totalPages} 页</span>
         </div>
-        {content.warnings.length > 0 && (
-          <details className="reflow-notice">
-            <summary>
-              <Info size={14} />
-              {content.source === 'ocr'
-                ? 'OCR 识别文字'
-                : content.columns > 1
-                  ? '已识别双栏阅读顺序'
-                  : content.tagged
-                    ? '按 PDF 语义结构重排'
-                    : '已重新排版，专注文字'}
-              <span>说明</span>
-            </summary>
-            <p>
-              {content.warnings.join(' ')}
-              {content.source === 'ocr' && ' OCR 结果可能有识别误差，请对照原版。'}
-            </p>
-            <button onClick={onOriginal}>
-              查看原版 <ArrowUpRight size={13} />
-            </button>
-          </details>
-        )}
+        <details className="reflow-notice">
+          <summary>
+            <Info size={14} />
+            已完成全书内容检查<span>说明</span>
+          </summary>
+          <p>
+            正文采用统一排版，图片、图形和可定位的复杂内容作为独立图片块保留。原始页码用于定位和核对；所有内容连续阅读。图像保留原始颜色。
+          </p>
+          <button onClick={onOriginal}>
+            整本切回原版 <ArrowUpRight size={13} />
+          </button>
+        </details>
         <div
           ref={root}
           className="reflow-content"
-          onMouseUp={() => {
-            if (root.current) onSelection(captureSelection(root.current, content));
-          }}
+          onMouseUp={() =>
+            root.current && onSelection(captureDocumentSelection(root.current, document.pages))
+          }
         >
-          {content.blocks.map((block, i) => {
-            const children = (
-              <MarkedText
-                text={block.text}
-                start={block.start}
-                marks={marks.filter((m) => m.source === content.source)}
-                query={query}
-              />
-            );
-            return block.type === 'heading' ? (
-              <h2 key={i}>{children}</h2>
-            ) : block.type === 'quote' ? (
-              <blockquote key={i}>{children}</blockquote>
-            ) : (
-              <p className={block.type === 'list' ? 'list-line' : ''} key={i}>
-                {children}
-              </p>
-            );
-          })}
+          {document.pages.map((content) => (
+            <section
+              key={content.page}
+              data-source-page={content.page}
+              aria-label={`原始第 ${content.page} 页内容`}
+            >
+              <span className="source-page-label" aria-hidden="true">
+                原始第 {content.page} 页
+              </span>
+              {content.blocks.map((block, i) => {
+                if (block.type === 'figure' && block.image)
+                  return (
+                    <figure className="reflow-figure" key={i} data-content-kind={block.image.kind}>
+                      <img
+                        src={block.image.src}
+                        alt={block.image.alt}
+                        width={block.image.width}
+                        height={block.image.height}
+                        loading="lazy"
+                      />
+                    </figure>
+                  );
+                const children = (
+                  <MarkedText
+                    text={block.text}
+                    start={block.start}
+                    marks={marks
+                      .filter((m) => m.page === content.page && m.source === content.source)
+                      .flatMap((mark) => {
+                        if (content.text.slice(mark.start, mark.end).trim() === mark.quote)
+                          return [mark];
+                        const start = content.text.indexOf(mark.quote);
+                        if (start < 0 || content.text.indexOf(mark.quote, start + 1) >= 0)
+                          return [];
+                        return [{ ...mark, start, end: start + mark.quote.length }];
+                      })}
+                    query={query}
+                  />
+                );
+                if (block.type === 'heading') {
+                  const Tag = `h${Math.max(1, Math.min(6, block.level || 2))}` as
+                    'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+                  return <Tag key={i}>{children}</Tag>;
+                }
+                if (block.type === 'quote') return <blockquote key={i}>{children}</blockquote>;
+                return (
+                  <p
+                    className={
+                      block.type === 'list'
+                        ? 'list-line'
+                        : block.type === 'caption'
+                          ? 'figure-caption'
+                          : ''
+                    }
+                    key={i}
+                  >
+                    {children}
+                  </p>
+                );
+              })}
+            </section>
+          ))}
         </div>
-        {!content.blocks.length && (
-          <div className="empty-state scan-empty">
-            <FileImage size={40} />
-            <h3>这页的文字藏在图片里</h3>
-            <p>
-              使用 OCR，把扫描件转换为可选择、可标注的文字。
-              <br />
-              中英文模型随应用内置，识别在本机完成。
-            </p>
-            <button className="primary" onClick={onOCR} disabled={ocrProgress !== null}>
-              <ScanText size={17} />
-              {ocrProgress !== null ? `正在识别 ${Math.round(ocrProgress * 100)}%` : '识别本页文字'}
-            </button>
-            <button className="text-button" onClick={onOriginal}>
-              先看原版
-            </button>
-          </div>
-        )}
         <footer className="reflow-footer">
           <span>FOLIO · COMFORT READING</span>
-          <span>{content.page}</span>
+          <span>全文完</span>
         </footer>
       </article>
     </div>

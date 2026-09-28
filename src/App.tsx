@@ -481,7 +481,7 @@ export default function App() {
             </span>
             <span>
               <BookOpen size={17} />
-              原版与舒适文字重排
+              原版与全书统一阅读
             </span>
             <span>
               <NotebookPen size={17} />
@@ -511,8 +511,8 @@ export default function App() {
             </div>
           </div>
           <p className="small muted">
-            示例书籍是 Folio 原创演示文档。重排以文字阅读为主，复杂表格、公式与插图请查看原版。OCR
-            中英文模型已内置，文档内容在本机处理。
+            示例书籍是 Folio 原创演示文档。应用会检查整份
+            PDF，适合的文档统一排版并保留图片；无法完整、可靠地重排时，整本使用原版。文档不会上传。
           </p>
         </Modal>
       )}

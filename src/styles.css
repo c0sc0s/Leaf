@@ -1610,7 +1610,7 @@ p {
   font-size: 10px;
   color: var(--accent);
 }
-.reflow-content h2 {
+.reflow-content :is(h1, h2, h3, h4, h5, h6) {
   font-weight: 500;
   font-size: 1.7em;
   letter-spacing: -0.4px;
@@ -1620,6 +1620,75 @@ p {
 .reflow-content p {
   margin: 0 0 1.3em;
   overflow-wrap: anywhere;
+}
+.reflow-content h1 {
+  font-size: 2em;
+}
+.reflow-content :is(h3, h4, h5, h6) {
+  font-size: 1.25em;
+}
+.reflow-content section {
+  position: relative;
+  padding-top: 1em;
+  scroll-margin-top: 16px;
+}
+.source-page-label {
+  display: block;
+  color: var(--reading-muted);
+  font:
+    10px/1.8 -apple-system,
+    sans-serif;
+  margin-bottom: 1.2em;
+  user-select: none;
+}
+.reflow-figure {
+  margin: 1.5em 0;
+  display: flex;
+  justify-content: center;
+}
+.reflow-figure img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  border-radius: 4px;
+}
+.reflow-content .figure-caption {
+  color: var(--reading-muted);
+  font-size: 0.85em;
+}
+.document-status {
+  flex-shrink: 0;
+  padding: 8px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.document-status progress {
+  width: 120px;
+  height: 4px;
+  accent-color: var(--accent);
+}
+.document-report {
+  flex-shrink: 0;
+  max-height: 210px;
+  overflow: auto;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.document-report p {
+  margin: 5px 0;
+}
+.document-report button {
+  color: var(--accent);
+  margin-top: 8px;
 }
 .reflow-content .list-line {
   margin-bottom: 0.55em;

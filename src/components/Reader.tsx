@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ChevronLeft,
@@ -18,7 +18,6 @@ import {
   Minus,
   Plus,
   SlidersHorizontal,
-  ScanText,
   List,
   LayoutGrid,
   ArrowUpRight,
@@ -26,11 +25,20 @@ import {
   LoaderCircle,
 } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
-import type { Annotation, Book, MarkColor, MarkKind, PageContent, Settings } from '../types';
-import { loadPDF, extractPage, ocrPage } from '../lib/pdf';
+import type {
+  Annotation,
+  Book,
+  DocumentContent,
+  MarkColor,
+  MarkKind,
+  PageContent,
+  Settings,
+} from '../types';
+import { loadPDF, extractPage } from '../lib/pdf';
+import { analyzeDocument, CONTENT_VERSION } from '../lib/document';
 import { storage } from '../lib/db';
 import { colors, exportAnnotated, notesMarkdown, saveFile } from '../lib/export';
-import type { SelectionAnchor } from '../lib/selection';
+import type { DocumentSelection } from '../lib/selection';
 import { PDFPage } from './PDFPage';
 import { ReflowPage } from './ReflowPage';
 import { IconButton, Spinner } from './UI';
@@ -65,7 +73,13 @@ export function Reader({
   const [mode, setMode] = useState<'original' | 'reflow'>('original');
   const [content, setContent] = useState<PageContent | null>(null);
   const [marks, setMarks] = useState<Annotation[]>([]);
-  const [selection, setSelection] = useState<SelectionAnchor | null>(null);
+  const [selection, setSelection] = useState<DocumentSelection | null>(null);
+  const [document, setDocument] = useState<DocumentContent | null>(null);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [report, setReport] = useState(false);
+  const modeChosen = useRef(false);
+  const requestedMode = useRef<'original' | 'reflow' | null>(null);
+  const [jump, setJump] = useState({ page: book.page, revision: 0 });
   const [color, setColor] = useState<MarkColor>('amber');
   const [left, setLeft] = useState(false);
   const [right, setRight] = useState(false);
@@ -76,7 +90,6 @@ export function Reader({
   const [outline, setOutline] = useState<{ title: string; page: number; depth: number }[]>([]);
   const [zoom, setZoom] = useState(1);
   const [error, setError] = useState('');
-  const [ocrProgress, setOcrProgress] = useState<number | null>(null);
   const [exporting, setExporting] = useState(false);
   const [bookmarks, setBookmarks] = useState<number[]>(book.bookmarks || []);
   const cache = useRef(new Map<number, Promise<PageContent>>());
@@ -84,10 +97,19 @@ export function Reader({
   const bookRef = useRef(book);
   bookRef.current = book;
   const searchEpoch = useRef(0);
-  const closing = useRef(false);
   const handleError = useCallback((message: string) => notify(message), [notify]);
+  const switchMode = (next: 'original' | 'reflow') => {
+    modeChosen.current = true;
+    requestedMode.current = next;
+    setSelection(null);
+    if (next === 'reflow' && !document?.suitable) {
+      setReport(true);
+      return;
+    }
+    setMode(next);
+    onUpdate({ ...bookRef.current, readingMode: next });
+  };
   useEffect(() => {
-    closing.current = false;
     let current: PDFDocumentProxy | undefined;
     let disposed = false;
     const loading = book.blob
@@ -140,19 +162,64 @@ export function Reader({
       if (!disposed) setMarks(a);
     });
     return () => {
-      closing.current = true;
       disposed = true;
       searchEpoch.current++;
       cache.current.clear();
       void (current?.loadingTask.destroy() || currentTask?.destroy());
     };
   }, [book.id, book.blob, askPassword]);
+  useEffect(() => {
+    if (!pdf) return;
+    const controller = new AbortController();
+    let disposed = false;
+    void (async () => {
+      try {
+        let model = await storage.document(book.id).catch(() => undefined);
+        if (disposed) return;
+        if (!model || model.version !== CONTENT_VERSION || model.totalPages !== pdf.numPages) {
+          model = await analyzeDocument(
+            pdf,
+            (n) => !disposed && setAnalysisProgress(n),
+            controller.signal,
+          );
+          if (disposed) return;
+          try {
+            await storage.putDocument(book.id, model);
+          } catch {
+            notify('全书解析已完成，缓存保存失败；下次打开会重新分析。');
+          }
+        }
+        if (disposed) return;
+        setDocument(model);
+        setAnalysisProgress(pdf.numPages);
+        if (!modeChosen.current)
+          setMode(model.suitable ? bookRef.current.readingMode || 'reflow' : 'original');
+        else if (requestedMode.current === 'reflow' && model.suitable) setMode('reflow');
+      } catch (error) {
+        if (!disposed) {
+          setDocument({
+            version: CONTENT_VERSION,
+            totalPages: pdf.numPages,
+            pages: [],
+            suitable: false,
+            analyzedAt: Date.now(),
+            issues: [{ page: 0, code: 'extraction', message: '全书分析未完成：' + String(error) }],
+          });
+          setMode('original');
+        }
+      }
+    })();
+    return () => {
+      disposed = true;
+      controller.abort();
+    };
+  }, [pdf, book.id, notify]);
   const getContent = useCallback(
     (n: number) => {
       if (!pdf) return Promise.reject(new Error('PDF 尚未加载'));
       let value = cache.current.get(n);
       if (!value) {
-        value = storage.ocr(book.id, n).then((saved) => saved || extractPage(pdf, n));
+        value = extractPage(pdf, n);
         cache.current.set(n, value);
         if (cache.current.size > 30) {
           const oldest = cache.current.keys().next().value;
@@ -167,28 +234,48 @@ export function Reader({
   useEffect(() => {
     if (!pdf) return;
     let disposed = false;
-    setContent(null);
+    if (mode === 'original') setContent(null);
     setSelection(null);
-    setPageInput(String(page));
-    scroller.current?.scrollTo(0, 0);
+    if (mode === 'original') scroller.current?.scrollTo(0, 0);
     void getContent(page)
       .then((c) => {
         if (!disposed) setContent(c);
       })
       .catch((e) => {
-        if (!disposed) setError(String(e));
+        if (!disposed)
+          setContent({
+            page,
+            text: '',
+            tokens: [],
+            blocks: [],
+            source: 'text',
+            tagged: false,
+            columns: 1,
+            warnings: ['本页文字提取失败：' + String(e)],
+          });
       });
     const updated = { ...bookRef.current, page, openedAt: Date.now() };
     onUpdate(updated);
     return () => {
       disposed = true;
     };
-  }, [pdf, page, getContent, onUpdate]);
+  }, [pdf, page, getContent, onUpdate, mode]);
+  useEffect(() => setPageInput(String(page)), [page]);
+  useEffect(() => {
+    if (mode !== 'reflow' || !document?.suitable) return;
+    const frame = requestAnimationFrame(() =>
+      scroller.current
+        ?.querySelector(`[data-source-page="${jump.page}"]`)
+        ?.scrollIntoView({ block: 'start' }),
+    );
+    return () => cancelAnimationFrame(frame);
+  }, [mode, document, jump]);
   const navigate = useCallback(
     (n: number) => {
       setPage(Math.max(1, Math.min(book.pages, n)));
+      setJump((j) => ({ page: Math.max(1, Math.min(book.pages, n)), revision: j.revision + 1 }));
     },
-    [book.pages],
+    [book.pages, mode],
   );
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
@@ -212,8 +299,8 @@ export function Reader({
       }
       if (e.key === 'Escape') setSelection(null);
     };
-    document.addEventListener('keydown', listener);
-    return () => document.removeEventListener('keydown', listener);
+    window.document.addEventListener('keydown', listener);
+    return () => window.document.removeEventListener('keydown', listener);
   }, [navigate, page]);
   useEffect(() => {
     const epoch = ++searchEpoch.current;
@@ -263,23 +350,23 @@ export function Reader({
   }, [query, pdf, getContent, notify]);
   async function annotate(kind: MarkKind) {
     if (!selection || !content) return;
-    const mark: Annotation = {
+    const added: Annotation[] = selection.anchors.map((anchor) => ({
       id: crypto.randomUUID(),
       bookId: book.id,
-      page,
-      start: selection.start,
-      end: selection.end,
-      quote: selection.quote,
-      rects: selection.rects,
+      page: anchor.page,
+      start: anchor.start,
+      end: anchor.end,
+      quote: anchor.quote,
+      rects: anchor.rects,
       kind,
       color,
       note: '',
       createdAt: Date.now(),
       source: content.source,
-    };
+    }));
     try {
-      await storage.putAnnotation(mark);
-      setMarks((m) => [...m, mark]);
+      await storage.putAnnotations(added);
+      setMarks((m) => [...m, ...added]);
       setSelection(null);
       window.getSelection()?.removeAllRanges();
       notify(kind === 'highlight' ? '已添加高光' : '已添加划线');
@@ -302,23 +389,6 @@ export function Reader({
       setMarks((m) => m.map((v) => (v.id === mark.id ? next : v)));
     } catch {
       notify('笔记保存失败');
-    }
-  }
-  async function runOCR() {
-    if (!pdf || ocrProgress !== null) return;
-    setOcrProgress(0);
-    try {
-      const c = await ocrPage(pdf, page, setOcrProgress);
-      if (closing.current) return;
-      await storage.putOCR(book.id, c);
-      cache.current.set(page, Promise.resolve(c));
-      setContent(c);
-      if (!c.tokens.length) notify('未识别到文字，可尝试更清晰的扫描件');
-      else notify('本页文字识别完成');
-    } catch (e) {
-      if (!closing.current) notify('OCR 未完成，请重试或换用更清晰的扫描件：' + String(e));
-    } finally {
-      if (!closing.current) setOcrProgress(null);
     }
   }
   async function exportPDF() {
@@ -354,7 +424,7 @@ export function Reader({
     setBookmarks(next);
     onUpdate({ ...bookRef.current, bookmarks: next });
   };
-  const pageMarks = marks.filter((m) => m.page === page);
+  const pageMarks = useMemo(() => marks.filter((m) => m.page === page), [marks, page]);
   const readerDark = settings.readerTheme === 'dark' || (settings.readerTheme === 'follow' && dark);
   return (
     <div className="reader">
@@ -372,23 +442,17 @@ export function Reader({
         <div className="segmented reader-mode">
           <button
             className={mode === 'original' ? 'selected' : ''}
-            onClick={() => {
-              setMode('original');
-              setSelection(null);
-            }}
+            onClick={() => switchMode('original')}
           >
             <FileText size={15} />
             原版阅读
           </button>
           <button
             className={mode === 'reflow' ? 'selected' : ''}
-            onClick={() => {
-              setMode('reflow');
-              setSelection(null);
-            }}
+            onClick={() => switchMode('reflow')}
           >
             <BookOpen size={15} />
-            舒适阅读
+            统一阅读
           </button>
         </div>
         <div className="tool-group">
@@ -400,6 +464,42 @@ export function Reader({
           </IconButton>
         </div>
       </header>
+      <div className="document-status">
+        <button onClick={() => setReport(!report)} aria-expanded={report}>
+          {!document
+            ? `正在解析整份 PDF · ${analysisProgress} / ${book.pages} 页`
+            : document.suitable
+              ? `全书 ${document.totalPages} 页已检查 · 支持统一阅读`
+              : `已检查 ${document.pages.length} / ${document.totalPages} 页 · 整本原版阅读`}
+        </button>
+        {!document && (
+          <progress max={book.pages} value={analysisProgress} aria-label="全书解析进度" />
+        )}
+      </div>
+      {report && (
+        <div className="document-report" role="region" aria-label="全书重排分析">
+          <strong>
+            {!document
+              ? '正在检查全部页面'
+              : document.suitable
+                ? '全书可使用统一阅读'
+                : '无法完整、可靠地重排整份文档'}
+          </strong>
+          <p>
+            统一阅读按内容块连续排版，独立保留图片和图形。模式切换作用于整本；原版可随时用于核对。
+          </p>
+          {document?.issues.map((issue, i) => (
+            <p key={i}>
+              {issue.page ? `第 ${issue.page} 页：` : ''}
+              {issue.message}
+            </p>
+          ))}
+          {!document?.suitable && (
+            <p>为避免遗漏内容，当前整本使用原版；不会插入整页截图补齐统一阅读。</p>
+          )}
+          <button onClick={() => setReport(false)}>收起说明</button>
+        </div>
+      )}
       <div className="reader-toolbar">
         <div className="tool-group">
           <IconButton label="目录与搜索" active={left} onClick={() => setLeft(!left)}>
@@ -537,7 +637,6 @@ export function Reader({
                       key={r.page}
                       onClick={() => {
                         navigate(r.page);
-                        setMode('reflow');
                       }}
                     >
                       <strong>
@@ -600,7 +699,20 @@ export function Reader({
         <main
           ref={scroller}
           className={`reading-canvas ${readerDark ? 'reader-dark' : 'reader-light'} ${mode === 'reflow' ? 'reflow-mode' : ''}`}
-          onScroll={() => selection && setSelection(null)}
+          onScroll={() => {
+            if (selection) setSelection(null);
+            if (mode === 'reflow' && scroller.current) {
+              const top = scroller.current.getBoundingClientRect().top + 40;
+              const sections = [
+                ...scroller.current.querySelectorAll<HTMLElement>('[data-source-page]'),
+              ];
+              const current =
+                [...sections]
+                  .reverse()
+                  .find((section) => section.getBoundingClientRect().top <= top) || sections[0];
+              if (current) setPage(Number(current.dataset.sourcePage));
+            }
+          }}
         >
           {error ? (
             <div className="empty-state">
@@ -621,21 +733,23 @@ export function Reader({
               marks={pageMarks}
               zoom={zoom}
               dark={readerDark}
-              onSelection={setSelection}
+              onSelection={(anchor) =>
+                setSelection(anchor ? { ...anchor, anchors: [{ ...anchor, page }] } : null)
+              }
               onError={handleError}
             />
-          ) : (
+          ) : document?.suitable ? (
             <ReflowPage
-              content={content}
-              marks={pageMarks}
+              document={document}
+              marks={marks}
               title={book.title}
               settings={settings}
               query={query}
               onSelection={setSelection}
-              onOCR={() => void runOCR()}
-              onOriginal={() => setMode('original')}
-              ocrProgress={ocrProgress}
+              onOriginal={() => switchMode('original')}
             />
+          ) : (
+            <Spinner text="正在检查全书内容…" />
           )}
         </main>
         {right && (
@@ -717,12 +831,11 @@ export function Reader({
           已保存在本机
         </span>
         <span>
-          {mode === 'original'
-            ? '原版排版'
-            : content?.source === 'ocr'
-              ? 'OCR · 舒适排版'
-              : '文字重排'}{' '}
-          · {content?.text.trim().length || 0} 字
+          {mode === 'original' ? '原版排版' : '全书统一排版'} ·{' '}
+          {mode === 'reflow'
+            ? document?.pages.reduce((sum, p) => sum + p.text.trim().length, 0) || 0
+            : content?.text.trim().length || 0}{' '}
+          字
         </span>
         <span>{Math.round((page / book.pages) * 100)}% 已读</span>
       </footer>
@@ -767,12 +880,6 @@ export function Reader({
           <IconButton label="关闭标注工具" onClick={() => setSelection(null)}>
             <X size={15} />
           </IconButton>
-        </div>
-      )}
-      {content?.source === 'ocr' && mode === 'original' && (
-        <div className="ocr-badge">
-          <ScanText size={14} />
-          OCR 文字层
         </div>
       )}
     </div>

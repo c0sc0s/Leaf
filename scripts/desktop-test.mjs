@@ -37,6 +37,7 @@ try {
   expect(prefs).toEqual({ sandbox: true, contextIsolation: true, nodeIntegration: false });
   await page.screenshot({ animations: 'disabled', path: 'docs/previews/library-light.png' });
   await page.getByRole('button', { name: '阅读 The Art of Noticing', exact: true }).click();
+  await page.getByRole('button', { name: '原版阅读', exact: true }).click();
   await page.getByLabel('页码', { exact: true }).fill('2');
   await page.getByLabel('页码', { exact: true }).press('Enter');
   await expect(
@@ -64,7 +65,7 @@ try {
   const exported = await PDFDocument.load(await readFile(output));
   expect(exported.getPage(1).node.get(PDFName.of('Annots'))).toBeTruthy();
   await page.getByLabel('关闭通知', { exact: true }).click();
-  await page.getByRole('button', { name: '舒适阅读', exact: true }).click();
+  await page.getByRole('button', { name: '统一阅读', exact: true }).click();
   await expect(page.locator('.reflow-content')).toContainText('We move through the world');
   await page.screenshot({ animations: 'disabled', path: 'docs/previews/reader-light.png' });
   await page.getByLabel('切换深色模式', { exact: true }).click();
@@ -104,14 +105,14 @@ try {
   }, scanFile);
   await page.getByRole('button', { name: '导入 PDF', exact: true }).click();
   await page.getByRole('button', { name: '阅读 Offline scanned page', exact: true }).click();
-  await page.getByRole('button', { name: '舒适阅读', exact: true }).click();
-  await page.getByRole('button', { name: '识别本页文字', exact: true }).click();
-  await expect(page.locator('.reflow-content')).toContainText('Reading is a quiet adventure', {
-    timeout: 45000,
-  });
+  await expect(page.locator('.document-status')).toContainText('已检查 1 / 1 页 · 整本原版阅读');
+  await page.getByRole('button', { name: '统一阅读', exact: true }).click();
+  await expect(page.getByRole('region', { name: '全书重排分析' })).toContainText('整页位图');
+  await expect(page.locator('.reflow-content')).toHaveCount(0);
+  await expect(page.locator('.pdf-paper canvas')).toBeVisible();
   expect(errors).toEqual([]);
   console.log(
-    'Packaged desktop checks passed: offline PDF, sandbox, native open/save IPC, annotations, reflow, themes and offline OCR.',
+    'Packaged desktop checks passed: offline PDF, sandbox, native open/save IPC, annotations, whole-document reflow, themes and scanned-document fallback.',
   );
 } finally {
   await app.close();

@@ -1,4 +1,4 @@
-import type { Block, PageContent, Token } from '../types';
+import type { Block, ContentStructure, PageContent, Token } from '../types';
 export interface RawToken {
   text: string;
   x: number;
@@ -12,12 +12,7 @@ export interface RawToken {
   originalIndex: number;
   markedId?: string;
 }
-export interface Structure {
-  role?: string;
-  children?: (Structure & { type?: string; id?: string })[];
-  type?: string;
-  id?: string;
-}
+export type Structure = ContentStructure;
 interface Line {
   tokens: RawToken[];
   y: number;
@@ -27,6 +22,16 @@ interface Line {
 function median(values: number[]) {
   const a = [...values].sort((a, b) => a - b);
   return a[Math.floor(a.length / 2)] || 12;
+}
+function bodyFontSize(tokens: RawToken[]) {
+  const sizes = [...tokens].sort((a, b) => a.fontSize - b.fontSize);
+  const midpoint = sizes.reduce((sum, token) => sum + token.text.trim().length, 0) / 2;
+  let weight = 0;
+  for (const token of sizes) {
+    weight += token.text.trim().length;
+    if (weight >= midpoint) return token.fontSize;
+  }
+  return median(tokens.map((token) => token.fontSize));
 }
 function linesOf(raw: RawToken[]) {
   const lines: Line[] = [];
@@ -45,10 +50,13 @@ function linesOf(raw: RawToken[]) {
   for (const line of lines) line.tokens.sort((a, b) => a.x - b.x);
   return lines;
 }
-function semanticMap(tree: Structure | null) {
+export function semanticMap(tree: Structure | null) {
   const roles = new Map<string, string>();
   function visit(node: Structure, parent = 'P') {
-    const role = node.role && node.role !== 'Root' ? node.role : parent;
+    const role =
+      node.role && /^(H[1-6]|P|LI|BlockQuote|Quote|Caption|Figure|Formula|Table)$/.test(node.role)
+        ? node.role
+        : parent;
     if (node.id) roles.set(node.id, role);
     node.children?.forEach((n) => visit(n, role));
   }
@@ -63,7 +71,7 @@ export function reconstruct(
   source: 'text' | 'ocr' = 'text',
 ): PageContent {
   const valid = raw.filter((t) => t.text.trim() && t.width > 0);
-  const baseSize = median(valid.map((t) => t.fontSize));
+  const baseSize = bodyFontSize(valid);
   const roles = semanticMap(tree);
   let lines = linesOf(valid);
   let columns = 1;
@@ -98,11 +106,8 @@ export function reconstruct(
   }
   if (tree && roles.size) {
     const rank = [...roles.keys()];
-    lines.sort((a, b) => {
-      const ai = rank.indexOf(a.tokens[0].markedId || ''),
-        bi = rank.indexOf(b.tokens[0].markedId || '');
-      return ai >= 0 && bi >= 0 ? ai - bi : a.y - b.y;
-    });
+    lines = rank.flatMap((id) => linesOf(valid.filter((t) => t.markedId === id)));
+    lines.push(...linesOf(valid.filter((t) => !t.markedId || !roles.has(t.markedId))));
   }
   const tokens: Token[] = [];
   let text = '';
@@ -113,7 +118,9 @@ export function reconstruct(
     const role = roles.get(line.tokens[0].markedId || '');
     const heading =
       /^H[1-6]$/.test(role || '') ||
-      (line.size >= baseSize * 1.3 && line.tokens.map((t) => t.text).join('').length < 180);
+      (!role &&
+        line.size >= baseSize * 1.3 &&
+        line.tokens.map((t) => t.text).join('').length < 180);
     const list = role === 'LI' || /^\s*(?:[•●▪–]|\d+[.)])\s/.test(line.tokens[0].text);
     const type: Block['type'] = heading
       ? 'heading'
@@ -121,7 +128,11 @@ export function reconstruct(
         ? 'list'
         : role === 'BlockQuote'
           ? 'quote'
-          : 'paragraph';
+          : role === 'Quote'
+            ? 'quote'
+            : role === 'Caption' || /^(?:Fig(?:ure)?\.?|图|表)\s*\d/i.test(line.tokens[0].text)
+              ? 'caption'
+              : 'paragraph';
     const breakBlock =
       !current ||
       type !== current.type ||
@@ -132,10 +143,23 @@ export function reconstruct(
           line.y < previous.y - 3 ||
           Math.abs(line.x - previous.x) > baseSize * 2.5));
     if (breakBlock) {
-      current = { type, text: '', start: text.length, end: text.length };
+      current = {
+        type,
+        text: '',
+        start: text.length,
+        end: text.length,
+        level: heading ? Number(role?.slice(1)) || 2 : undefined,
+        markedId: line.tokens[0].markedId,
+        bounds: [Infinity, Infinity, -Infinity, -Infinity],
+      };
       blocks.push(current);
     }
     for (const rawToken of line.tokens) {
+      const bounds = current!.bounds!;
+      bounds[0] = Math.min(bounds[0], rawToken.x);
+      bounds[1] = Math.min(bounds[1], rawToken.y);
+      bounds[2] = Math.max(bounds[2], rawToken.x + rawToken.width);
+      bounds[3] = Math.max(bounds[3], rawToken.y + rawToken.height);
       const start = text.length;
       text += rawToken.text;
       tokens.push({ ...rawToken, start, end: text.length });
@@ -146,10 +170,9 @@ export function reconstruct(
     previous = line;
   }
   const warnings = [];
-  if (!valid.length) warnings.push('这一页没有可提取的文字。可使用 OCR 识别扫描内容。');
+  if (!valid.length) warnings.push('这一页没有可提取的文字。扫描件默认使用整本原版阅读。');
   if (columns > 1) warnings.push('检测到双栏排版，已按列重组阅读顺序。');
-  if (valid.length && !tree)
-    warnings.push('此 PDF 没有语义标签，段落与标题由版面推断；表格、公式和插图请结合原版查看。');
+  if (valid.length && !tree) warnings.push('此 PDF 没有语义标签，段落与标题由版面推断。');
   return { page, text, tokens, blocks, source, tagged: !!tree, columns, warnings };
 }
 export function tokenRects(content: PageContent, start: number, end: number) {

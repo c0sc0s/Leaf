@@ -66,7 +66,7 @@ describe('reflow reconstruction', () => {
     const c = reconstruct([], 2, 595);
     expect(c.text).toBe('');
     expect(c.blocks).toEqual([]);
-    expect(c.warnings[0]).toContain('OCR');
+    expect(c.warnings[0]).toContain('原版阅读');
   });
 });
 it('uses shared OCR baselines so short lowercase words keep their reading order', () => {

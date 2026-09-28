@@ -28,27 +28,31 @@ export async function extractPage(pdf: PDFDocumentProxy, number: number): Promis
     page.getStructTree(),
   ]);
   let markedId: string | undefined;
+  const markedStack: (string | undefined)[] = [];
   const raw: RawToken[] = [];
   let originalIndex = 0;
   for (const item of content.items) {
     if (!('str' in item)) {
-      if (item.type === 'beginMarkedContentProps') markedId = item.id;
-      else if (item.type === 'endMarkedContent') markedId = undefined;
+      if (item.type === 'beginMarkedContentProps' || item.type === 'beginMarkedContent') {
+        markedStack.push(markedId);
+        if (item.type === 'beginMarkedContentProps') markedId = item.id;
+      } else if (item.type === 'endMarkedContent') markedId = markedStack.pop();
       continue;
     }
     const tx = Util.transform(viewport.transform, item.transform);
     const height = Math.hypot(tx[2], tx[3]) || item.height || 12;
+    const width = item.width * Math.hypot(viewport.transform[0], viewport.transform[1]);
     const style = content.styles[item.fontName];
     const ascent = style?.ascent ?? (style?.descent ? 1 + style.descent : 0.8);
     const top = tx[5] - height * ascent;
     const p1 = viewport.convertToPdfPoint(tx[4], top + height),
-      p2 = viewport.convertToPdfPoint(tx[4] + item.width, top);
+      p2 = viewport.convertToPdfPoint(tx[4] + width, top);
     raw.push({
       text: item.str,
       x: tx[4],
       y: top,
       baseline: tx[5],
-      width: item.width,
+      width,
       height,
       fontSize: height,
       fontName: item.fontName,
@@ -63,22 +67,43 @@ export async function extractPage(pdf: PDFDocumentProxy, number: number): Promis
     });
   }
   const result = reconstruct(raw, number, viewport.width, tree as Structure | null);
-  const metadata = await pdf.getMetadata();
-  const title = String((metadata.info as { Title?: string }).Title || '')
-    .trim()
-    .toLowerCase();
-  result.blocks = result.blocks.filter((block) => {
-    const parts = result.tokens.filter((t) => t.start >= block.start && t.end <= block.end);
-    if (!parts.length) return true;
-    const header =
-      title &&
-      block.text.trim().toLowerCase() === title &&
-      parts.every((t) => t.y < viewport.height * 0.08);
-    const footer =
-      /^\d+\s*(?:[\/–-]\s*\d+)?$/.test(block.text.trim()) &&
-      parts.every((t) => t.y > viewport.height * 0.93);
-    return !header && !footer;
-  });
+  result.width = viewport.width;
+  result.structure = tree as Structure | null;
+  result.height = viewport.height;
+  result.issues = [];
+  if (page.rotate !== 0)
+    result.issues.push({
+      page: number,
+      code: 'order',
+      message: '页面带旋转方向，首版使用原版保证阅读顺序。',
+    });
+  if (content.items.some((item) => 'str' in item && item.str.trim() && item.dir === 'rtl'))
+    result.issues.push({
+      page: number,
+      code: 'order',
+      message: '包含从右向左的文字片段，首版无法可靠恢复其顺序。',
+    });
+  if (content.items.some((item) => 'str' in item && item.str.trim() && item.width <= 0))
+    result.issues.push({
+      page: number,
+      code: 'content',
+      message: '有文字缺少有效位置，无法完整重排。',
+    });
+  if (
+    content.items.some(
+      (item) =>
+        'str' in item &&
+        item.str.trim() &&
+        (Math.abs(item.transform[1]) > 0.1 ||
+          Math.abs(item.transform[2]) > 0.1 ||
+          item.dir === 'ttb'),
+    )
+  )
+    result.issues.push({
+      page: number,
+      code: 'order',
+      message: '包含旋转、倾斜或竖排文字，阅读顺序无法可靠恢复。',
+    });
   return result;
 }
 export async function importPDF(blob: Blob, filename: string, password?: string): Promise<Book> {
@@ -111,60 +136,5 @@ export async function importPDF(blob: Blob, filename: string, password?: string)
     };
   } finally {
     await task.destroy();
-  }
-}
-export async function ocrPage(
-  pdf: PDFDocumentProxy,
-  number: number,
-  progress: (value: number) => void,
-): Promise<PageContent> {
-  const { createWorker } = await import('tesseract.js');
-  const page = await pdf.getPage(number);
-  const viewport = page.getViewport({ scale: 2 });
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.ceil(viewport.width);
-  canvas.height = Math.ceil(viewport.height);
-  await page.render({ canvas, viewport }).promise;
-  const worker = await createWorker(['eng', 'chi_sim'], 1, {
-    workerPath: vendorBase + 'ocr/worker.min.js',
-    corePath: vendorBase + 'ocr/core/',
-    langPath: vendorBase + 'lang/',
-    logger: (m) => {
-      if (m.status === 'recognizing text') progress(m.progress);
-    },
-  });
-  try {
-    const { data } = await worker.recognize(canvas, {}, { blocks: true, text: true });
-    const raw: RawToken[] = [];
-    for (const block of data.blocks || [])
-      for (const p of block.paragraphs)
-        for (const line of p.lines)
-          for (const word of line.words) {
-            const b = word.bbox;
-            const p1 = viewport.convertToPdfPoint(b.x0, b.y1),
-              p2 = viewport.convertToPdfPoint(b.x1, b.y0);
-            raw.push({
-              text: word.text,
-              x: b.x0 / 2,
-              y: b.y0 / 2,
-              baseline: line.bbox.y1 / 2,
-              width: (b.x1 - b.x0) / 2,
-              height: (b.y1 - b.y0) / 2,
-              fontSize: (line.bbox.y1 - line.bbox.y0) / 2,
-              fontName: 'OCR',
-              originalIndex: raw.length,
-              rect: [
-                Math.min(p1[0], p2[0]),
-                Math.min(p1[1], p2[1]),
-                Math.max(p1[0], p2[0]),
-                Math.max(p1[1], p2[1]),
-              ],
-            });
-          }
-    return reconstruct(raw, number, viewport.width / 2, null, 'ocr');
-  } finally {
-    await worker.terminate();
-    canvas.width = 0;
-    canvas.height = 0;
   }
 }

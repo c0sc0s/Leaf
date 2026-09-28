@@ -1,7 +1,7 @@
 {
   "name": "folio-reader",
-  "version": "1.0.0",
-  "description": "Folio \u2014 a quiet space for your PDFs",
+  "version": "1.1.0",
+  "description": "Folio — a quiet space for your PDFs",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
@@ -73,19 +73,18 @@
     "concurrently": "^10.0.5",
     "electron": "^44.4.5",
     "electron-builder": "^26.15.3",
-    "prettier": "^3.9.9",
-    "sharp": "^0.35.5",
-    "typescript": "^7.0.2",
-    "vite": "^8.3.1",
-    "vitest": "^5.0.2",
-    "wait-on": "^9.1.0",
     "idb": "^8.0.3",
     "lucide-react": "^1.48.0",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.3.289",
+    "prettier": "^3.9.9",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "tesseract.js": "^7.0.0"
+    "sharp": "^0.35.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2",
+    "wait-on": "^9.1.0"
   },
   "engines": {
     "node": ">=22.13.0"

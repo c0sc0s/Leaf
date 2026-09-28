@@ -145,10 +145,10 @@ export function SettingsModal({
           <option value="light">始终浅色</option>
           <option value="dark">始终深色</option>
         </select>
-        <p className="small muted">原版采用护眼色彩转换；舒适阅读直接使用深浅色文字与背景。</p>
+        <p className="small muted">原版采用护眼色彩转换；统一阅读直接使用深浅色文字与背景。</p>
       </div>
       <div className="settings-section">
-        <label>舒适阅读字体</label>
+        <label>统一阅读字体</label>
         <div className="segmented">
           <button
             className={settings.font === 'serif' ? 'selected' : ''}

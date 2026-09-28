@@ -16,6 +16,7 @@ export interface Book {
   bookmarks?: number[];
   sample?: boolean;
   category: string;
+  readingMode?: 'original' | 'reflow';
 }
 export interface Annotation {
   id: string;
@@ -46,10 +47,28 @@ export interface Token {
   markedId?: string;
 }
 export interface Block {
-  type: 'heading' | 'paragraph' | 'list' | 'quote';
+  type: 'heading' | 'paragraph' | 'list' | 'quote' | 'caption' | 'figure';
   text: string;
   start: number;
   end: number;
+  level?: number;
+  bounds?: number[];
+  markedId?: string;
+  coveredTokens?: number[];
+  image?: { src: string; width: number; height: number; kind: string; alt: string };
+}
+export interface AnalysisIssue {
+  page: number;
+  code: 'scan' | 'order' | 'structure' | 'graphics' | 'extraction' | 'content';
+  message: string;
+}
+export interface DocumentContent {
+  version: number;
+  pages: PageContent[];
+  totalPages: number;
+  suitable: boolean;
+  issues: AnalysisIssue[];
+  analyzedAt: number;
 }
 export interface PageContent {
   page: number;
@@ -60,6 +79,18 @@ export interface PageContent {
   tagged: boolean;
   columns: number;
   warnings: string[];
+  width?: number;
+  height?: number;
+  issues?: AnalysisIssue[];
+  background?: string;
+  structure?: ContentStructure | null;
+}
+export interface ContentStructure {
+  role?: string;
+  children?: ContentStructure[];
+  type?: string;
+  id?: string;
+  alt?: string;
 }
 export interface Settings {
   theme: Theme;
