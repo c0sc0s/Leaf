@@ -12,7 +12,7 @@ import {
 } from '@/components/icons';
 import type { Annotation, MarkColor, MarkKind } from '../../types';
 import type { DocumentSelection } from '../../lib/selection';
-import { colors } from '../../lib/export';
+import { markColors } from '../../lib/marks';
 import { IconButton } from '../../components/UI';
 import { m } from 'motion/react';
 import { pop } from '../../lib/motion';
@@ -27,13 +27,13 @@ export function Palette({
 }) {
   return (
     <div className="mark-colors">
-      {(Object.keys(colors) as MarkColor[]).map((c) => (
+      {(Object.keys(markColors) as MarkColor[]).map((c) => (
         <Button
           variant="ghost"
           key={c}
           aria-label={label(c)}
           aria-pressed={c === color}
-          style={{ background: colors[c] }}
+          style={{ background: markColors[c] }}
           className={c === color ? 'selected' : ''}
           onClick={() => onChange(c)}
         />
@@ -70,7 +70,7 @@ export function SelectionTools({
         <Copy size={17} />
       </IconButton>
       <IconButton label="高光标注" onClick={() => onAnnotate('highlight')}>
-        <Highlighter size={18} style={{ color: colors[color] }} />
+        <Highlighter size={18} style={{ color: markColors[color] }} />
       </IconButton>
       <IconButton label="选择高光颜色" active={palette} onClick={() => setPalette(!palette)}>
         <ChevronDown size={13} />

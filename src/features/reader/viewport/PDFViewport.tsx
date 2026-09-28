@@ -17,6 +17,7 @@ import { sameSpread } from '../../../lib/layout';
 import { capturePDFSelection, type DocumentSelection, type PageText } from '../../../lib/selection';
 import { PDFPage } from './PDFPage';
 import { Spinner } from '../../../components/UI';
+import { arrangeSlots, fitWidth, PAGE_GAP, type PageSize, type Slot } from './geometry';
 export interface PDFViewportHandle {
   capture: () => ReadingLocation;
 }
@@ -37,55 +38,13 @@ interface Props {
   onSelection: (selection: DocumentSelection | null) => void;
   onError: (message: string) => void;
 }
-interface Size {
-  width: number;
-  height: number;
-}
-interface Slot {
-  page: number;
-  top: number;
-  width: number;
-  height: number;
-}
-interface Range {
+/** The vertical band of the stage worth rendering; quantised so small scrolls keep it stable. */
+interface ScrollBand {
   top: number;
   bottom: number;
 }
-// Fitting wider than this makes lines too long to read and shows only a sliver of the page.
-const READABLE_PAGE_WIDTH = 920;
-const PAGE_GAP = 16;
 const NO_MARKS: Annotation[] = [];
-function fitWidth(available: number, layout: ReadingLayout) {
-  return Math.min(
-    available,
-    layout.spread ? READABLE_PAGE_WIDTH * 2 + PAGE_GAP : READABLE_PAGE_WIDTH,
-  );
-}
-function arrange(
-  count: number,
-  sizes: Map<number, Size>,
-  base: Size,
-  fit: number,
-  zoom: number,
-  layout: ReadingLayout,
-): Slot[] {
-  const perRow = layout.spread ? 2 : 1;
-  const width = (layout.spread ? (fit - PAGE_GAP) / 2 : fit) * zoom;
-  const slots: Slot[] = [];
-  let top = PAGE_GAP;
-  for (let first = 1; first <= count; first += perRow) {
-    let rowHeight = 0;
-    for (let page = first; page < first + perRow && page <= count; page++) {
-      const size = sizes.get(page) || base;
-      const height = (size.height / size.width) * width;
-      rowHeight = Math.max(rowHeight, height);
-      slots.push({ page, top: layout.continuous ? top : PAGE_GAP, width, height });
-    }
-    top += rowHeight + PAGE_GAP;
-  }
-  return slots;
-}
-function sameRange(a: Range | null, b: Range) {
+function sameBand(a: ScrollBand | null, b: ScrollBand) {
   return !!a && a.top === b.top && a.bottom === b.bottom;
 }
 export const PDFViewport = forwardRef<PDFViewportHandle, Props>(function PDFViewport(
@@ -205,10 +164,10 @@ export const PDFViewport = forwardRef<PDFViewportHandle, Props>(function PDFView
   layoutModeRef.current = layout;
   const displayPageRef = useRef(displayPage);
   displayPageRef.current = displayPage;
-  const [sizes, setSizes] = useState<Map<number, Size>>(new Map());
+  const [sizes, setSizes] = useState<Map<number, PageSize>>(new Map());
   const [contents, setContents] = useState<Map<number, PageContent>>(new Map());
   // Only the band of pages worth rendering is state; scroll frames inside it cause no render.
-  const [range, setRange] = useState<Range | null>(null);
+  const [range, setRange] = useState<ScrollBand | null>(null);
   const frames = useRef(new Map<number, PageText>());
   const anchor = useRef<ReadingLocation>(jump);
   const pending = useRef<ReadingLocation | null>(jump);
@@ -220,7 +179,7 @@ export const PDFViewport = forwardRef<PDFViewportHandle, Props>(function PDFView
   const callbacks = useRef({ onLocation, onError });
   callbacks.current = { onLocation, onError };
   const slotsRef = useRef<Slot[]>([]);
-  const readySize = useRef(new Map<number, Size>());
+  const readySize = useRef(new Map<number, PageSize>());
   const capture = useCallback(
     () =>
       pending.current ||
@@ -240,7 +199,7 @@ export const PDFViewport = forwardRef<PDFViewportHandle, Props>(function PDFView
       top: Math.floor((container.scrollTop - overscan) / step) * step,
       bottom: Math.ceil((container.scrollTop + container.clientHeight + overscan) / step) * step,
     };
-    setRange((previous) => (sameRange(previous, next) ? previous : next));
+    setRange((previous) => (sameBand(previous, next) ? previous : next));
   }, []);
   useLayoutEffect(() => {
     const container = root.current!.parentElement!;
@@ -274,7 +233,7 @@ export const PDFViewport = forwardRef<PDFViewportHandle, Props>(function PDFView
   const slots = useMemo(() => {
     const base = sizes.get(initial.current.page);
     if (!base || !fit) return [];
-    return arrange(pdf.numPages, sizes, base, fit, zoom, layout);
+    return arrangeSlots(pdf.numPages, sizes, base, fit, zoom, layout);
   }, [sizes, fit, zoom, layout, pdf.numPages]);
   slotsRef.current = slots;
   const finishRestore = useCallback(() => {
@@ -428,7 +387,11 @@ export const PDFViewport = forwardRef<PDFViewportHandle, Props>(function PDFView
   const activeMarkPage = activeMarkId && marks.find((mark) => mark.id === activeMarkId)?.page;
   const marksByPage = useMemo(() => {
     const result = new Map<number, Annotation[]>();
-    for (const mark of marks) result.set(mark.page, [...(result.get(mark.page) || []), mark]);
+    for (const mark of marks) {
+      const page = result.get(mark.page);
+      if (page) page.push(mark);
+      else result.set(mark.page, [mark]);
+    }
     return result;
   }, [marks]);
   return (
@@ -481,7 +444,9 @@ export const PDFViewport = forwardRef<PDFViewportHandle, Props>(function PDFView
           <PageSlot
             key={item.page}
             pdf={pdf}
-            slot={item}
+            page={item.page}
+            width={item.width}
+            height={item.height}
             hidden={!layout.continuous && !sameSpread(item.page, displayPage, layout)}
             content={wantedSet.has(item.page) ? contents.get(item.page) : undefined}
             marks={marksByPage.get(item.page) || NO_MARKS}
@@ -501,7 +466,9 @@ export const PDFViewport = forwardRef<PDFViewportHandle, Props>(function PDFView
 
 const PageSlot = memo(function PageSlot({
   pdf,
-  slot,
+  page,
+  width,
+  height,
   hidden,
   content,
   marks,
@@ -514,7 +481,9 @@ const PageSlot = memo(function PageSlot({
   onError,
 }: {
   pdf: PDFDocumentProxy;
-  slot: Slot;
+  page: number;
+  width: number;
+  height: number;
   hidden: boolean;
   content: PageContent | undefined;
   marks: Annotation[];
@@ -529,22 +498,22 @@ const PageSlot = memo(function PageSlot({
   return (
     <div
       className={`pdf-slot ${dark ? 'dark-paper' : ''}`}
-      data-page={slot.page}
+      data-page={page}
       style={{
-        width: slot.width,
-        height: slot.height,
+        width,
+        height,
         ...(hidden
           ? ({ position: 'absolute', left: -100000, top: 0, visibility: 'hidden' } as const)
           : {}),
       }}
-      aria-label={`第 ${slot.page} 页`}
+      aria-label={`第 ${page} 页`}
     >
       {content ? (
         <PDFPage
           pdf={pdf}
-          page={slot.page}
+          page={page}
           content={content}
-          width={slot.width}
+          width={width}
           marks={marks}
           activeMarkId={activeMarkId}
           dark={dark}
@@ -555,7 +524,7 @@ const PageSlot = memo(function PageSlot({
           onError={onError}
         />
       ) : (
-        <span className="page-placeholder">{slot.page}</span>
+        <span className="page-placeholder">{page}</span>
       )}
     </div>
   );

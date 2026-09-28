@@ -1,7 +1,6 @@
 import { HugeiconsIcon } from '@hugeicons/react';
 import type { ComponentProps } from 'react';
 import {
-  ArrowDownUp as ArrowDownUpGlyph,
   ArrowLeftIcon as ArrowLeftGlyph,
   ArrowUpRightIcon as ArrowUpRightGlyph,
   BookOpenIcon as BookOpenGlyph,
@@ -14,7 +13,6 @@ import {
   Columns2 as Columns2Glyph,
   CommandIcon as CommandGlyph,
   CopyIcon as CopyGlyph,
-  DownloadIcon as DownloadGlyph,
   FileTextIcon as FileTextGlyph,
   FolderOpenIcon as FolderOpenGlyph,
   GalleryVerticalIcon as GalleryVerticalGlyph,
@@ -37,7 +35,6 @@ import {
   Edit02Icon as PencilGlyph,
   Add01Icon as PlusGlyph,
   RectangleVerticalIcon as RectangleVerticalGlyph,
-  Redo2 as Redo2Glyph,
   SearchIcon as SearchGlyph,
   Settings05Icon as Settings2Glyph,
   StickyNoteIcon as StickyNoteGlyph,
@@ -45,362 +42,62 @@ import {
   TableOfContentsIcon as TableOfContentsGlyph,
   Trash2 as Trash2Glyph,
   UnderlineIcon as UnderlineGlyph,
-  Undo2 as Undo2Glyph,
   UploadIcon as UploadGlyph,
   Cancel01Icon as XGlyph,
 } from '@hugeicons/core-free-icons';
 
 type IconProps = Omit<ComponentProps<typeof HugeiconsIcon>, 'icon'>;
-export function ArrowDownUp(props: IconProps) {
-  return (
-    <HugeiconsIcon
-      icon={ArrowDownUpGlyph}
-      size={18}
-      strokeWidth={1.8}
-      aria-hidden="true"
-      {...props}
-    />
+type Glyph = ComponentProps<typeof HugeiconsIcon>['icon'];
+
+/** Wraps a Hugeicons glyph with the app's default size and stroke; props still override both. */
+function icon(glyph: Glyph, name: string) {
+  const Icon = (props: IconProps) => (
+    <HugeiconsIcon icon={glyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
   );
+  Icon.displayName = name;
+  return Icon;
 }
-export function ArrowLeft(props: IconProps) {
-  return (
-    <HugeiconsIcon
-      icon={ArrowLeftGlyph}
-      size={18}
-      strokeWidth={1.8}
-      aria-hidden="true"
-      {...props}
-    />
-  );
-}
-export function ArrowUpRight(props: IconProps) {
-  return (
-    <HugeiconsIcon
-      icon={ArrowUpRightGlyph}
-      size={18}
-      strokeWidth={1.8}
-      aria-hidden="true"
-      {...props}
-    />
-  );
-}
-export function BookOpen(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={BookOpenGlyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function Bookmark(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={BookmarkGlyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function Check(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={CheckGlyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function ChevronDown(props: IconProps) {
-  return (
-    <HugeiconsIcon
-      icon={ChevronDownGlyph}
-      size={18}
-      strokeWidth={1.8}
-      aria-hidden="true"
-      {...props}
-    />
-  );
-}
-export function ChevronLeft(props: IconProps) {
-  return (
-    <HugeiconsIcon
-      icon={ChevronLeftGlyph}
-      size={18}
-      strokeWidth={1.8}
-      aria-hidden="true"
-      {...props}
-    />
-  );
-}
-export function ChevronRight(props: IconProps) {
-  return (
-    <HugeiconsIcon
-      icon={ChevronRightGlyph}
-      size={18}
-      strokeWidth={1.8}
-      aria-hidden="true"
-      {...props}
-    />
-  );
-}
-export function Clock3(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={Clock3Glyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function Columns2(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={Columns2Glyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function Command(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={CommandGlyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function Copy(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={CopyGlyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function Download(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={DownloadGlyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function FileText(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={FileTextGlyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function FolderOpen(props: IconProps) {
-  return (
-    <HugeiconsIcon
-      icon={FolderOpenGlyph}
-      size={18}
-      strokeWidth={1.8}
-      aria-hidden="true"
-      {...props}
-    />
-  );
-}
-export function GalleryVertical(props: IconProps) {
-  return (
-    <HugeiconsIcon
-      icon={GalleryVerticalGlyph}
-      size={18}
-      strokeWidth={1.8}
-      aria-hidden="true"
-      {...props}
-    />
-  );
-}
-export function GalleryVerticalEnd(props: IconProps) {
-  return (
-    <HugeiconsIcon
-      icon={GalleryVerticalEndGlyph}
-      size={18}
-      strokeWidth={1.8}
-      aria-hidden="true"
-      {...props}
-    />
-  );
-}
-export function Grid2X2(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={Grid2X2Glyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function Heart(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={HeartGlyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function Highlighter(props: IconProps) {
-  return (
-    <HugeiconsIcon
-      icon={HighlighterGlyph}
-      size={18}
-      strokeWidth={1.8}
-      aria-hidden="true"
-      {...props}
-    />
-  );
-}
-export function History(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={HistoryGlyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function List(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={ListGlyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function LoaderCircle(props: IconProps) {
-  return (
-    <HugeiconsIcon
-      icon={LoaderCircleGlyph}
-      size={18}
-      strokeWidth={1.8}
-      aria-hidden="true"
-      {...props}
-    />
-  );
-}
-export function LockKeyhole(props: IconProps) {
-  return (
-    <HugeiconsIcon
-      icon={LockKeyholeGlyph}
-      size={18}
-      strokeWidth={1.8}
-      aria-hidden="true"
-      {...props}
-    />
-  );
-}
-export function Maximize(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={MaximizeGlyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function Minimize(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={MinimizeGlyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function Minus(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={MinusGlyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function Monitor(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={MonitorGlyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function Moon(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={MoonGlyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function MoreHorizontal(props: IconProps) {
-  return (
-    <HugeiconsIcon
-      icon={MoreHorizontalGlyph}
-      size={18}
-      strokeWidth={1.8}
-      aria-hidden="true"
-      {...props}
-    />
-  );
-}
-export function NotebookPen(props: IconProps) {
-  return (
-    <HugeiconsIcon
-      icon={NotebookPenGlyph}
-      size={18}
-      strokeWidth={1.8}
-      aria-hidden="true"
-      {...props}
-    />
-  );
-}
-export function Pencil(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={PencilGlyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function PanelLeft(props: IconProps) {
-  return (
-    <HugeiconsIcon
-      icon={PanelLeftGlyph}
-      size={18}
-      strokeWidth={1.8}
-      aria-hidden="true"
-      {...props}
-    />
-  );
-}
-export function Plus(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={PlusGlyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function RectangleVertical(props: IconProps) {
-  return (
-    <HugeiconsIcon
-      icon={RectangleVerticalGlyph}
-      size={18}
-      strokeWidth={1.8}
-      aria-hidden="true"
-      {...props}
-    />
-  );
-}
-export function Redo2(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={Redo2Glyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function Search(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={SearchGlyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function Settings2(props: IconProps) {
-  return (
-    <HugeiconsIcon
-      icon={Settings2Glyph}
-      size={18}
-      strokeWidth={1.8}
-      aria-hidden="true"
-      {...props}
-    />
-  );
-}
-export function StickyNote(props: IconProps) {
-  return (
-    <HugeiconsIcon
-      icon={StickyNoteGlyph}
-      size={18}
-      strokeWidth={1.8}
-      aria-hidden="true"
-      {...props}
-    />
-  );
-}
-export function Sun(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={SunGlyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function TableOfContents(props: IconProps) {
-  return (
-    <HugeiconsIcon
-      icon={TableOfContentsGlyph}
-      size={18}
-      strokeWidth={1.8}
-      aria-hidden="true"
-      {...props}
-    />
-  );
-}
-export function Trash2(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={Trash2Glyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function Underline(props: IconProps) {
-  return (
-    <HugeiconsIcon
-      icon={UnderlineGlyph}
-      size={18}
-      strokeWidth={1.8}
-      aria-hidden="true"
-      {...props}
-    />
-  );
-}
-export function Undo2(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={Undo2Glyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function Upload(props: IconProps) {
-  return (
-    <HugeiconsIcon icon={UploadGlyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />
-  );
-}
-export function X(props: IconProps) {
-  return <HugeiconsIcon icon={XGlyph} size={18} strokeWidth={1.8} aria-hidden="true" {...props} />;
-}
+
+export const ArrowLeft = icon(ArrowLeftGlyph, 'ArrowLeft');
+export const ArrowUpRight = icon(ArrowUpRightGlyph, 'ArrowUpRight');
+export const BookOpen = icon(BookOpenGlyph, 'BookOpen');
+export const Bookmark = icon(BookmarkGlyph, 'Bookmark');
+export const Check = icon(CheckGlyph, 'Check');
+export const ChevronDown = icon(ChevronDownGlyph, 'ChevronDown');
+export const ChevronLeft = icon(ChevronLeftGlyph, 'ChevronLeft');
+export const ChevronRight = icon(ChevronRightGlyph, 'ChevronRight');
+export const Clock3 = icon(Clock3Glyph, 'Clock3');
+export const Columns2 = icon(Columns2Glyph, 'Columns2');
+export const Command = icon(CommandGlyph, 'Command');
+export const Copy = icon(CopyGlyph, 'Copy');
+export const FileText = icon(FileTextGlyph, 'FileText');
+export const FolderOpen = icon(FolderOpenGlyph, 'FolderOpen');
+export const GalleryVertical = icon(GalleryVerticalGlyph, 'GalleryVertical');
+export const GalleryVerticalEnd = icon(GalleryVerticalEndGlyph, 'GalleryVerticalEnd');
+export const Grid2X2 = icon(Grid2X2Glyph, 'Grid2X2');
+export const Heart = icon(HeartGlyph, 'Heart');
+export const Highlighter = icon(HighlighterGlyph, 'Highlighter');
+export const History = icon(HistoryGlyph, 'History');
+export const List = icon(ListGlyph, 'List');
+export const LoaderCircle = icon(LoaderCircleGlyph, 'LoaderCircle');
+export const LockKeyhole = icon(LockKeyholeGlyph, 'LockKeyhole');
+export const Maximize = icon(MaximizeGlyph, 'Maximize');
+export const Minimize = icon(MinimizeGlyph, 'Minimize');
+export const Minus = icon(MinusGlyph, 'Minus');
+export const Monitor = icon(MonitorGlyph, 'Monitor');
+export const Moon = icon(MoonGlyph, 'Moon');
+export const MoreHorizontal = icon(MoreHorizontalGlyph, 'MoreHorizontal');
+export const NotebookPen = icon(NotebookPenGlyph, 'NotebookPen');
+export const Pencil = icon(PencilGlyph, 'Pencil');
+export const PanelLeft = icon(PanelLeftGlyph, 'PanelLeft');
+export const Plus = icon(PlusGlyph, 'Plus');
+export const RectangleVertical = icon(RectangleVerticalGlyph, 'RectangleVertical');
+export const Search = icon(SearchGlyph, 'Search');
+export const Settings2 = icon(Settings2Glyph, 'Settings2');
+export const StickyNote = icon(StickyNoteGlyph, 'StickyNote');
+export const Sun = icon(SunGlyph, 'Sun');
+export const TableOfContents = icon(TableOfContentsGlyph, 'TableOfContents');
+export const Trash2 = icon(Trash2Glyph, 'Trash2');
+export const Underline = icon(UnderlineGlyph, 'Underline');
+export const Upload = icon(UploadGlyph, 'Upload');
+export const X = icon(XGlyph, 'X');

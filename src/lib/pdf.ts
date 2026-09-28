@@ -71,6 +71,7 @@ export async function extractPage(pdf: PDFDocumentProxy, number: number): Promis
   result.height = viewport.height;
   return result;
 }
+/** Reads a PDF's metadata and cover; the caller stores the file itself alongside the returned book. */
 export async function importPDF(blob: Blob, filename: string, password?: string): Promise<Book> {
   const data = await blob.arrayBuffer();
   const id = await fingerprint(data);
@@ -91,7 +92,6 @@ export async function importPDF(blob: Blob, filename: string, password?: string)
       author: info.Author?.trim() || '未知作者',
       filename,
       pages: pdf.numPages,
-      blob,
       cover: canvas.toDataURL('image/webp', 0.85),
       addedAt: Date.now(),
       openedAt: 0,

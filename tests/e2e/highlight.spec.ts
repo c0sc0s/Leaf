@@ -117,7 +117,7 @@ test('copies the actual selected text and creates precise multi-line highlight r
   expect(widths.map(Math.round)).toEqual([...new Set(selected.widths.map(Math.round))]);
 });
 
-test('removes obsolete content cache on upgrade while preserving the library and annotations', async ({
+test('upgrades old libraries: drops obsolete caches, moves PDFs out of book records, keeps notes', async ({
   page,
 }) => {
   await page.route('http://127.0.0.1:5173/', (route) =>
@@ -143,7 +143,7 @@ test('removes obsolete content cache on upgrade while preserving the library and
           title: 'Existing library',
           filename: 'legacy.pdf',
           author: 'Reader',
-          blob: new Blob(),
+          blob: new Blob(['legacy pdf bytes']),
           cover: '',
           pages: 10,
           page: 4,
@@ -183,9 +183,18 @@ test('removes obsolete content cache on upgrade while preserving the library and
         r.result.close();
       };
     });
-    return { books: await storage.books(), notes: await storage.annotations(), stores };
+    return {
+      books: await storage.books(),
+      notes: await storage.annotations(),
+      file: await (await storage.file('legacy')).text(),
+      stores,
+    };
   });
   expect(saved.stores).not.toContain('documents');
+  expect(saved.stores).toContain('files');
+  expect(saved.file).toBe('legacy pdf bytes');
+  expect(saved.books[0]).not.toHaveProperty('blob');
+  expect(saved.books[0]).not.toHaveProperty('category');
   expect(saved.books[0].bookmarks).toEqual([4]);
   expect(saved.notes[0].note).toBe('Keep my note');
 });

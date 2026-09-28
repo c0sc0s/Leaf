@@ -19,6 +19,8 @@ for (const [name, license] of [
   ['class-variance-authority', 'LICENSE'],
   ['clsx', 'license'],
   ['tailwind-merge', 'LICENSE.md'],
+  ['motion', 'LICENSE.md'],
+  ['tw-animate-css', 'LICENSE'],
 ]) {
   const text = await readFile(`node_modules/${name}/${license}`, 'utf8');
   await writeFile(`licenses/${name.replaceAll('/', '-')}.txt`, text.trimEnd() + '\n');

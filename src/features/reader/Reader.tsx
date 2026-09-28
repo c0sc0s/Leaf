@@ -1,23 +1,12 @@
 import { EmptyState } from '@/components/Mascot';
 import { Button } from '@/components/ui/button';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { FileText, Highlighter } from '@/components/icons';
 import { AnimatePresence, m } from 'motion/react';
-import type {
-  Annotation,
-  Book,
-  MarkColor,
-  MarkKind,
-  ReadingLayout,
-  ReadingLocation,
-  ReadingState,
-  Settings,
-} from '../../types';
+import type { Annotation, Book, MarkColor, MarkKind, Settings } from '../../types';
 import { storage } from '../../lib/db';
-import { colors, exportAnnotated, notesMarkdown, saveFile } from '../../lib/export';
+import { markColors } from '../../lib/marks';
 import type { DocumentSelection } from '../../lib/selection';
-import { initialReadingState, saveReadingState } from '../../lib/position';
-import { pageStep } from '../../lib/layout';
 import { ReadingScheduler } from '../../lib/scheduler';
 import { useAnnotations } from '../../lib/useAnnotations';
 import { rise } from '../../lib/motion';
@@ -35,11 +24,12 @@ import { PDFViewport, type PDFViewportHandle } from './viewport/PDFViewport';
 import { usePdfDocument } from './hooks/usePdfDocument';
 import { useDocumentSearch, type SearchResult } from './hooks/useDocumentSearch';
 import { useReaderShortcuts } from './hooks/useReaderShortcuts';
-import { createLocationStore } from './hooks/locationStore';
-import { clampZoom, stepZoom } from './zoom';
-
-// Writing the book record rewrites its PDF blob, so progress is saved once reading settles.
-const PROGRESS_SAVE_DELAY = 1000;
+import { useReaderNavigation } from './hooks/useReaderNavigation';
+import { useReadingProgress } from './hooks/useReadingProgress';
+import { useBookmarks } from './hooks/useBookmarks';
+import { useExports } from './hooks/useExports';
+import { usePinchZoom } from './hooks/usePinchZoom';
+import { useMarkColor } from './hooks/useMarkColor';
 
 interface Props {
   book: Book;
@@ -61,9 +51,7 @@ export function Reader({
   notify,
   askPassword,
 }: Props) {
-  const saved = useMemo(() => initialReadingState(book), [book.id]);
   const [scheduler] = useState(() => new ReadingScheduler());
-  const [locationStore] = useState(() => createLocationStore(saved));
   const viewer = useRef<PDFViewportHandle>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
@@ -74,12 +62,19 @@ export function Reader({
     askPassword,
   );
   const search = useDocumentSearch(pdf, getContent, scheduler, notify);
+  const position = useReaderNavigation(book, viewer, notify);
+  const { page, jump, zoom, layout, navigate } = position;
+  useReadingProgress(book, page, !!pdf, onUpdate);
+  const { bookmarks, bookmarked, toggleBookmark, locationOf } = useBookmarks(
+    book,
+    page,
+    position.captureCurrent,
+    onUpdate,
+  );
+  const { exporting, exportPDF, exportNotes } = useExports(book, annotations.flush, notify);
+  const [color, setColor] = useMarkColor();
+  usePinchZoom(scroller, position.setZoom);
 
-  const [history, setHistory] = useState<ReadingState[]>([]);
-  const [page, setPage] = useState(saved.page);
-  const [jump, setJump] = useState({ ...saved, revision: 0 });
-  const [zoom, setZoom] = useState(saved.zoom);
-  const [layout, setLayout] = useState<ReadingLayout>(saved.layout);
   const [left, setLeft] = useState(false);
   const [right, setRight] = useState(false);
   const [focus, setFocus] = useState(false);
@@ -88,28 +83,7 @@ export function Reader({
   const [activeMark, setActiveMark] = useState<{ id: string; x: number; y: number } | null>(null);
   const [continuousHighlight, setContinuousHighlight] = useState(false);
   const [deleted, setDeleted] = useState<Annotation | null>(null);
-  const [exporting, setExporting] = useState(false);
-  const [bookmarks, setBookmarks] = useState<number[]>(book.bookmarks || []);
-  const [color, setColor] = useState<MarkColor>(() => {
-    const value = localStorage.getItem('folio-mark-color');
-    return value && value in colors ? (value as MarkColor) : 'amber';
-  });
 
-  const bookRef = useRef(book);
-  bookRef.current = book;
-  const pageRef = useRef(page);
-  pageRef.current = page;
-  const zoomRef = useRef(zoom);
-  zoomRef.current = zoom;
-  const layoutRef = useRef(layout);
-  layoutRef.current = layout;
-  const locationRef = useRef<ReadingLocation>(saved);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const persistenceError = useRef(false);
-
-  useEffect(() => {
-    localStorage.setItem('folio-mark-color', color);
-  }, [color]);
   useEffect(() => {
     if (!deleted) return;
     const timer = setTimeout(() => setDeleted(null), 6000);
@@ -131,123 +105,18 @@ export function Reader({
       disposed = true;
     };
   }, [book.id, annotations.load]);
-
-  const persist = useCallback(() => {
-    try {
-      saveReadingState(book.id, {
-        ...locationRef.current,
-        zoom: zoomRef.current,
-        layout: layoutRef.current,
-      });
-    } catch {
-      if (!persistenceError.current) {
-        persistenceError.current = true;
-        notify('阅读位置未能保存，请检查本机存储空间。');
-      }
-    }
-  }, [book.id, notify]);
-  const saveProgress = useCallback(
-    () => onUpdate({ ...bookRef.current, page: pageRef.current, openedAt: Date.now() }),
-    [onUpdate],
-  );
-  useEffect(() => {
-    if (!pdf) return;
-    const timer = setTimeout(saveProgress, PROGRESS_SAVE_DELAY);
-    return () => clearTimeout(timer);
-  }, [pdf, page, saveProgress]);
-  const opened = !!pdf;
-  useEffect(() => {
-    if (!opened) return;
-    window.addEventListener('pagehide', saveProgress);
-    return () => {
-      window.removeEventListener('pagehide', saveProgress);
-      saveProgress();
-    };
-  }, [opened, saveProgress]);
+  // Any user input pauses background work such as search indexing.
   useEffect(() => {
     const busy = scheduler.busy;
     window.addEventListener('wheel', busy, { passive: true });
     window.addEventListener('pointerdown', busy, { passive: true });
     window.addEventListener('keydown', busy);
-    window.addEventListener('pagehide', persist);
     return () => {
-      clearTimeout(saveTimer.current);
-      persist();
       window.removeEventListener('wheel', busy);
       window.removeEventListener('pointerdown', busy);
       window.removeEventListener('keydown', busy);
-      window.removeEventListener('pagehide', persist);
     };
-  }, [scheduler, persist]);
-
-  const captureCurrent = useCallback((): ReadingState => {
-    const location = viewer.current?.capture();
-    if (location) locationRef.current = location;
-    return { ...locationRef.current, zoom: zoomRef.current, layout: layoutRef.current };
-  }, []);
-  const handleLocation = useCallback(
-    (location: ReadingLocation) => {
-      locationRef.current = location;
-      locationStore.set(location);
-      if (pageRef.current !== location.page) {
-        pageRef.current = location.page;
-        setPage(location.page);
-      }
-      clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(persist, 180);
-    },
-    [persist, locationStore],
-  );
-  const navigate = useCallback(
-    (n: number, location?: ReadingLocation, remember = true) => {
-      const previous = captureCurrent();
-      if (remember) setHistory((items) => [...items.slice(-49), previous]);
-      pageRef.current = Math.max(1, Math.min(book.pages, n));
-      const target = { page: pageRef.current, ratio: 0, xRatio: 0, screenY: 24, ...location };
-      locationRef.current = target;
-      setPage(pageRef.current);
-      setJump((j) => ({
-        ...target,
-        zoom: zoomRef.current,
-        layout: layoutRef.current,
-        revision: j.revision + 1,
-      }));
-    },
-    [book.pages, captureCurrent],
-  );
-  const navigateToPage = useCallback((n: number) => navigate(n), [navigate]);
-  const returnToPrevious = useCallback(() => {
-    const target = history.at(-1);
-    if (!target) return;
-    setHistory((items) => items.slice(0, -1));
-    setZoom(target.zoom);
-    setLayout(target.layout);
-    navigate(target.page, target, false);
-  }, [history, navigate]);
-  const changeLayout = useCallback(
-    (next: ReadingLayout) => {
-      const current = captureCurrent();
-      setHistory((items) => [...items.slice(-49), current]);
-      setLayout(next);
-      setJump((j) => ({ ...current, layout: next, revision: j.revision + 1 }));
-    },
-    [captureCurrent],
-  );
-  const zoomIn = useCallback(() => setZoom((z) => stepZoom(z, 1)), []);
-  const zoomOut = useCallback(() => setZoom((z) => stepZoom(z, -1)), []);
-  const resetZoom = useCallback(() => setZoom(1), []);
-  useEffect(() => {
-    const container = scroller.current;
-    if (!container) return;
-    // Trackpad pinch arrives as a ctrl+wheel event.
-    const pinch = (event: WheelEvent) => {
-      if (!event.ctrlKey && !event.metaKey) return;
-      event.preventDefault();
-      setZoom((z) => clampZoom(z * Math.exp(-event.deltaY * 0.01)));
-    };
-    container.addEventListener('wheel', pinch, { passive: false });
-    return () => container.removeEventListener('wheel', pinch);
-  }, []);
+  }, [scheduler]);
 
   const openSearch = useCallback(() => {
     setFocus(false);
@@ -262,10 +131,10 @@ export function Reader({
     search: openSearch,
     undo: () => void annotations.undo(),
     redo: () => void annotations.redo(),
-    zoomIn,
-    zoomOut,
-    resetZoom,
-    page: (direction) => navigate(pageRef.current + direction * pageStep(layoutRef.current)),
+    zoomIn: position.zoomIn,
+    zoomOut: position.zoomOut,
+    resetZoom: position.resetZoom,
+    page: position.turnPage,
     screen: (direction) => {
       const container = scroller.current;
       if (!container) return;
@@ -273,7 +142,7 @@ export function Reader({
         direction > 0
           ? container.scrollTop + container.clientHeight >= container.scrollHeight - 2
           : container.scrollTop <= 2;
-      if (boundary) navigate(pageRef.current + direction * pageStep(layoutRef.current));
+      if (boundary) position.turnPage(direction);
       else container.scrollBy({ top: direction * container.clientHeight * 0.9 });
     },
     escape: () => {
@@ -322,46 +191,9 @@ export function Reader({
     },
     [annotations.remove],
   );
-  const exportPDF = useCallback(async () => {
-    setExporting(true);
-    try {
-      const data = await exportAnnotated(book.blob, await annotations.flush());
-      if (await saveFile(book.filename.replace(/\.pdf$/i, '') + '-批注.pdf', data))
-        notify('批注 PDF 已导出');
-    } catch (e) {
-      notify('无法导出：加密 PDF 需先解除文件保护。' + String(e));
-    } finally {
-      setExporting(false);
-    }
-  }, [book.blob, book.filename, annotations.flush, notify]);
-  const exportNotes = useCallback(async () => {
-    try {
-      if (
-        await saveFile(
-          book.title + '-笔记.md',
-          new TextEncoder().encode(notesMarkdown(book.title, await annotations.flush())),
-          'text/markdown',
-        )
-      )
-        notify('阅读笔记已导出');
-    } catch {
-      notify('无法导出笔记');
-    }
-  }, [book.title, annotations.flush, notify]);
-  const bookmarked = bookmarks.includes(page);
-  const toggleBookmark = useCallback(() => {
-    const next = bookmarked
-      ? bookmarks.filter((n) => n !== page)
-      : [...bookmarks, page].sort((a, b) => a - b);
-    setBookmarks(next);
-    const bookmarkLocations = { ...bookRef.current.bookmarkLocations };
-    if (next.includes(page)) bookmarkLocations[page] = captureCurrent();
-    else delete bookmarkLocations[page];
-    onUpdate({ ...bookRef.current, bookmarks: next, bookmarkLocations });
-  }, [bookmarked, bookmarks, page, captureCurrent, onUpdate]);
   const openBookmark = useCallback(
-    (n: number) => navigate(n, bookRef.current.bookmarkLocations?.[n]),
-    [navigate],
+    (n: number) => navigate(n, locationOf(n)),
+    [navigate, locationOf],
   );
   const openSearchResult = useCallback(
     (r: SearchResult) => {
@@ -406,18 +238,18 @@ export function Reader({
         notesOpen={right}
         focus={focus}
         bookmarked={bookmarked}
-        canReturn={!!history.length}
+        canReturn={position.canReturn}
         zoom={zoom}
         exporting={exporting}
         continuousHighlight={continuousHighlight}
         onBack={onClose}
         onToggleNavigation={toggleNavigation}
         onToggleSearch={toggleSearch}
-        onReturn={returnToPrevious}
+        onReturn={position.returnToPrevious}
         onToggleBookmark={toggleBookmark}
-        onZoomIn={zoomIn}
-        onZoomOut={zoomOut}
-        onResetZoom={resetZoom}
+        onZoomIn={position.zoomIn}
+        onZoomOut={position.zoomOut}
+        onResetZoom={position.resetZoom}
         onToggleNotes={toggleNotes}
         onToggleFocus={toggleFocus}
         onExportPDF={() => void exportPDF()}
@@ -443,7 +275,11 @@ export function Reader({
                   />
                 ) : tab === 'outline' ? (
                   outline.length ? (
-                    <OutlineTree items={outline} location={locationStore} onNavigate={navigate} />
+                    <OutlineTree
+                      items={outline}
+                      location={position.locationStore}
+                      onNavigate={navigate}
+                    />
                   ) : (
                     <div className="sidebar-scroll">
                       {outlineReady ? (
@@ -465,7 +301,7 @@ export function Reader({
                       pdf={pdf}
                       page={page}
                       revealKey={jump.revision}
-                      onSelect={navigateToPage}
+                      onSelect={position.navigateToPage}
                     />
                   )
                 )}
@@ -508,7 +344,7 @@ export function Reader({
               onMarkClick={clickMark}
               onNavigate={navigate}
               jump={jump}
-              onLocation={handleLocation}
+              onLocation={position.handleLocation}
               onSelection={(value) => {
                 setSelection(value);
                 setActiveMark(null);
@@ -541,14 +377,14 @@ export function Reader({
         pageLabel={pageLabels?.[page - 1]}
         layout={layout}
         saveStatus={annotations.status}
-        onLayout={changeLayout}
-        onNavigate={navigateToPage}
+        onLayout={position.changeLayout}
+        onNavigate={position.navigateToPage}
       />
       <AnimatePresence>
         {continuousHighlight && (
           <Exiting key="active-tool">
             <m.div className="active-tool" {...rise}>
-              <Highlighter size={14} style={{ color: colors[color] }} />
+              <Highlighter size={14} style={{ color: markColors[color] }} />
               连续高亮
               <Button variant="ghost" onClick={() => setContinuousHighlight(false)}>
                 退出 · Esc

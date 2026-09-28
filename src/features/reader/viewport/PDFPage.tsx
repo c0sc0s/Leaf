@@ -2,9 +2,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { TextLayer } from 'pdfjs-dist';
 import type { PDFDocumentProxy, RenderTask, PageViewport } from 'pdfjs-dist';
 import type { Annotation, PageContent } from '../../../types';
-import { colors } from '../../../lib/export';
+import { markColors } from '../../../lib/marks';
 import type { PageText } from '../../../lib/selection';
 import type { Destination } from '../../../lib/destination';
+import { reportError } from '../../../lib/report';
 interface Frame extends PageText {
   canvas: HTMLCanvasElement;
   layer: HTMLDivElement;
@@ -48,7 +49,7 @@ export function PDFPage({
       .then((items) => {
         if (!disposed) setLinks(items.filter((a) => a.subtype === 'Link' && a.dest));
       })
-      .catch(() => {});
+      .catch((error) => reportError(`第 ${page} 页的链接无法读取`, error));
     return () => {
       disposed = true;
     };
@@ -182,7 +183,7 @@ export function PDFPage({
                       y={v[1]}
                       width={v[2]}
                       height={v[3]}
-                      fill={colors[mark.color]}
+                      fill={markColors[mark.color]}
                     />
                   ) : (
                     <line
@@ -191,7 +192,7 @@ export function PDFPage({
                       y1={v[1] + v[3]}
                       x2={v[0] + v[2]}
                       y2={v[1] + v[3]}
-                      stroke={colors[mark.color]}
+                      stroke={markColors[mark.color]}
                       strokeWidth="2"
                     />
                   );

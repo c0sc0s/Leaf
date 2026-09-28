@@ -1,12 +1,12 @@
 import { PDFDocument, PDFName, PDFArray, PDFHexString, PDFString } from 'pdf-lib';
 import type { Annotation } from '../types';
-export const colors = { amber: '#e9b84d', green: '#72b49a', blue: '#79a7dc', pink: '#d994ad' };
+import { markColors } from './marks';
 export async function exportAnnotated(blob: Blob, marks: Annotation[]) {
   const doc = await PDFDocument.load(await blob.arrayBuffer());
   for (const mark of marks) {
     if (!mark.rects.length) continue;
     const page = doc.getPage(mark.page - 1);
-    const hex = colors[mark.color].slice(1);
+    const hex = markColors[mark.color].slice(1);
     const color = [0, 2, 4].map((n) => parseInt(hex.slice(n, n + 2), 16) / 255);
     const rect = [
       Math.min(...mark.rects.map((r) => r[0])),
@@ -51,7 +51,7 @@ export async function saveFile(name: string, data: Uint8Array, mime = 'applicati
 export function notesMarkdown(title: string, marks: Annotation[]) {
   return (
     `# ${title}\n\n` +
-    marks
+    [...marks]
       .sort((a, b) => a.page - b.page || a.start - b.start || a.createdAt - b.createdAt)
       .map(
         (m) =>

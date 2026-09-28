@@ -18,7 +18,7 @@ PDF.js 解析在 Worker，绘制与 DOM 仍在 Renderer。全文搜索逐页执�
 
 位置包含来源页、文字偏移、文字在视口中的 Y 坐标、页内比例与水平滚动比例。缩放、切换布局、开关侧栏、跳转返回与续读优先恢复文字锚点，没有文字时恢复页内比例。每本书的缩放和连续/单页/双页布局独立保存；跳转历史保留最近 50 个位置。目录和页内引用使用 PDF destination 坐标，搜索使用文字偏移，书签保存添加时的具体位置。
 
-右侧笔记采用覆盖面板，避免打开详情时缩小页面。进度条拖动期间只预览缩略图，松手才导航。内嵌页码标签用于区分文件页码和印刷页码。
+右侧笔记采用覆盖面板，避免打开详情时缩小页面；点击正文中的批注会打开面板并定位到对应卡片，点击正文空白处收起。左右面板宽度可拖动调整并分别保存。内嵌页码标签用于区分文件页码和印刷页码。
 
 ## 批注
 
@@ -34,15 +34,28 @@ pdf-lib 导出标准 Highlight / Underline，包含 QuadPoints、颜色和 Unico
 
 ## 数据与桌面边界
 
-IndexedDB 第 4 版保存书籍、批注和兼容保留的旧 OCR 数据。升级时删除不再使用的 documents 缓存仓库；书籍、书签、原有批注及笔记保留。旧阅读状态中的模式字段不再使用，其页码、文字位置和缩放仍可读取。
+IndexedDB 第 5 版分开保存书籍元数据（`books`）与 PDF 文件（`files`），另有批注和兼容保留的旧 OCR 数据。更新进度、收藏、书签只写元数据，不会重写整份 PDF；打开书架也不读取文件本身。`src/lib/db.ts` 按版本逐步迁移：第 4 版删除不再使用的 documents 缓存仓库，第 5 版把旧书籍记录中的 PDF 移入 `files` 并清除已废弃的分类字段；书籍、书签、原有批注及笔记保留。旧阅读状态中的模式字段不再使用，其页码、文字位置和缩放仍可读取。
 
-主进程只开放用户选择 PDF、读取所选文件和导出文件操作。Renderer 启用 sandbox、contextIsolation，关闭 Node.js 集成，禁止外部导航与新窗口。CSP 仅允许本机脚本、Worker 和 WASM。书籍以文件 SHA-256 去重，保存 Blob 副本，移动源文件不影响阅读。
+主进程只开放用户选择 PDF、读取所选文件、导出文件和同步窗口外观主题操作。macOS 窗口使用系统毛玻璃材质，界面外框半透明、正文页面保持不透明。Renderer 启用 sandbox、contextIsolation，关闭 Node.js 集成，禁止外部导航与新窗口。CSP 仅允许本机脚本、Worker 和 WASM。书籍以文件 SHA-256 去重，保存 Blob 副本，移动源文件不影响阅读。
+
+## 代码组织
+
+- `src/App.tsx` 只负责组装：书架与阅读器的切换、弹窗和全局提示。
+- `src/features/` 按功能划分，每个目录自带组件与状态 hook：
+  - `library/`：书架、侧栏、书籍卡片；`useLibrary` 负责书籍列表与 IndexedDB 同步和首次示例导入。
+  - `import/`：`useImport` 负责导入流程（校验、密码重试、去重、入库）与各个入口（菜单、快捷键、系统打开文件）；`useFileDrop` 负责拖放。
+  - `reader/`：阅读器。`Reader` 组合各 hook；`useReaderNavigation` 负责页码、缩放、布局、跳转历史与阅读位置保存，`useReadingProgress`、`useBookmarks`、`useExports` 等各管一件事；`viewport/geometry.ts` 是可单测的页面排布计算。
+  - `settings/`：偏好的读取校验、持久化与主题应用。
+- `src/lib/` 放与界面无关的领域逻辑：存储、PDF 解析、文字索引、批注颜色、导出。
+- 样式按功能分在 `src/styles/`（base、overlays、library、reader、notes），同一选择器只在一处定义。
+
+阅读器、PDF.js 与 pdf-lib 按需加载：打开书架只加载主包，打开书时加载阅读器和 PDF.js，导出批注时才加载 pdf-lib。可选能力（目录、页码标签、页内链接、缩略图）读取失败时通过 `src/lib/report.ts` 记录上下文，不中断阅读；只有被主动取消的渲染会被忽略。
 
 ## 验证
 
 单元测试检查文字索引兼容性与标准批注导出。浏览器测试覆盖连续滚动、混合页尺寸、长文档画布数量、文字锚点、续读、目录/搜索/书签、选字、笔记保存与撤销、高光颜色合成、主题、键盘和导出。macOS 打包测试检查沙箱、离线 PDF、原生打开/保存 IPC 和页面渲染。Windows 安装与系统行为需要 Windows 实机或 CI 验证。
 
-安装包保留 Electron、React、PDF.js、pdf-lib、idb 和 Lucide 的第三方许可。正式发布需签名、公证与两平台验收。
+安装包保留 Electron、React、PDF.js、pdf-lib、idb、Radix UI、Hugeicons、Motion 等依赖的第三方许可，清单见 `THIRD_PARTY_NOTICES.md`，许可文本由 `scripts/assets.mjs` 生成到 `licenses/`。正式发布需签名、公证与两平台验收。
 
 ## 本地数据兼容
 

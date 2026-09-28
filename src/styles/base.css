@@ -1,0 +1,307 @@
+:root {
+  --library-sidebar-width: 224px;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --selection: color-mix(in oklch, var(--primary) 25%, transparent);
+  --shadow: 0 12px 40px #18181b14;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 120ms;
+  --duration: 220ms;
+  --shadow-lift: 0 10px 24px #18181b14, 0 2px 6px #18181b0d;
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  --shadow: 0 12px 40px #00000040;
+  --shadow-lift: 0 10px 24px #00000059, 0 2px 6px #00000033;
+  color-scheme: dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  color: var(--foreground);
+  background: var(--background);
+  font-size: 13px;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  -webkit-app-region: no-drag;
+  transition:
+    background var(--duration-fast),
+    color var(--duration-fast),
+    border-color var(--duration-fast),
+    box-shadow var(--duration-fast),
+    opacity var(--duration-fast),
+    transform var(--duration-fast) var(--ease-out);
+}
+svg {
+  flex-shrink: 0;
+}
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+::selection {
+  background: var(--selection);
+}
+.app-shell {
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.titlebar {
+  height: 52px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--sidebar);
+  -webkit-app-region: drag;
+  user-select: none;
+}
+.titlebar.native-mac {
+  padding-left: 90px;
+}
+/* The sidebar colour runs through the titlebar so the library reads as one full-height column. */
+.app-shell:has(.library-sidebar) .titlebar {
+  position: relative;
+  border-bottom-color: transparent;
+  background: linear-gradient(
+    to right,
+    var(--sidebar) var(--library-sidebar-width),
+    var(--background) var(--library-sidebar-width)
+  );
+}
+/* On macOS the window draws a blurred material behind the page: chrome tints it lightly, content a little more, pages stay opaque. */
+:root.vibrant {
+  --chrome: color-mix(in oklch, var(--sidebar) 25%, transparent);
+  --surface: color-mix(in oklch, var(--background) 55%, transparent);
+}
+:root.vibrant.dark {
+  --surface: color-mix(in oklch, #151515 70%, transparent);
+}
+:root.vibrant body {
+  background: transparent;
+}
+:root.vibrant :is(.titlebar, .reader-header, .library-sidebar, .reader-sidebar, .reader-status) {
+  background: var(--chrome);
+}
+:root.vibrant .app-shell:has(.library-sidebar) .titlebar {
+  background: linear-gradient(
+    to right,
+    var(--chrome) var(--library-sidebar-width),
+    var(--surface) var(--library-sidebar-width)
+  );
+}
+:root.vibrant .library-main {
+  background: var(--surface);
+}
+:root.vibrant .reading-canvas {
+  background: color-mix(in oklch, var(--canvas) 55%, transparent);
+}
+.app-shell:has(.library-sidebar) .titlebar::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 calc(var(--library-sidebar-width) - 1px);
+  width: 1px;
+  background: var(--border);
+}
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+.app-brand img {
+  display: block;
+  border-radius: var(--radius-lg);
+}
+.app-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.icon-button.active {
+  color: var(--sidebar-primary);
+  background: var(--sidebar-accent);
+}
+.tool-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+:root[data-theme='dark'] .book-cover {
+  --cover-shadow: drop-shadow(0 1px 1px #00000066) drop-shadow(0 10px 18px #00000080);
+  --cover-shadow-lift: drop-shadow(0 2px 2px #00000066) drop-shadow(0 18px 28px #000000a6);
+}
+.status-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--muted-foreground);
+}
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.4;
+  }
+}
+.muted {
+  color: var(--muted-foreground);
+}
+.small {
+  font-size: 11px;
+  line-height: 1.8;
+}
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  padding: 60px 20px;
+}
+.spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 8px)) scale(0.98);
+  }
+}
+.presence {
+  display: contents;
+}
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+.toolbar-separator {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin: 0 7px;
+}
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-thumb {
+  background: #8c8c9644;
+  border-radius: var(--radius-lg);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+@media (max-width: 1100px) {
+  :root {
+    --library-sidebar-width: 196px;
+  }
+  .titlebar {
+    padding-inline: 10px;
+  }
+}
+@media (max-width: 760px) {
+  :root {
+    --library-sidebar-width: 164px;
+  }
+}
+.tooltip-shortcut {
+  margin-left: 10px;
+  font-size: 10px;
+  opacity: 0.65;
+}
+.icon-button {
+  padding: 0;
+}
+[data-slot='dialog-overlay'] {
+  z-index: 120;
+}
+[data-slot='tooltip-content'] {
+  z-index: 200;
+}
+[data-slot='dropdown-menu-content'] {
+  z-index: 130;
+}
+[data-slot='native-select-wrapper'] {
+  min-width: 0;
+}
+@keyframes slide-in-x {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+}
+@keyframes mark-pulse {
+  0% {
+    opacity: 0.38;
+  }
+  35% {
+    opacity: 0.85;
+  }
+}

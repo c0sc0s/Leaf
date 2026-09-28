@@ -5,7 +5,7 @@ import { memo, useEffect, useMemo, useRef } from 'react';
 import { Trash2, X } from '@/components/icons';
 import { m } from 'motion/react';
 import type { Annotation, MarkColor, MarkKind, ReadingLocation } from '../../types';
-import { colors } from '../../lib/export';
+import { markColors } from '../../lib/marks';
 import { slideFrom } from '../../lib/motion';
 import { IconButton } from '../../components/UI';
 import { NoteEditor } from './NoteEditor';
@@ -88,7 +88,7 @@ export const NotesPanel = memo(function NotesPanel({
                 <Trash2 size={13} />
               </IconButton>
             </div>
-            <blockquote style={{ borderColor: colors[mark.color] }}>{mark.quote}</blockquote>
+            <blockquote style={{ borderColor: markColors[mark.color] }}>{mark.quote}</blockquote>
             <NoteEditor mark={mark} save={onNote} />
             <div className="note-format">
               <NoteStyle

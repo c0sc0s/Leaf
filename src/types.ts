@@ -22,7 +22,6 @@ export interface Book {
   author: string;
   filename: string;
   pages: number;
-  blob: Blob;
   cover: string;
   addedAt: number;
   openedAt: number;

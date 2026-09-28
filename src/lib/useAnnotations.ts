@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Annotation } from '../types';
 import { storage } from './db';
+import { reportError } from './report';
 interface Edit {
   before: Annotation[];
   after: Annotation[];
@@ -41,7 +42,8 @@ export function useAnnotations(notify: (message: string) => void) {
         await operation();
         setStatus('saved');
       });
-      queue.current = next.catch(() => {
+      queue.current = next.catch((error) => {
+        reportError('批注保存失败', error);
         setStatus('error');
         notifier.current('批注未保存成功，请检查存储空间后重试。');
       });
