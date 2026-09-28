@@ -22,7 +22,7 @@ export async function exportAnnotated(blob: Blob, marks: Annotation[]) {
       C: color,
       CA: 0.45,
       F: 4,
-      T: PDFHexString.fromText('Folio'),
+      T: PDFHexString.fromText('Leaf'),
       Contents: PDFHexString.fromText(mark.note || mark.quote),
       NM: PDFString.of(mark.id),
       M: PDFString.of(

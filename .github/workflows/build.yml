@@ -30,7 +30,7 @@ jobs:
       - run: npm run test:desktop
       - uses: actions/upload-artifact@v4
         with:
-          name: Folio-${{ runner.os }}
+          name: Leaf-${{ runner.os }}
           path: |
             release/*.dmg
             release/*.zip

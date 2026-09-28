@@ -1,11 +1,11 @@
 {
-  "name": "folio-reader",
+  "name": "leaf-reader",
   "version": "1.4.0",
-  "description": "Folio — a quiet space for your PDFs",
+  "description": "Leaf — a quiet space for your PDFs",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
-  "author": "Folio",
+  "author": "Leaf",
   "license": "MIT",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
@@ -25,8 +25,8 @@
     "test:desktop": "node scripts/desktop-test.mjs"
   },
   "build": {
-    "appId": "app.folio.reader",
-    "productName": "Folio",
+    "appId": "app.leaf.reader",
+    "productName": "Leaf",
     "directories": {
       "output": "release"
     },

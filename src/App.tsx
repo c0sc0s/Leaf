@@ -206,7 +206,7 @@ export default function App() {
   }, [importFiles, notify]);
   useEffect(() => {
     const event = () => openImport();
-    window.addEventListener('folio:open', event);
+    window.addEventListener('leaf:open', event);
     const stop = window.desktop?.onOpenFile((f) => {
       void importFiles([
         { name: f.name, blob: new Blob([f.data.slice().buffer], { type: 'application/pdf' }) },
@@ -221,7 +221,7 @@ export default function App() {
     };
     window.addEventListener('keydown', shortcut);
     return () => {
-      window.removeEventListener('folio:open', event);
+      window.removeEventListener('leaf:open', event);
       window.removeEventListener('keydown', shortcut);
       stop?.();
     };
@@ -282,9 +282,9 @@ export default function App() {
         <div
           className={`titlebar ${window.desktop?.platform === 'darwin' ? 'native-mac' : window.desktop?.platform === 'win32' ? 'native-win' : ''}`}
         >
-          <button className="app-brand" aria-label="Folio 我的书架" onClick={() => nav('all')}>
+          <button className="app-brand" aria-label="Leaf 我的书架" onClick={() => nav('all')}>
             <img src={`${import.meta.env.BASE_URL}icon.png`} alt="" width="24" height="24" />
-            <span>Folio</span>
+            <span>Leaf</span>
           </button>
           <div className="titlebar-actions">
             <IconButton
@@ -366,7 +366,7 @@ export default function App() {
                   <LockKeyhole size={13} /> 本地书库
                 </span>
                 <button className="about-link" onClick={() => setAbout(true)}>
-                  关于 Folio
+                  关于 Leaf
                 </button>
               </div>
             </aside>
@@ -409,11 +409,11 @@ export default function App() {
         />
       )}
       {about && (
-        <Modal title="关于 Folio" onClose={() => setAbout(false)}>
+        <Modal title="关于 Leaf" onClose={() => setAbout(false)}>
           <div className="about-logo">
-            Folio<span>1.4</span>
+            Leaf<span>1.4</span>
           </div>
-          <p>本地 PDF 阅读器，支持原版阅读、统一排版和文字批注。</p>
+          <p>本地 PDF 阅读器，支持原版阅读、连续滚动和文字批注。</p>
           <div className="about-features">
             <span>
               <FolderOpen size={17} />
@@ -451,8 +451,8 @@ export default function App() {
             </div>
           </div>
           <p className="small muted">
-            示例书籍是 Folio 原创演示文档。应用会检查整份
-            PDF，保留原始字体、图片和版面，支持连续滚动、定位续读和文字批注。文档不会上传。
+            示例书籍是 Leaf 原创演示文档。应用保留 PDF
+            原始字体、图片和版面，支持连续滚动、定位续读和文字批注。文档不会上传。
           </p>
         </Modal>
       )}

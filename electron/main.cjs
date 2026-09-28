@@ -1,8 +1,17 @@
 const { app, BrowserWindow, ipcMain, dialog, Menu, session } = require('electron');
 const { readFile, writeFile, stat } = require('node:fs/promises');
 const path = require('node:path');
+const { existsSync } = require('node:fs');
 const development = process.argv.includes('--dev');
-if (process.env.FOLIO_USER_DATA) app.setPath('userData', process.env.FOLIO_USER_DATA);
+app.setName('Leaf');
+const leafProfile = path.join(app.getPath('appData'), 'Leaf');
+const legacyProfile = path.join(app.getPath('appData'), 'Folio');
+// Reuse the existing profile so a renamed app retains its library and annotations.
+app.setPath(
+  'userData',
+  process.env.LEAF_USER_DATA ||
+    (!existsSync(leafProfile) && existsSync(legacyProfile) ? legacyProfile : leafProfile),
+);
 let window;
 let ready = false;
 const pending = [];
@@ -50,7 +59,7 @@ else {
       minWidth: 900,
       minHeight: 640,
       backgroundColor: '#18181b',
-      title: 'Folio',
+      title: 'Leaf',
       icon,
       ...(process.platform === 'darwin'
         ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 18, y: 17 } }
@@ -110,7 +119,7 @@ else {
       ...(process.platform === 'darwin'
         ? [
             {
-              label: 'Folio',
+              label: 'Leaf',
               submenu: [
                 { role: 'about' },
                 { type: 'separator' },

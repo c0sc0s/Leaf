@@ -4,21 +4,21 @@ import path from 'node:path';
 import os from 'node:os';
 import { PDFDocument, PDFName } from 'pdf-lib';
 const root = process.cwd();
-const userData = await mkdtemp(path.join(os.tmpdir(), 'folio-desktop-test-'));
+const userData = await mkdtemp(path.join(os.tmpdir(), 'leaf-desktop-test-'));
 const executable =
-  process.env.FOLIO_EXECUTABLE ||
+  process.env.LEAF_EXECUTABLE ||
   (process.platform === 'darwin'
     ? path.join(
         root,
         process.arch === 'arm64'
-          ? 'release/mac-arm64/Folio.app/Contents/MacOS/Folio'
-          : 'release/mac/Folio.app/Contents/MacOS/Folio',
+          ? 'release/mac-arm64/Leaf.app/Contents/MacOS/Leaf'
+          : 'release/mac/Leaf.app/Contents/MacOS/Leaf',
       )
-    : path.join(root, 'release/win-unpacked/Folio.exe'));
+    : path.join(root, 'release/win-unpacked/Leaf.exe'));
 await mkdir('docs/previews', { recursive: true });
 const app = await _electron.launch({
   executablePath: executable,
-  env: { ...process.env, FOLIO_USER_DATA: userData },
+  env: { ...process.env, LEAF_USER_DATA: userData },
   timeout: 30000,
 });
 try {

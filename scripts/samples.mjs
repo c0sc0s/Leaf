@@ -4,7 +4,7 @@ const specimens = [
   {
     slug: 'art-of-noticing',
     title: 'The Art of Noticing',
-    author: 'Folio Editions',
+    author: 'Leaf Editions',
     category: '设计与灵感',
     color: '#c85639',
     ink: '#f7ebd2',
@@ -15,7 +15,7 @@ const specimens = [
   {
     slug: 'quiet-spaces',
     title: 'Quiet Spaces',
-    author: 'Folio Editions',
+    author: 'Leaf Editions',
     category: '设计与灵感',
     color: '#d6d9cd',
     ink: '#294a44',
@@ -26,7 +26,7 @@ const specimens = [
   {
     slug: 'designing-systems',
     title: 'Designing Systems',
-    author: 'Folio Editions',
+    author: 'Leaf Editions',
     category: '技术与思考',
     color: '#253a96',
     ink: '#f2ad68',
@@ -37,7 +37,7 @@ const specimens = [
   {
     slug: 'creative-practice',
     title: 'A Creative Practice',
-    author: 'Folio Editions',
+    author: 'Leaf Editions',
     category: '设计与灵感',
     color: '#eaca70',
     ink: '#313e39',
@@ -48,7 +48,7 @@ const specimens = [
   {
     slug: 'ways-of-seeing',
     title: 'Ways of Seeing Slowly',
-    author: 'Folio Editions',
+    author: 'Leaf Editions',
     category: '生活与阅读',
     color: '#e8dcd2',
     ink: '#8e403b',
@@ -59,7 +59,7 @@ const specimens = [
   {
     slug: 'less-but-better',
     title: 'Less, but Better',
-    author: 'Folio Editions',
+    author: 'Leaf Editions',
     category: '设计与灵感',
     color: '#353b35',
     ink: '#ece6cc',
@@ -70,7 +70,7 @@ const specimens = [
   {
     slug: 'human-interface',
     title: 'The Human Interface',
-    author: 'Folio Editions',
+    author: 'Leaf Editions',
     category: '技术与思考',
     color: '#96bbce',
     ink: '#233b50',
@@ -81,7 +81,7 @@ const specimens = [
   {
     slug: 'collected-thoughts',
     title: 'Collected Thoughts',
-    author: 'Folio Editions',
+    author: 'Leaf Editions',
     category: '生活与阅读',
     color: '#c69ba7',
     ink: '#4e2940',
@@ -131,7 +131,7 @@ const chapters = [
     'A small conclusion',
     [
       'The most useful tools often become quiet through use. They do not disappear entirely; they simply make fewer demands on our attention. We remember the book, the idea, and the mark we left beside an important sentence.',
-      'This specimen was written for Folio to demonstrate real PDF rendering, selectable text, continuous scrolling, and annotations. It is an original sample document rather than an excerpt from a published book.',
+      'This specimen was written for Leaf to demonstrate real PDF rendering, selectable text, continuous scrolling, and annotations. It is an original sample document rather than an excerpt from a published book.',
       'Take what is useful and make it your own. Keep a record of the passages you return to. Let a reading practice be something that grows with you, one page at a time.',
     ],
   ],
@@ -141,14 +141,14 @@ for (const spec of specimens) {
   const pdf = await PDFDocument.create();
   pdf.setTitle(spec.title);
   pdf.setAuthor(spec.author);
-  pdf.setSubject('Original Folio sample document');
+  pdf.setSubject('Original Leaf sample document');
   const serif = await pdf.embedFont(StandardFonts.TimesRoman);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
   const sans = await pdf.embedFont(StandardFonts.Helvetica);
   const cover = pdf.addPage([480, 660]);
   cover.drawRectangle({ x: 0, y: 0, width: 480, height: 660, color: color(spec.color) });
   cover.drawRectangle({ x: 0, y: 0, width: 13, height: 660, color: rgb(0, 0, 0), opacity: 0.12 });
-  cover.drawText('FOLIO  /  READING EDITIONS', {
+  cover.drawText('LEAF  /  READING EDITIONS', {
     x: 38,
     y: 611,
     size: 10,

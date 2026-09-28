@@ -1,4 +1,4 @@
-# Folio
+# Leaf
 
 一个跨 Windows / macOS、默认离线的 PDF 桌面阅读应用。紧凑工具栏与连续滚动把空间留给正文，支持浅色、深色和跟随系统。交互组件采用 Radix UI。
 
