@@ -12,9 +12,12 @@ for (const [name, license] of [
   ['pdf-lib', 'LICENSE.md'],
   ['idb', 'LICENSE'],
   ['lucide-react', 'LICENSE'],
+  ['@radix-ui/react-dialog', 'LICENSE'],
+  ['@radix-ui/react-dropdown-menu', 'LICENSE'],
+  ['@radix-ui/react-tooltip', 'LICENSE'],
 ]) {
   const text = await readFile(`node_modules/${name}/${license}`, 'utf8');
-  await writeFile(`licenses/${name}.txt`, text.trimEnd() + '\n');
+  await writeFile(`licenses/${name.replaceAll('/', '-')}.txt`, text.trimEnd() + '\n');
 }
 
 console.log('Local PDF assets and licenses prepared.');

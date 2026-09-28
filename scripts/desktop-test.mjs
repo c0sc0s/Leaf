@@ -73,7 +73,7 @@ try {
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await expect(page.locator('.note-card textarea')).toHaveCSS(
     'background-color',
-    'rgb(32, 35, 31)',
+    'rgb(24, 24, 27)',
   );
   await page.screenshot({ animations: 'disabled', path: 'docs/previews/reader-dark.png' });
   await page.getByLabel('返回书架', { exact: true }).click();

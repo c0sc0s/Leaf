@@ -1,5 +1,7 @@
 import { X, Moon, Sun, Monitor, Check, LoaderCircle } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
+import * as Dialog from '@radix-ui/react-dialog';
+import * as Tooltip from '@radix-ui/react-tooltip';
 import type { ReactNode } from 'react';
 import type { Settings } from '../types';
 export function IconButton({
@@ -18,16 +20,24 @@ export function IconButton({
   className?: string;
 }) {
   return (
-    <button
-      className={`icon-button ${active ? 'active' : ''} ${className}`}
-      title={label}
-      aria-label={label}
-      aria-pressed={active}
-      onClick={onClick}
-      disabled={disabled}
-    >
-      {children}
-    </button>
+    <Tooltip.Root>
+      <Tooltip.Trigger asChild>
+        <button
+          className={`icon-button ${active ? 'active' : ''} ${className}`}
+          aria-label={label}
+          aria-pressed={active}
+          onClick={onClick}
+          disabled={disabled}
+        >
+          {children}
+        </button>
+      </Tooltip.Trigger>
+      <Tooltip.Portal>
+        <Tooltip.Content className="tooltip" sideOffset={6}>
+          {label}
+        </Tooltip.Content>
+      </Tooltip.Portal>
+    </Tooltip.Root>
   );
 }
 export function Spinner({ text = '正在加载…' }: { text?: string }) {
@@ -47,57 +57,37 @@ export function Modal({
   children: ReactNode;
   onClose: () => void;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const close = useRef(onClose);
-  close.current = onClose;
-  useEffect(() => {
-    const before = document.activeElement as HTMLElement;
-    const root = ref.current;
-    root?.querySelector<HTMLElement>('button,input,select')?.focus();
-    const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close.current();
-      if (e.key === 'Tab' && root) {
-        const items = [
-          ...root.querySelectorAll<HTMLElement>(
-            'button:not(:disabled),input,select,a[href],textarea',
-          ),
-        ];
-        const first = items[0],
-          last = items.at(-1);
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last?.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first?.focus();
-        }
-      }
-    };
-    document.addEventListener('keydown', key);
-    return () => {
-      document.removeEventListener('keydown', key);
-      before?.focus();
-    };
-  }, []);
+  const before = useRef(document.activeElement as HTMLElement | null);
   return (
-    <div
-      className="modal-backdrop"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
+    <Dialog.Root
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
       }}
     >
-      <div ref={ref} className="modal" role="dialog" aria-modal="true" aria-label={title}>
-        <div className="modal-heading">
-          <h2>{title}</h2>
-          <IconButton label="关闭" onClick={onClose}>
-            <X size={19} />
-          </IconButton>
-        </div>
-        {children}
-      </div>
-    </div>
+      <Dialog.Portal>
+        <Dialog.Overlay className="modal-backdrop" />
+        <Dialog.Content
+          className="modal"
+          aria-describedby={undefined}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            before.current?.focus();
+          }}
+        >
+          <div className="modal-heading">
+            <Dialog.Title>{title}</Dialog.Title>
+            <button className="icon-button" aria-label="关闭" onClick={onClose}>
+              <X size={18} />
+            </button>
+          </div>
+          {children}
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
+
 export function SettingsModal({
   settings,
   onChange,
@@ -109,7 +99,6 @@ export function SettingsModal({
 }) {
   return (
     <Modal title="阅读偏好" onClose={onClose}>
-      <p className="muted">为自己留一处舒服的阅读空间。</p>
       <div className="settings-section">
         <label>应用外观</label>
         <div className="theme-options">
@@ -122,6 +111,7 @@ export function SettingsModal({
           ).map(([value, label, Icon]) => (
             <button
               key={value}
+              aria-pressed={settings.theme === value}
               className={settings.theme === value ? 'selected' : ''}
               onClick={() => onChange({ ...settings, theme: value })}
             >
@@ -154,13 +144,13 @@ export function SettingsModal({
             className={settings.font === 'serif' ? 'selected' : ''}
             onClick={() => onChange({ ...settings, font: 'serif' })}
           >
-            衬线体 · 书页感
+            衬线体
           </button>
           <button
             className={settings.font === 'sans' ? 'selected' : ''}
             onClick={() => onChange({ ...settings, font: 'sans' })}
           >
-            无衬线 · 更清晰
+            无衬线体
           </button>
         </div>
       </div>

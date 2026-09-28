@@ -433,7 +433,6 @@ export function Reader({
           <IconButton label="返回书架" onClick={onClose}>
             <ArrowLeft size={20} />
           </IconButton>
-          <span className="reader-title-divider" />
           <div>
             <strong>{book.title}</strong>
             <span>{book.author}</span>
@@ -441,6 +440,7 @@ export function Reader({
         </div>
         <div className="segmented reader-mode">
           <button
+            aria-pressed={mode === 'original'}
             className={mode === 'original' ? 'selected' : ''}
             onClick={() => switchMode('original')}
           >
@@ -448,6 +448,7 @@ export function Reader({
             原版阅读
           </button>
           <button
+            aria-pressed={mode === 'reflow'}
             className={mode === 'reflow' ? 'selected' : ''}
             onClick={() => switchMode('reflow')}
           >
@@ -464,18 +465,6 @@ export function Reader({
           </IconButton>
         </div>
       </header>
-      <div className="document-status">
-        <button onClick={() => setReport(!report)} aria-expanded={report}>
-          {!document
-            ? `正在解析整份 PDF · ${analysisProgress} / ${book.pages} 页`
-            : document.suitable
-              ? `全书 ${document.totalPages} 页已检查 · 支持统一阅读`
-              : `已检查 ${document.pages.length} / ${document.totalPages} 页 · 整本原版阅读`}
-        </button>
-        {!document && (
-          <progress max={book.pages} value={analysisProgress} aria-label="全书解析进度" />
-        )}
-      </div>
       {report && (
         <div className="document-report" role="region" aria-label="全书重排分析">
           <strong>
@@ -756,13 +745,12 @@ export function Reader({
           <aside className="notes-panel">
             <div className="notes-heading">
               <h3>
-                页边的思考 <span>{marks.length}</span>
+                阅读笔记 <span>{marks.length}</span>
               </h3>
               <IconButton label="关闭笔记" onClick={() => setRight(false)}>
                 <X size={16} />
               </IconButton>
             </div>
-            <div className="notes-description">读过的文字，留下的想法。</div>
             <button
               className="notes-export"
               disabled={!marks.length}
@@ -813,7 +801,7 @@ export function Reader({
               {!marks.length && (
                 <div className="notes-empty">
                   <Highlighter size={27} />
-                  <strong>有些句子值得停留</strong>
+                  <strong>暂无批注</strong>
                   <p>
                     选中文字，添加高光或划线。
                     <br />
@@ -830,13 +818,18 @@ export function Reader({
           <span className="status-dot" />
           已保存在本机
         </span>
-        <span>
-          {mode === 'original' ? '原版排版' : '全书统一排版'} ·{' '}
-          {mode === 'reflow'
-            ? document?.pages.reduce((sum, p) => sum + p.text.trim().length, 0) || 0
-            : content?.text.trim().length || 0}{' '}
-          字
-        </span>
+        <div className="document-status">
+          <button onClick={() => setReport(!report)} aria-expanded={report}>
+            {!document
+              ? `正在解析整份 PDF · ${analysisProgress} / ${book.pages} 页`
+              : document.suitable
+                ? `全书 ${document.totalPages} 页已检查 · 支持统一阅读`
+                : `已检查 ${document.pages.length} / ${document.totalPages} 页 · 整本原版阅读`}
+          </button>
+          {!document && (
+            <progress max={book.pages} value={analysisProgress} aria-label="全书解析进度" />
+          )}
+        </div>
         <span>{Math.round((page / book.pages) * 100)}% 已读</span>
       </footer>
       {selection && (

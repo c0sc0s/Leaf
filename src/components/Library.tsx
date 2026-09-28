@@ -15,12 +15,13 @@ import {
 import { useMemo, useState } from 'react';
 import type { Book } from '../types';
 import { IconButton } from './UI';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 export type LibraryView =
   'all' | 'recent' | 'favorites' | 'notes' | '设计与灵感' | '技术与思考' | '生活与阅读';
 const viewNames: Record<LibraryView, string> = {
   all: '我的书架',
   recent: '最近阅读',
-  favorites: '心头好',
+  favorites: '收藏',
   notes: '阅读笔记',
   设计与灵感: '设计与灵感',
   技术与思考: '技术与思考',
@@ -46,7 +47,6 @@ export function Library({
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState('added');
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
-  const [menu, setMenu] = useState<string | null>(null);
   const filtered = useMemo(
     () =>
       books
@@ -72,56 +72,31 @@ export function Library({
     .filter((b) => b.openedAt > 0)
     .sort((a, b) => b.openedAt - a.openedAt)[0];
   return (
-    <div className="library" onClick={() => menu && setMenu(null)}>
+    <div className="library">
       <header className="library-heading">
         <div>
-          <div className="eyebrow">YOUR PERSONAL READING SPACE</div>
-          <h1>
-            {viewNames[view]}
-            <span className="heading-dot">.</span>
-          </h1>
-          <p>一本好书，一点留白，一段属于自己的时间。</p>
+          <h1>{viewNames[view]}</h1>
+          <p>{view === 'notes' ? '查看和管理你的阅读批注' : `${filtered.length} 本书籍`}</p>
         </div>
         <button className="primary" onClick={onImport}>
           <Plus size={17} />
           导入 PDF
         </button>
       </header>
-      {view === 'all' && (
-        <div className="library-intro">
-          <div className="intro-label">
-            <BookOpen size={19} />
-            <span>慢一点，读进去。</span>
-          </div>
-          <div className="intro-copy">把灵感收进书架，让思考留在页边。</div>
-          <span className="intro-number">FOLIO / 01</span>
-        </div>
-      )}
       {view === 'all' && recent && (
         <button className="continue-reading" onClick={() => onOpen(recent)}>
           <img src={recent.cover} alt="" />
           <div>
-            <span className="eyebrow">接着上次的思绪</span>
+            <span className="eyebrow">继续阅读</span>
             <strong>{recent.title}</strong>
             <span className="muted">
-              第 {recent.page} / {recent.pages} 页 · 继续阅读
+              第 {recent.page} / {recent.pages} 页
             </span>
           </div>
           <ArrowUpRight size={22} />
         </button>
       )}
       <div className="library-tools">
-        <div className="library-tabs">
-          <span className="active">
-            {view === 'notes' ? '有批注的书' : '全部书籍'} <b>{filtered.length}</b>
-          </span>
-          {view === 'all' && (
-            <span className="local-label">
-              <span className="status-dot" />
-              本地书库
-            </span>
-          )}
-        </div>
         <div className="tool-group">
           <div className="search-box">
             <Search size={16} />
@@ -173,12 +148,10 @@ export function Library({
             >
               <div className="book-cover">
                 <img src={b.cover} alt={`${b.title} 封面`} loading="lazy" />
-                <span className="book-spine" />
                 <span className="cover-open">
                   <BookOpen size={18} />
                   开始阅读
                 </span>
-                {b.sample && <span className="sample-badge">示例</span>}
               </div>
             </button>
             <div className="book-info">
@@ -188,7 +161,7 @@ export function Library({
               <span className="book-author">{b.author}</span>
               <div className="book-meta">
                 <span>{b.pages} 页</span>
-                <span>{b.category}</span>
+                <span>{b.sample ? '示例文档' : b.category}</span>
                 {noteCounts[b.id] > 0 && (
                   <span className="mark-count">
                     <Highlighter size={11} />
@@ -210,41 +183,39 @@ export function Library({
               >
                 <Heart size={15} fill={b.favorite ? 'currentColor' : 'none'} />
               </IconButton>
-              <div className="menu-wrapper">
-                <IconButton
-                  label={`管理 ${b.title}`}
-                  onClick={() => setMenu(menu === b.id ? null : b.id)}
-                >
-                  <MoreHorizontal size={18} />
-                </IconButton>
-                {menu === b.id && (
-                  <div className="dropdown" onClick={(e) => e.stopPropagation()}>
-                    <span className="dropdown-label">移动到分类</span>
-                    {['设计与灵感', '技术与思考', '生活与阅读', '未分类'].map((c) => (
-                      <button
-                        key={c}
-                        className={b.category === c ? 'selected' : ''}
-                        onClick={() => {
-                          onUpdate({ ...b, category: c });
-                          setMenu(null);
-                        }}
-                      >
-                        {c}
-                      </button>
-                    ))}
-                    <button
-                      className="danger"
-                      onClick={() => {
-                        onDelete(b);
-                        setMenu(null);
-                      }}
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger asChild>
+                  <button className="icon-button" aria-label={`管理 ${b.title}`}>
+                    <MoreHorizontal size={18} />
+                  </button>
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content className="dropdown" align="end" sideOffset={6}>
+                    <DropdownMenu.Label className="dropdown-label">移动到分类</DropdownMenu.Label>
+                    <DropdownMenu.RadioGroup
+                      value={b.category}
+                      onValueChange={(category) => onUpdate({ ...b, category })}
+                    >
+                      {['设计与灵感', '技术与思考', '生活与阅读', '未分类'].map((c) => (
+                        <DropdownMenu.RadioItem className="dropdown-item" key={c} value={c}>
+                          {c}
+                          <DropdownMenu.ItemIndicator className="menu-check">
+                            ✓
+                          </DropdownMenu.ItemIndicator>
+                        </DropdownMenu.RadioItem>
+                      ))}
+                    </DropdownMenu.RadioGroup>
+                    <DropdownMenu.Separator className="dropdown-separator" />
+                    <DropdownMenu.Item
+                      className="dropdown-item danger"
+                      onSelect={() => onDelete(b)}
                     >
                       <Trash2 size={14} />
                       从书库移除
-                    </button>
-                  </div>
-                )}
-              </div>
+                    </DropdownMenu.Item>
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
             </div>
           </article>
         ))}
@@ -256,17 +227,17 @@ export function Library({
             {query
               ? '没有找到这本书'
               : view === 'favorites'
-                ? '把喜欢的书留在这里'
+                ? '暂无收藏'
                 : view === 'notes'
-                  ? '让想法留在页边'
-                  : '书架正在等待你的第一本书'}
+                  ? '暂无批注'
+                  : '书库为空'}
           </h3>
           <p>
             {query
               ? '试试其他书名或作者。'
               : view === 'notes'
                 ? '阅读时选中文字，添加高光、划线或笔记。'
-                : '导入 PDF，开始一段新的阅读。'}
+                : '导入 PDF，或将文件拖到窗口中。'}
           </p>
           {view === 'all' && !query && (
             <button className="primary" onClick={onImport}>
@@ -276,10 +247,6 @@ export function Library({
           )}
         </div>
       )}
-      <footer className="library-footer">
-        <span>{books.length} 本藏书 · 文件与笔记保存在本机</span>
-        <span>Made for a quieter mind.</span>
-      </footer>
     </div>
   );
 }

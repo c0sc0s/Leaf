@@ -49,11 +49,11 @@ else {
       height: 960,
       minWidth: 900,
       minHeight: 640,
-      backgroundColor: '#f4f4f0',
+      backgroundColor: '#18181b',
       title: 'Folio',
       icon,
       ...(process.platform === 'darwin'
-        ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 20, y: 20 } }
+        ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 18, y: 17 } }
         : {}),
       webPreferences: {
         preload: path.join(__dirname, 'preload.cjs'),

@@ -7,14 +7,10 @@ import {
   Sun,
   Moon,
   Settings2,
-  Plus,
-  ArrowUpRight,
   FolderOpen,
   Upload,
   X,
-  ShieldCheck,
   Command,
-  Check,
   LockKeyhole,
 } from 'lucide-react';
 import type { Book, Settings } from './types';
@@ -289,64 +285,23 @@ export default function App() {
       <div
         className={`titlebar ${window.desktop?.platform === 'darwin' ? 'native-mac' : window.desktop?.platform === 'win32' ? 'native-win' : ''}`}
       >
-        <div className="window-dots" aria-hidden="true">
-          <i />
-          <i />
-          <i />
+        <button className="app-brand" aria-label="Folio 我的书架" onClick={() => nav('all')}>
+          <img src={`${import.meta.env.BASE_URL}icon.png`} alt="" width="24" height="24" />
+          <span>Folio</span>
+        </button>
+        <div className="titlebar-actions">
+          <IconButton
+            label={dark ? '切换浅色模式' : '切换深色模式'}
+            onClick={() => setSettings((s) => ({ ...s, theme: dark ? 'light' : 'dark' }))}
+          >
+            {dark ? <Sun size={16} /> : <Moon size={16} />}
+          </IconButton>
+          <IconButton label="设置" onClick={openSettings}>
+            <Settings2 size={16} />
+          </IconButton>
         </div>
-        <span>Folio</span>
-        <span className="titlebar-right">A quiet place to read.</span>
       </div>
       <div className="app-body">
-        <nav className="rail" aria-label="应用导航">
-          <button className="brand-mark" aria-label="Folio 我的书架" onClick={() => nav('all')}>
-            <img src={`${import.meta.env.BASE_URL}icon.png`} alt="" width="44" height="44" />
-          </button>
-          <div className="rail-navigation">
-            <IconButton
-              label="我的书架"
-              active={!active && view === 'all'}
-              onClick={() => nav('all')}
-            >
-              <BookOpen size={21} />
-            </IconButton>
-            <IconButton
-              label="最近阅读"
-              active={!active && view === 'recent'}
-              onClick={() => nav('recent')}
-            >
-              <Clock3 size={20} />
-            </IconButton>
-            <IconButton
-              label="心头好"
-              active={!active && view === 'favorites'}
-              onClick={() => nav('favorites')}
-            >
-              <Heart size={20} />
-            </IconButton>
-            <IconButton
-              label="阅读笔记"
-              active={!active && view === 'notes'}
-              onClick={() => nav('notes')}
-            >
-              <NotebookPen size={20} />
-            </IconButton>
-          </div>
-          <div className="rail-bottom">
-            <IconButton
-              label={dark ? '切换浅色模式' : '切换深色模式'}
-              onClick={() => setSettings((s) => ({ ...s, theme: dark ? 'light' : 'dark' }))}
-            >
-              {dark ? <Sun size={20} /> : <Moon size={20} />}
-            </IconButton>
-            <IconButton label="设置" onClick={openSettings}>
-              <Settings2 size={20} />
-            </IconButton>
-            <button className="avatar" aria-label="关于 Folio" onClick={() => setAbout(true)}>
-              F
-            </button>
-          </div>
-        </nav>
         {active ? (
           <Reader
             key={active.id}
@@ -362,21 +317,19 @@ export default function App() {
         ) : (
           <>
             <aside className="library-sidebar">
-              <div className="sidebar-brand">
-                folio<span>阅读，与自己相处</span>
-              </div>
-              <div className="sidebar-section-label">LIBRARY</div>
-              <div className="sidebar-navigation">
+              <div className="sidebar-section-label">书库</div>
+              <div className="sidebar-navigation" role="navigation" aria-label="书库导航">
                 {(
                   [
                     ['all', '我的书架', BookOpen],
                     ['recent', '最近阅读', Clock3],
-                    ['favorites', '心头好', Heart],
+                    ['favorites', '收藏', Heart],
                     ['notes', '阅读笔记', NotebookPen],
                   ] as const
                 ).map(([v, label, Icon]) => (
                   <button
                     className={view === v ? 'selected' : ''}
+                    aria-current={view === v ? 'page' : undefined}
                     key={v}
                     onClick={() => setView(v)}
                   >
@@ -394,12 +347,13 @@ export default function App() {
                   </button>
                 ))}
               </div>
-              <div className="sidebar-section-label collections-label">COLLECTIONS</div>
+              <div className="sidebar-section-label collections-label">分类</div>
               <div className="collections">
                 {(['设计与灵感', '技术与思考', '生活与阅读'] as const).map((v, i) => (
                   <button
                     key={v}
                     className={view === v ? 'selected' : ''}
+                    aria-current={view === v ? 'page' : undefined}
                     onClick={() => setView(v)}
                   >
                     <i className={`collection-dot dot-${i}`} />
@@ -408,27 +362,14 @@ export default function App() {
                   </button>
                 ))}
               </div>
-              <button className="sidebar-import" onClick={openImport}>
-                <Plus size={15} />
-                添加新书
-              </button>
-              <div className="sidebar-bottom-card">
-                <div>
-                  <ShieldCheck size={18} />
-                  <strong>只属于你的书库</strong>
-                </div>
-                <p>
-                  文件和想法，安静地
-                  <br />
-                  留在你的电脑里。
-                </p>
+              <div className="sidebar-footer">
                 <span>
-                  LOCAL FIRST <Check size={12} />
+                  <LockKeyhole size={13} /> 本地书库
                 </span>
+                <button className="about-link" onClick={() => setAbout(true)}>
+                  关于 Folio
+                </button>
               </div>
-              <button className="about-link" onClick={() => setAbout(true)}>
-                关于 Folio <ArrowUpRight size={13} />
-              </button>
             </aside>
             <main className="library-main">
               {loading ? (
@@ -469,11 +410,11 @@ export default function App() {
         />
       )}
       {about && (
-        <Modal title="读书，是回到自己。" onClose={() => setAbout(false)}>
+        <Modal title="关于 Folio" onClose={() => setAbout(false)}>
           <div className="about-logo">
-            folio<span>1.0</span>
+            Folio<span>1.2</span>
           </div>
-          <p>一个安静、简洁的 PDF 阅读空间。为文字留白，为思考留一处页边。</p>
+          <p>本地 PDF 阅读器，支持原版阅读、统一排版和文字批注。</p>
           <div className="about-features">
             <span>
               <FolderOpen size={17} />

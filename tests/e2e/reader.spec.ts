@@ -12,19 +12,17 @@ async function openBook(page: import('@playwright/test').Page) {
   ).toBeVisible();
 }
 async function select(page: import('@playwright/test').Page, selector: string, text = '') {
-  await page
-    .locator(selector)
-    .filter({ hasText: text })
-    .first()
-    .evaluate((el) => {
-      const node = el.firstChild!;
-      const range = document.createRange();
-      range.setStart(node, 0);
-      range.setEnd(node, Math.min(node.textContent!.length, 60));
-      window.getSelection()!.removeAllRanges();
-      window.getSelection()!.addRange(range);
-      el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
-    });
+  const target = page.locator(selector).filter({ hasText: text }).first();
+  await target.scrollIntoViewIfNeeded();
+  await target.evaluate((el) => {
+    const node = el.firstChild!;
+    const range = document.createRange();
+    range.setStart(node, 0);
+    range.setEnd(node, Math.min(node.textContent!.length, 60));
+    window.getSelection()!.removeAllRanges();
+    window.getSelection()!.addRange(range);
+    el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+  });
 }
 test('renders PDFs, persists cross-mode annotations, exports native PDF marks and restores progress', async ({
   page,
