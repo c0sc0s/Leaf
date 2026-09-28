@@ -83,6 +83,10 @@ export function usePdfDocument(book: Book, askPassword: () => Promise<string | n
     (n: number) => {
       if (!pdf) return Promise.reject(new Error('PDF 尚未加载'));
       let value = cache.current.get(n);
+      if (value) {
+        cache.current.delete(n);
+        cache.current.set(n, value);
+      }
       if (!value) {
         value = extractPage(pdf, n);
         cache.current.set(n, value);
@@ -90,7 +94,10 @@ export function usePdfDocument(book: Book, askPassword: () => Promise<string | n
           const oldest = cache.current.keys().next().value;
           if (oldest !== undefined && oldest !== n) cache.current.delete(oldest);
         }
-        value.catch(() => cache.current.delete(n));
+        const pending = value;
+        value.catch(() => {
+          if (cache.current.get(n) === pending) cache.current.delete(n);
+        });
       }
       return value;
     },

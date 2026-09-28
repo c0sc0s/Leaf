@@ -90,11 +90,11 @@ test('imports real files, rejects duplicates, searches all pages and locates sea
   pdf.addPage().drawText('Needle exists on the second page.', { font });
   const data = Buffer.from(await pdf.save());
   await page
-    .getByLabel('选择 PDF 文件', { exact: true })
+    .getByLabel('选择 PDF 或 Markdown 文件', { exact: true })
     .setInputFiles({ name: 'imported.pdf', mimeType: 'application/pdf', buffer: data });
   await expect(page.locator('.book-card')).toHaveCount(9);
   await page
-    .getByLabel('选择 PDF 文件', { exact: true })
+    .getByLabel('选择 PDF 或 Markdown 文件', { exact: true })
     .setInputFiles({ name: 'again.pdf', mimeType: 'application/pdf', buffer: data });
   await expect(page.getByRole('status')).toContainText('已在书库中');
   await expect(page.locator('.book-card')).toHaveCount(9);

@@ -5,18 +5,16 @@ import { FileText, Highlighter } from '@/components/icons';
 import { AnimatePresence, m } from 'motion/react';
 import type {
   Annotation,
-  Book,
   MarkColor,
   MarkKind,
   ReadingLayout,
   ReadingLocation,
   ReadingState,
-  Settings,
 } from '../../types';
 import { storage } from '../../lib/db';
 import { colors, exportAnnotated, notesMarkdown, saveFile } from '../../lib/export';
 import type { DocumentSelection } from '../../lib/selection';
-import { initialReadingState, saveReadingState } from '../../lib/position';
+import { initialReadingState } from '../../lib/position';
 import { pageStep } from '../../lib/layout';
 import { ReadingScheduler } from '../../lib/scheduler';
 import { useAnnotations } from '../../lib/useAnnotations';
@@ -37,20 +35,9 @@ import { useDocumentSearch, type SearchResult } from './hooks/useDocumentSearch'
 import { useReaderShortcuts } from './hooks/useReaderShortcuts';
 import { createLocationStore } from './hooks/locationStore';
 import { clampZoom, stepZoom } from './zoom';
+import type { ReaderProps } from './BookReader';
+import { useReadingPersistence } from './hooks/useReadingPersistence';
 
-// Writing the book record rewrites its PDF blob, so progress is saved once reading settles.
-const PROGRESS_SAVE_DELAY = 1000;
-
-interface Props {
-  book: Book;
-  settings: Settings;
-  dark: boolean;
-  onClose: () => void;
-  onUpdate: (book: Book) => void;
-  onSettings: () => void;
-  notify: (message: string) => void;
-  askPassword: () => Promise<string | null>;
-}
 export function Reader({
   book,
   settings,
@@ -60,7 +47,7 @@ export function Reader({
   onSettings,
   notify,
   askPassword,
-}: Props) {
+}: ReaderProps & { askPassword: () => Promise<string | null> }) {
   const saved = useMemo(() => initialReadingState(book), [book.id]);
   const [scheduler] = useState(() => new ReadingScheduler());
   const [locationStore] = useState(() => createLocationStore(saved));
@@ -104,8 +91,6 @@ export function Reader({
   const layoutRef = useRef(layout);
   layoutRef.current = layout;
   const locationRef = useRef<ReadingLocation>(saved);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const persistenceError = useRef(false);
 
   useEffect(() => {
     localStorage.setItem('folio-mark-color', color);
@@ -132,53 +117,30 @@ export function Reader({
     };
   }, [book.id, annotations.load]);
 
-  const persist = useCallback(() => {
-    try {
-      saveReadingState(book.id, {
-        ...locationRef.current,
-        zoom: zoomRef.current,
-        layout: layoutRef.current,
-      });
-    } catch {
-      if (!persistenceError.current) {
-        persistenceError.current = true;
-        notify('阅读位置未能保存，请检查本机存储空间。');
-      }
-    }
-  }, [book.id, notify]);
-  const saveProgress = useCallback(
-    () => onUpdate({ ...bookRef.current, page: pageRef.current, openedAt: Date.now() }),
-    [onUpdate],
-  );
-  useEffect(() => {
-    if (!pdf) return;
-    const timer = setTimeout(saveProgress, PROGRESS_SAVE_DELAY);
-    return () => clearTimeout(timer);
-  }, [pdf, page, saveProgress]);
-  const opened = !!pdf;
-  useEffect(() => {
-    if (!opened) return;
-    window.addEventListener('pagehide', saveProgress);
-    return () => {
-      window.removeEventListener('pagehide', saveProgress);
-      saveProgress();
-    };
-  }, [opened, saveProgress]);
+  const schedulePersistence = useReadingPersistence({
+    bookId: book.id,
+    page,
+    enabled: !!pdf,
+    capture: () => ({
+      ...locationRef.current,
+      page: pageRef.current,
+      zoom: zoomRef.current,
+      layout: layoutRef.current,
+    }),
+    onProgress: (page, openedAt) => onUpdate({ ...bookRef.current, page, openedAt }),
+    notify,
+  });
   useEffect(() => {
     const busy = scheduler.busy;
     window.addEventListener('wheel', busy, { passive: true });
     window.addEventListener('pointerdown', busy, { passive: true });
     window.addEventListener('keydown', busy);
-    window.addEventListener('pagehide', persist);
     return () => {
-      clearTimeout(saveTimer.current);
-      persist();
       window.removeEventListener('wheel', busy);
       window.removeEventListener('pointerdown', busy);
       window.removeEventListener('keydown', busy);
-      window.removeEventListener('pagehide', persist);
     };
-  }, [scheduler, persist]);
+  }, [scheduler]);
 
   const captureCurrent = useCallback((): ReadingState => {
     const location = viewer.current?.capture();
@@ -193,10 +155,9 @@ export function Reader({
         pageRef.current = location.page;
         setPage(location.page);
       }
-      clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(persist, 180);
+      schedulePersistence();
     },
-    [persist, locationStore],
+    [schedulePersistence, locationStore],
   );
   const navigate = useCallback(
     (n: number, location?: ReadingLocation, remember = true) => {

@@ -1,4 +1,3 @@
-import { Button } from '@/components/ui/button';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { ChevronRight } from '@/components/icons';
@@ -23,12 +22,34 @@ export const OutlineTree = memo(function OutlineTree({
   location: LocationStore;
   onNavigate: (page: number, location?: ReadingLocation) => void;
 }) {
-  const nodes = useMemo(() => buildOutline(items), [items]);
   const [preferred, setPreferred] = useState<number | null>(null);
   const active = useLocation(
     location,
     useCallback((current) => activeOutlineIndex(items, current, preferred), [items, preferred]),
   );
+  return (
+    <OutlineTreeView
+      items={items}
+      active={active}
+      onChoose={(node) => {
+        setPreferred(node.index);
+        onNavigate(node.page, node.location);
+      }}
+    />
+  );
+});
+
+// Both document formats share expansion, keyboard navigation and row presentation.
+export const OutlineTreeView = memo(function OutlineTreeView({
+  items,
+  active,
+  onChoose,
+}: {
+  items: OutlineItem[];
+  active: number;
+  onChoose: (node: OutlineNode) => void;
+}) {
+  const nodes = useMemo(() => buildOutline(items), [items]);
   const [expanded, setExpanded] = useState<ReadonlySet<number>>(() => new Set());
   useEffect(() => {
     if (active < 0) return;
@@ -49,10 +70,6 @@ export const OutlineTree = memo(function OutlineTree({
       else next.delete(index);
       return next;
     });
-  const choose = (node: OutlineNode) => {
-    setPreferred(node.index);
-    onNavigate(node.page, node.location);
-  };
   const keyboard = (event: KeyboardEvent<HTMLButtonElement>, node: OutlineNode) => {
     const rows = [...(list.current?.querySelectorAll<HTMLElement>('.outline-item') ?? [])];
     const at = rows.indexOf(event.currentTarget);
@@ -73,10 +90,10 @@ export const OutlineTree = memo(function OutlineTree({
     event.stopPropagation();
   };
   return (
-    <div className="sidebar-scroll outline" role="tree" ref={list}>
+    <div className="sidebar-scroll outline-tree" role="tree" ref={list}>
       {visibleOutline(nodes, expanded).map((node) => (
-        <Button
-          variant="ghost"
+        <button
+          type="button"
           key={node.index}
           role="treeitem"
           data-index={node.index}
@@ -86,7 +103,7 @@ export const OutlineTree = memo(function OutlineTree({
           className={`outline-item depth-${Math.min(node.depth, 3)} ${node.index === active ? 'selected' : ''}`}
           style={{ paddingLeft: 6 + node.depth * 14 }}
           title={node.title}
-          onClick={() => choose(node)}
+          onClick={() => onChoose(node)}
           onKeyDown={(event) => keyboard(event, node)}
         >
           <span
@@ -101,7 +118,7 @@ export const OutlineTree = memo(function OutlineTree({
           </span>
           <span className="outline-title">{node.title}</span>
           <span className="outline-page">{node.page}</span>
-        </Button>
+        </button>
       ))}
     </div>
   );

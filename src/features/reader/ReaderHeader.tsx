@@ -73,7 +73,9 @@ export const ReaderHeader = memo(function ReaderHeader({
   onSettings: () => void;
 }) {
   return (
-    <header className={`reader-header ${mac ? 'native-mac' : ''}`}>
+    <header
+      className={`reader-header ${mac ? 'native-mac' : window.desktop?.platform === 'win32' ? 'native-win' : ''}`}
+    >
       <div className="reader-header-start">
         <IconButton label="返回书架" onClick={onBack}>
           <ArrowLeft size={18} />

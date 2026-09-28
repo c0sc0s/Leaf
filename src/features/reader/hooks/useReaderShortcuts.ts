@@ -32,6 +32,7 @@ export function useReaderShortcuts(shortcuts: ReaderShortcuts) {
       if (command && e.key === '0') return handle(run.resetZoom);
       if (target?.closest('input,textarea,select,[contenteditable]')) return;
       if (command && e.key.toLowerCase() === 'z') return handle(e.shiftKey ? run.redo : run.undo);
+      if (target?.closest('[role=treeitem]')) return;
       if (e.key === 'PageDown') return handle(() => run.screen(1));
       if (e.key === 'PageUp') return handle(() => run.screen(-1));
       if (e.key === 'ArrowRight') return handle(() => run.page(1));

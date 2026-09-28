@@ -11,7 +11,7 @@ test('composites overlapping legacy highlight rectangles at one consistent opaci
   pdf.addPage([400, 500]);
   await page.goto('/');
   await expect(page.locator('.book-card')).toHaveCount(8);
-  await page.getByLabel('选择 PDF 文件', { exact: true }).setInputFiles({
+  await page.getByLabel('选择 PDF 或 Markdown 文件', { exact: true }).setInputFiles({
     name: 'overlap.pdf',
     mimeType: 'application/pdf',
     buffer: Buffer.from(await pdf.save()),
@@ -81,7 +81,7 @@ test('copies the actual selected text and creates precise multi-line highlight r
     });
   await page.goto('/');
   await expect(page.locator('.book-card')).toHaveCount(8);
-  await page.getByLabel('选择 PDF 文件', { exact: true }).setInputFiles({
+  await page.getByLabel('选择 PDF 或 Markdown 文件', { exact: true }).setInputFiles({
     name: 'selection.pdf',
     mimeType: 'application/pdf',
     buffer: Buffer.from(await pdf.save()),
@@ -108,7 +108,9 @@ test('copies the actual selected text and creates precise multi-line highlight r
     };
   });
   await page.getByLabel('复制文字', { exact: true }).click();
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(selected.text);
+  // Windows clipboard APIs normalize line endings to CRLF.
+  const clipboard = await page.evaluate(() => navigator.clipboard.readText());
+  expect(clipboard.replace(/\r\n/g, '\n')).toBe(selected.text.replace(/\r\n/g, '\n'));
   await page.getByLabel('高光标注', { exact: true }).click();
   await expect(page.locator('.annotation-overlay [data-mark-id] rect')).toHaveCount(3);
   const widths = await page

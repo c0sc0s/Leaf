@@ -1,7 +1,23 @@
 @import 'tailwindcss';
+@import './typeset.css';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 @import '@fontsource-variable/geist';
+@import '@fontsource-variable/public-sans';
+@import '@fontsource/ibm-plex-sans/latin-400.css';
+@import '@fontsource/ibm-plex-sans/latin-500.css';
+@import '@fontsource/ibm-plex-sans/latin-600.css';
+@import '@fontsource/ibm-plex-sans/latin-700.css';
+@import '@fontsource-variable/jetbrains-mono';
+
+.typeset-docs {
+  --typeset-font-body: var(--font-public-sans);
+  --typeset-font-heading: var(--font-ibm-plex-sans);
+  --typeset-font-mono: var(--font-jetbrains-mono);
+  --typeset-size: 18px;
+  --typeset-leading: 1.6;
+  --typeset-flow: 1.25em;
+}
 
 @custom-variant dark (&:is(.dark *));
 
@@ -49,24 +65,32 @@
 }
 
 :root {
+  --font-public-sans: 'Public Sans Variable', 'Microsoft YaHei', sans-serif;
+  --font-ibm-plex-sans: 'IBM Plex Sans', 'Microsoft YaHei', sans-serif;
+  --font-jetbrains-mono: 'JetBrains Mono Variable', Consolas, monospace;
   --brand: #445a51;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.141 0.005 285.823);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.141 0.005 285.823);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.141 0.005 285.823);
+  --background: #f7f8f5;
+  --foreground: #26312c;
+  --card: #ffffff;
+  --card-foreground: var(--foreground);
+  --popover: #ffffff;
+  --popover-foreground: var(--foreground);
   --primary: var(--brand);
   --primary-foreground: #ffffff;
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: color-mix(in srgb, var(--brand) 8%, white);
-  --accent-foreground: oklch(0.21 0.006 285.885);
+  --secondary: #edf1eb;
+  --secondary-foreground: #35493d;
+  --muted: #edf1eb;
+  --muted-foreground: #59665d;
+  --accent: #e4ece2;
+  --accent-foreground: #304c3b;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
+  --border: #d8dfd6;
+  --input: #d8dfd6;
+  --field: #ffffff;
+  --field-border: #ccd6cb;
+  --raised: color-mix(in srgb, var(--card) 96%, transparent);
+  --raised-hover: #fafcf8;
+  --raised-shadow: 0 2px 8px #26382b08, 0 1px 2px #26382b04;
   --ring: var(--brand);
   --chart-1: #b8c6bf;
   --chart-2: #8ca498;
@@ -74,13 +98,13 @@
   --chart-4: #445a51;
   --chart-5: #2b3e36;
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-primary: var(--brand);
+  --sidebar: #eef2eb;
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: #365540;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: var(--accent);
-  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
-  --sidebar-border: oklch(0.92 0.004 286.32);
+  --sidebar-accent: #dce8d9;
+  --sidebar-accent-foreground: #2e4935;
+  --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
 }
 
@@ -102,6 +126,11 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
+  --field: #242625;
+  --field-border: #3c443f;
+  --raised: color-mix(in srgb, var(--card) 96%, transparent);
+  --raised-hover: #282c29;
+  --raised-shadow: 0 2px 8px #00000020;
   --ring: var(--sidebar-primary);
   --chart-1: #b8c6bf;
   --chart-2: #8ca498;

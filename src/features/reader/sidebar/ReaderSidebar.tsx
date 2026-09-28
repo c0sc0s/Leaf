@@ -17,10 +17,12 @@ export function ReaderSidebar({
   tab,
   onTab,
   children,
+  pagesLabel = '页面缩略图',
 }: {
   tab: SidebarTab;
   onTab: (tab: SidebarTab) => void;
   children: ReactNode;
+  pagesLabel?: string;
 }) {
   const { width, panel, handleProps } = useResizablePanel<HTMLElement>({
     storageKey: 'leaf-sidebar-width',
@@ -38,13 +40,18 @@ export function ReaderSidebar({
           onValueChange={(value) => onTab(value as SidebarTab)}
         >
           <TabsList aria-label="文档导航视图">
-            {tabs.map(([value, label, Icon]) => (
-              <Tip key={value} label={label} side="bottom">
-                <TabsTrigger value={value} aria-label={label}>
-                  <Icon size={16} />
-                </TabsTrigger>
-              </Tip>
-            ))}
+            {tabs.map(([value, defaultLabel, Icon]) => {
+              const label = value === 'pages' ? pagesLabel : defaultLabel;
+              return (
+                <Tip key={value} label={label} side="bottom">
+                  <span className="contents">
+                    <TabsTrigger value={value} aria-label={label}>
+                      <Icon size={16} />
+                    </TabsTrigger>
+                  </span>
+                </Tip>
+              );
+            })}
           </TabsList>
         </Tabs>
       )}

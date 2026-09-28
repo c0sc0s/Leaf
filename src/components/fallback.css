@@ -1,0 +1,55 @@
+.error-fallback-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 40px 24px;
+}
+.error-fallback-card {
+  width: min(100%, 880px);
+  margin: 0 auto;
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
+}
+.error-fallback-card h1 {
+  font-size: 24px;
+  font-weight: 600;
+}
+.error-fallback-card > p {
+  margin-top: 12px;
+  color: var(--muted-foreground);
+  line-height: 1.6;
+}
+.error-fallback-card .error-fallback-message {
+  color: var(--destructive);
+  overflow-wrap: anywhere;
+}
+.error-fallback-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 20px 0 28px;
+}
+.error-fallback-card section + section {
+  margin-top: 24px;
+}
+.error-fallback-card h2 {
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.error-fallback-stack {
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--muted);
+  color: var(--foreground);
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}

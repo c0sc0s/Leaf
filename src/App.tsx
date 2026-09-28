@@ -1,9 +1,10 @@
+import { useCallback, useRef, useState } from 'react';
+import { AnimatePresence, m } from 'motion/react';
 import { NotFound } from '@/components/Mascot';
-import { useAppRoute } from '@/lib/useAppRoute';
+import { WindowControls } from '@/components/WindowControls';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   BookOpen,
   Heart,
@@ -12,249 +13,66 @@ import {
   Sun,
   Moon,
   Settings2,
-  FolderOpen,
   Upload,
   X,
-  Command,
   LockKeyhole,
 } from '@/components/icons';
-import { AnimatePresence, m } from 'motion/react';
-import type { Book, Settings } from './types';
+import type { BookMetadata } from './types';
 import { fade, pop, rise } from './lib/motion';
-import { storage } from './lib/db';
-import { importPDF } from './lib/pdf';
+import { useAppRoute } from './lib/useAppRoute';
+import { browserFolder, droppedSources } from './lib/markdown';
 import { Library, type LibraryView } from './features/library/Library';
-import { Reader } from './features/reader/Reader';
+import { useLibrary } from './features/library/useLibrary';
+import { useBookImport } from './features/library/useBookImport';
+import { BookReader } from './features/reader/BookReader';
 import { Exiting, IconButton, Modal, Spinner } from './components/UI';
 import { SettingsModal } from './features/settings/SettingsModal';
-const defaults: Settings = {
-  theme: 'light',
-  readerTheme: 'follow',
-};
-function readSettings() {
-  try {
-    return {
-      ...defaults,
-      ...JSON.parse(localStorage.getItem('folio-settings') || '{}'),
-    } as Settings;
-  } catch {
-    return defaults;
-  }
-}
-let initialLoad: Promise<Book[]> | undefined;
-async function initialize() {
-  const books = await storage.books();
-  if (books.length || localStorage.getItem('folio-initialized')) return books;
-  const manifest = (await fetch('./samples/manifest.json').then((r) => r.json())) as {
-    slug: string;
-  }[];
-  const samples: Book[] = [];
-  for (const entry of manifest) {
-    const response = await fetch(`./samples/${entry.slug}.pdf`);
-    if (!response.ok) throw new Error('示例文件加载失败');
-    const book = await importPDF(await response.blob(), entry.slug + '.pdf');
-    book.sample = true;
-    book.addedAt = Date.now() - samples.length * 1000;
-    await storage.putBook(book);
-    samples.push(book);
-  }
-  localStorage.setItem('folio-initialized', '1');
-  return samples;
-}
+import { useSettings } from './features/settings/useSettings';
+import { AboutDialog } from './app/AboutDialog';
+import { useNotifications } from './app/useNotifications';
+import { usePasswordPrompt } from './app/usePasswordPrompt';
+
 export default function App() {
   const route = useAppRoute();
-  const [books, setBooks] = useState<Book[]>([]);
-  const [settings, setSettings] = useState(readSettings);
-  const [systemDark, setSystemDark] = useState(
-    () => matchMedia('(prefers-color-scheme: dark)').matches,
-  );
+  const { toast, notify, clearToast } = useNotifications();
+  const { settings, setSettings, dark } = useSettings();
+  const { password, passwordValue, setPasswordValue, askPassword, finishPassword } =
+    usePasswordPrompt();
+  const {
+    books,
+    active,
+    loading,
+    opening,
+    counts,
+    openBook,
+    closeReader,
+    updateBook,
+    addBook,
+    removeBook,
+  } = useLibrary(notify);
   const [view, setView] = useState<LibraryView>('all');
-  const [active, setActive] = useState<Book | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [about, setAbout] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [toast, setToast] = useState('');
-  const [counts, setCounts] = useState<Record<string, number>>({});
   const [dragging, setDragging] = useState(false);
-  const [deleting, setDeleting] = useState<Book | null>(null);
-  const [password, setPassword] = useState<string | null>(null);
-  const [passwordValue, setPasswordValue] = useState('');
-  const passwordResolver = useRef<((value: string | null) => void) | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [deleting, setDeleting] = useState<BookMetadata | null>(null);
   const dragDepth = useRef(0);
-  const importing = useRef(false);
-  const dark = settings.theme === 'dark' || (settings.theme === 'system' && systemDark);
-  const notify = useCallback((message: string) => {
-    setToast(message);
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(''), 5500);
-  }, []);
-  const refreshCounts = useCallback(() => {
-    void storage
-      .annotations()
-      .then((marks) => {
-        const next: Record<string, number> = {};
-        marks.forEach((m) => (next[m.bookId] = (next[m.bookId] || 0) + 1));
-        setCounts(next);
-      })
-      .catch(() => notify('无法读取笔记'));
-  }, [notify]);
-  useEffect(() => {
-    initialLoad ||= initialize();
-    void initialLoad
-      .then(setBooks)
-      .catch((e) => {
-        notify('书库加载失败：' + String(e));
-        initialLoad = undefined;
-      })
-      .finally(() => setLoading(false));
-    refreshCounts();
-    const media = matchMedia('(prefers-color-scheme: dark)');
-    const handler = (e: MediaQueryListEvent) => setSystemDark(e.matches);
-    media.addEventListener('change', handler);
-    return () => media.removeEventListener('change', handler);
-  }, [notify, refreshCounts]);
-  useEffect(() => {
-    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-    document.documentElement.classList.toggle('dark', dark);
-    window.desktop?.setTheme(settings.theme);
-    localStorage.setItem('folio-settings', JSON.stringify(settings));
-  }, [settings, dark]);
-  const askPassword = useCallback(
-    () =>
-      new Promise<string | null>((resolve) => {
-        passwordResolver.current = resolve;
-        setPassword('此 PDF 受密码保护');
-        setPasswordValue('');
-      }),
-    [],
-  );
-  const finishPassword = useCallback((value: string | null) => {
-    setPassword(null);
-    passwordResolver.current?.(value);
-    passwordResolver.current = null;
-  }, []);
-  const updateBook = useCallback(
-    (book: Book) => {
-      setBooks((previous) => previous.map((b) => (b.id === book.id ? book : b)));
-      setActive((previous) => (previous?.id === book.id ? book : previous));
-      void storage.putBook(book).catch(() => notify('保存失败，请检查本机存储空间'));
-    },
-    [notify],
-  );
-  const importFiles = useCallback(
-    async (files: { name: string; blob: Blob }[]) => {
-      if (importing.current) return;
-      importing.current = true;
-      let added = 0;
-      try {
-        for (const file of files) {
-          setBusy(`正在导入 ${file.name}`);
-          if (!/\.pdf$/i.test(file.name)) {
-            notify('只支持 PDF 文件');
-            continue;
-          }
-          if (file.blob.size > 512 * 1024 * 1024) {
-            notify('文件超过 512 MB，请使用较小的 PDF');
-            continue;
-          }
-          try {
-            let book: Book;
-            try {
-              book = await importPDF(file.blob, file.name);
-            } catch (error) {
-              if (error instanceof Error && error.name === 'PasswordException') {
-                const pass = await askPassword();
-                if (pass === null) continue;
-                book = await importPDF(file.blob, file.name, pass);
-              } else throw error;
-            }
-            const existing = (await storage.books()).find((b) => b.id === book.id);
-            if (existing) {
-              notify(`${existing.title} 已在书库中`);
-              continue;
-            }
-            await storage.putBook(book);
-            setBooks((previous) => [book, ...previous]);
-            added++;
-          } catch (error) {
-            notify(
-              `「${file.name}」导入失败：${error instanceof Error ? error.message : String(error)}`,
-            );
-          }
-        }
-        if (added) {
-          setView('all');
-          notify(`已把 ${added} 本新书收入书架`);
-        }
-      } finally {
-        setBusy(null);
-        importing.current = false;
-      }
-    },
-    [askPassword, notify],
-  );
-  const openImport = useCallback(() => {
-    if (importing.current) return;
-    if (window.desktop) {
-      void window.desktop
-        .openPDF()
-        .then((files) => {
-          if (files)
-            void importFiles(
-              files.map((f) => ({
-                name: f.name,
-                blob: new Blob([f.data.slice().buffer], { type: 'application/pdf' }),
-              })),
-            );
-        })
-        .catch((e) => notify('无法打开文件：' + String(e)));
-    } else fileInput.current?.click();
-  }, [importFiles, notify]);
-  useEffect(() => {
-    const event = () => openImport();
-    window.addEventListener('leaf:open', event);
-    const stop = window.desktop?.onOpenFile((f) => {
-      void importFiles([
-        { name: f.name, blob: new Blob([f.data.slice().buffer], { type: 'application/pdf' }) },
-      ]);
-    });
-    window.desktop?.ready();
-    const shortcut = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
-        e.preventDefault();
-        openImport();
-      }
-    };
-    window.addEventListener('keydown', shortcut);
-    return () => {
-      window.removeEventListener('leaf:open', event);
-      window.removeEventListener('keydown', shortcut);
-      stop?.();
-    };
-  }, [openImport, importFiles]);
-  const closeReader = useCallback(() => {
-    setActive(null);
-    refreshCounts();
-  }, [refreshCounts]);
+  const onImported = useCallback(() => setView('all'), []);
+  const {
+    busy: importBusy,
+    fileInput,
+    folderInput,
+    importFiles,
+    openImport,
+    openFolderImport,
+  } = useBookImport({ addBook, onImported, askPassword, notify });
+  const busy = importBusy || opening;
   const openSettings = useCallback(() => setSettingsOpen(true), []);
   async function deleteBook() {
-    if (!deleting) return;
-    try {
-      await storage.deleteBook(deleting.id);
-      setBooks((b) => b.filter((v) => v.id !== deleting.id));
-      notify('已从书库移除');
-      setDeleting(null);
-      refreshCounts();
-    } catch {
-      notify('无法移除这本书');
-    }
+    if (deleting && (await removeBook(deleting.id))) setDeleting(null);
   }
   const nav = (next: LibraryView) => {
     if (route.notFound) route.home();
-    if (active) closeReader();
+    closeReader();
     setView(next);
   };
   return (
@@ -283,9 +101,9 @@ export default function App() {
         e.preventDefault();
         dragDepth.current = 0;
         setDragging(false);
-        void importFiles(
-          [...e.dataTransfer.files].map((file) => ({ name: file.name, blob: file })),
-        );
+        void droppedSources(e.dataTransfer)
+          .then(importFiles)
+          .catch((error) => notify('无法导入：' + String(error)));
       }}
     >
       {(!active || route.notFound) && (
@@ -310,7 +128,7 @@ export default function App() {
             onBack={route.canReturn ? () => history.back() : undefined}
           />
         ) : active ? (
-          <Reader
+          <BookReader
             key={active.id}
             book={active}
             settings={settings}
@@ -379,7 +197,8 @@ export default function App() {
                   view={view}
                   noteCounts={counts}
                   onImport={openImport}
-                  onOpen={(book) => setActive(book)}
+                  onImportFolder={openFolderImport}
+                  onOpen={openBook}
                   onUpdate={updateBook}
                   onDelete={setDeleting}
                   onBrowse={() => setView('all')}
@@ -391,14 +210,31 @@ export default function App() {
       </div>
       <input
         className="visually-hidden"
-        aria-label="选择 PDF 文件"
+        aria-label="选择 PDF 或 Markdown 文件"
         type="file"
-        accept=".pdf,application/pdf"
+        accept=".pdf,.md,.markdown,application/pdf,text/markdown"
         multiple
         ref={fileInput}
         onChange={(e) => {
           if (e.target.files)
-            void importFiles([...e.target.files].map((file) => ({ name: file.name, blob: file })));
+            void importFiles(
+              [...e.target.files].map((file) => ({
+                name: file.name,
+                files: [{ name: file.name, blob: file }],
+              })),
+            );
+          e.target.value = '';
+        }}
+      />
+      <input
+        className="visually-hidden"
+        aria-label="选择 Markdown 文件夹"
+        type="file"
+        multiple
+        {...{ webkitdirectory: '', directory: '' }}
+        ref={folderInput}
+        onChange={(e) => {
+          if (e.target.files?.length) void importFiles([browserFolder([...e.target.files])]);
           e.target.value = '';
         }}
       />
@@ -409,54 +245,7 @@ export default function App() {
           onClose={() => setSettingsOpen(false)}
         />
       )}
-      {about && (
-        <Modal title="关于 Leaf" onClose={() => setAbout(false)}>
-          <div className="about-logo">
-            Leaf<span>1.4</span>
-          </div>
-          <p>本地 PDF 阅读器，支持原版阅读、连续滚动和文字批注。</p>
-          <div className="about-features">
-            <span>
-              <FolderOpen size={17} />
-              本地书库与阅读进度
-            </span>
-            <span>
-              <BookOpen size={17} />
-              连续滚动与文字批注
-            </span>
-            <span>
-              <NotebookPen size={17} />
-              高光、划线与页边笔记
-            </span>
-            <span>
-              <Sun size={17} />
-              为昼夜准备的阅读主题
-            </span>
-          </div>
-          <div className="shortcut-list">
-            <div>
-              <span>导入 PDF</span>
-              <kbd>
-                <Command size={12} /> / Ctrl + O
-              </kbd>
-            </div>
-            <div>
-              <span>搜索文档</span>
-              <kbd>
-                <Command size={12} /> / Ctrl + F
-              </kbd>
-            </div>
-            <div>
-              <span>翻页</span>
-              <kbd>← →</kbd>
-            </div>
-          </div>
-          <p className="small muted">
-            示例书籍是 Leaf 原创演示文档。应用保留 PDF
-            原始字体、图片和版面，支持连续滚动、定位续读和文字批注。文档不会上传。
-          </p>
-        </Modal>
-      )}
+      {about && <AboutDialog onClose={() => setAbout(false)} />}
       {deleting && (
         <Modal title="移除这本书？" onClose={() => setDeleting(null)}>
           <p>将从本机书库移除「{deleting.title}」及其批注。你导入前的原始文件不受影响。</p>
@@ -516,7 +305,7 @@ export default function App() {
               <div>
                 <Upload size={44} />
                 <h2>把新书放在这里</h2>
-                <p>松开鼠标，将 PDF 收入你的书架</p>
+                <p>松开鼠标，将 PDF、Markdown 文件或文件夹收入书架</p>
               </div>
             </m.div>
           </Exiting>
@@ -525,13 +314,14 @@ export default function App() {
           <Exiting key="toast">
             <m.div className="toast" role="status" layout {...rise}>
               <span>{toast}</span>
-              <Button variant="ghost" aria-label="关闭通知" onClick={() => setToast('')}>
+              <Button variant="ghost" aria-label="关闭通知" onClick={clearToast}>
                 <X size={14} />
               </Button>
             </m.div>
           </Exiting>
         )}
       </AnimatePresence>
+      <WindowControls />
     </div>
   );
 }

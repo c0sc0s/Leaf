@@ -2,15 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PageContent } from '../../../types';
 import type { ReadingScheduler } from '../../../lib/scheduler';
+import type { SearchResult } from '../../../lib/searchIndex';
+import { createPDFSearchIndex, type PDFSearchIndex } from '../pdfSearchService';
+
+export type { SearchResult } from '../../../lib/searchIndex';
 
 const RESULT_BATCH = 20;
-
-export interface SearchResult {
-  page: number;
-  excerpt: string;
-  count: number;
-  offset: number;
-}
 
 export function useDocumentSearch(
   pdf: PDFDocumentProxy | null,
@@ -24,6 +21,14 @@ export function useDocumentSearch(
   const [progress, setProgress] = useState<number | null>(null);
   const [activeMatch, setActiveMatch] = useState<{ page: number; offset: number } | null>(null);
   const epoch = useRef(0);
+  const index = useRef<PDFSearchIndex | null>(null);
+  useEffect(() => {
+    // Start lazily on the first query and release the index when the PDF closes.
+    return () => {
+      index.current?.dispose();
+      index.current = null;
+    };
+  }, [pdf]);
   useEffect(() => {
     const current = ++epoch.current;
     setCompletedQuery(null);
@@ -34,30 +39,23 @@ export function useDocumentSearch(
       return;
     }
     setProgress(0);
+    const controller = new AbortController();
     const timer = setTimeout(async () => {
       const found: SearchResult[] = [];
-      const needle = query.toLowerCase();
       try {
+        index.current ??= createPDFSearchIndex();
+        const worker = index.current;
         for (let n = 1; n <= pdf.numPages; n++) {
           if (current !== epoch.current) return;
-          await scheduler.checkpoint();
+          await scheduler.checkpoint(controller.signal);
           if (current !== epoch.current) return;
-          const content = await getContent(n);
-          if (current !== epoch.current) return;
-          const text = content.text.toLowerCase();
-          let pos = text.indexOf(needle);
-          while (pos >= 0) {
-            found.push({
-              page: n,
-              count: 1,
-              offset: pos,
-              excerpt:
-                (pos > 35 ? '…' : '') +
-                content.text.slice(Math.max(0, pos - 35), pos + query.length + 80) +
-                '…',
-            });
-            pos = text.indexOf(needle, pos + needle.length);
+          let matches = await worker.search(n, query, undefined, controller.signal);
+          if (matches === null) {
+            const content = await getContent(n);
+            controller.signal.throwIfAborted();
+            matches = await worker.search(n, query, content.text, controller.signal);
           }
+          for (const match of matches || []) found.push(match);
           if (n % RESULT_BATCH === 0 || n === pdf.numPages) {
             setResults([...found]);
             setProgress(n / pdf.numPages);
@@ -76,6 +74,7 @@ export function useDocumentSearch(
     }, 300);
     return () => {
       clearTimeout(timer);
+      controller.abort();
       epoch.current++;
     };
   }, [query, pdf, getContent, scheduler, notify]);

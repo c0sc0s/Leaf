@@ -48,7 +48,7 @@ test('swaps complete pages without blank frames and preserves a reading anchor o
   }
   await page.goto('/');
   await expect(page.locator('.book-card')).toHaveCount(8);
-  await page.getByLabel('选择 PDF 文件', { exact: true }).setInputFiles({
+  await page.getByLabel('选择 PDF 或 Markdown 文件', { exact: true }).setInputFiles({
     name: 'navigation.pdf',
     mimeType: 'application/pdf',
     buffer: Buffer.from(await pdf.save()),
@@ -103,7 +103,8 @@ test('swaps complete pages without blank frames and preserves a reading anchor o
       }));
       return Math.abs((current.top - 16) / current.width - (before.top - 16) / before.width);
     })
-    .toBeLessThan(0.02);
+    // Browser scroll positions round to CSS pixels, including after fitting a new width.
+    .toBeLessThan(0.02 + 1 / before.width);
   await jump('1');
   await expect.poll(() => page.locator('.reading-canvas').evaluate((el) => el.scrollTop)).toBe(0);
   expect(await page.evaluate(() => (window as any).pageFrames)).not.toContain(0);

@@ -16,13 +16,13 @@ export interface ReadingState extends ReadingLocation {
   layout: ReadingLayout;
   zoom: number;
 }
-export interface Book {
+export interface BookMetadata {
+  format?: 'pdf' | 'markdown';
   id: string;
   title: string;
   author: string;
   filename: string;
   pages: number;
-  blob: Blob;
   cover: string;
   addedAt: number;
   openedAt: number;
@@ -31,6 +31,35 @@ export interface Book {
   bookmarks?: number[];
   bookmarkLocations?: Record<number, ReadingLocation>;
   sample?: boolean;
+}
+export interface BookContent {
+  id: string;
+  blob: Blob;
+  chapters?: MarkdownChapter[];
+  assets?: MarkdownAsset[];
+}
+export interface Book extends BookMetadata, BookContent {}
+export interface MarkdownChapter {
+  path: string;
+  title: string;
+  content: string;
+}
+export interface MarkdownAsset {
+  path: string;
+  blob: Blob;
+}
+export interface ImportFile {
+  name: string;
+  blob: Blob;
+}
+export interface ImportSource {
+  name: string;
+  files: ImportFile[];
+  folder?: boolean;
+}
+export interface DesktopFile {
+  name: string;
+  data: Uint8Array;
 }
 export interface Annotation {
   id: string;
@@ -79,14 +108,29 @@ export interface Settings {
   theme: Theme;
   readerTheme: 'follow' | 'light' | 'dark';
   originalColors?: boolean;
+  frostedGlass: boolean;
+  glassTransparency: number;
+}
+export interface WindowState {
+  maximized: boolean;
+  fullscreen: boolean;
 }
 export interface DesktopAPI {
-  openPDF: () => Promise<{ name: string; data: Uint8Array }[] | null>;
+  openPDF: () => Promise<DesktopFile[] | null>;
+  openFolder: () => Promise<{ name: string; files: DesktopFile[] } | null>;
+  openExternal: (url: string) => Promise<void>;
   saveFile: (name: string, data: Uint8Array) => Promise<boolean>;
   onOpenFile: (callback: (file: { name: string; data: Uint8Array }) => void) => () => void;
   ready: () => void;
   setTheme: (theme: Settings['theme']) => void;
+  setFrostedGlass: (enabled: boolean) => void;
   platform: string;
+  translucent: boolean;
+  minimizeWindow: () => void;
+  toggleMaximizeWindow: () => void;
+  closeWindow: () => void;
+  getWindowState: () => Promise<WindowState>;
+  onWindowState: (callback: (state: WindowState) => void) => () => void;
 }
 declare global {
   interface Window {

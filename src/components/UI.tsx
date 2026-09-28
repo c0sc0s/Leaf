@@ -75,10 +75,12 @@ export function Modal({
   title,
   children,
   onClose,
+  className = '',
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
+  className?: string;
 }) {
   const before = useRef(document.activeElement as HTMLElement | null);
   return (
@@ -89,7 +91,7 @@ export function Modal({
       }}
     >
       <DialogContent
-        className="leaf-dialog"
+        className={`leaf-dialog ${className}`}
         showCloseButton={false}
         aria-describedby={undefined}
         onCloseAutoFocus={(event) => {
