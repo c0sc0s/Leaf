@@ -1,0 +1,118 @@
+import { _electron, expect } from '@playwright/test';
+import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
+import { PDFDocument, PDFName } from 'pdf-lib';
+const root = process.cwd();
+const userData = await mkdtemp(path.join(os.tmpdir(), 'folio-desktop-test-'));
+const executable =
+  process.env.FOLIO_EXECUTABLE ||
+  (process.platform === 'darwin'
+    ? path.join(
+        root,
+        process.arch === 'arm64'
+          ? 'release/mac-arm64/Folio.app/Contents/MacOS/Folio'
+          : 'release/mac/Folio.app/Contents/MacOS/Folio',
+      )
+    : path.join(root, 'release/win-unpacked/Folio.exe'));
+await mkdir('docs/previews', { recursive: true });
+const app = await _electron.launch({
+  executablePath: executable,
+  env: { ...process.env, FOLIO_USER_DATA: userData },
+  timeout: 30000,
+});
+try {
+  const page = await app.firstWindow();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await expect(page.locator('.book-card')).toHaveCount(8, { timeout: 30000 });
+  const prefs = await app.evaluate(({ BrowserWindow }) => {
+    const p = BrowserWindow.getAllWindows()[0].webContents.getLastWebPreferences();
+    return {
+      sandbox: p.sandbox,
+      contextIsolation: p.contextIsolation,
+      nodeIntegration: p.nodeIntegration,
+    };
+  });
+  expect(prefs).toEqual({ sandbox: true, contextIsolation: true, nodeIntegration: false });
+  await page.screenshot({ animations: 'disabled', path: 'docs/previews/library-light.png' });
+  await page.getByRole('button', { name: '阅读 The Art of Noticing', exact: true }).click();
+  await page.getByLabel('页码', { exact: true }).fill('2');
+  await page.getByLabel('页码', { exact: true }).press('Enter');
+  await expect(
+    page.locator('.textLayer [data-start]').filter({ hasText: 'We move' }),
+  ).toBeVisible();
+  const body = page.locator('.textLayer [data-start]').filter({ hasText: 'We move' });
+  await body.evaluate((el) => {
+    const range = document.createRange();
+    range.setStart(el.firstChild, 0);
+    range.setEnd(el.firstChild, 60);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+    el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+  });
+  await page.getByLabel('高光标注', { exact: true }).click();
+  await page.getByLabel('阅读笔记', { exact: true }).last().click();
+  await page.getByLabel('第 2 页批注笔记').fill('Keep this idea.');
+  await page.getByLabel('第 2 页批注笔记').press('Tab');
+  const output = path.join(userData, 'annotated.pdf');
+  await app.evaluate(({ dialog }, file) => {
+    dialog.showSaveDialog = async () => ({ canceled: false, filePath: file });
+  }, output);
+  await page.getByLabel('导出批注 PDF', { exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('已导出');
+  const exported = await PDFDocument.load(await readFile(output));
+  expect(exported.getPage(1).node.get(PDFName.of('Annots'))).toBeTruthy();
+  await page.getByLabel('关闭通知', { exact: true }).click();
+  await page.getByRole('button', { name: '舒适阅读', exact: true }).click();
+  await expect(page.locator('.reflow-content')).toContainText('We move through the world');
+  await page.screenshot({ animations: 'disabled', path: 'docs/previews/reader-light.png' });
+  await page.getByLabel('切换深色模式', { exact: true }).click();
+  await expect(page.locator('.reading-canvas')).toHaveClass(/reader-dark/);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.locator('.note-card textarea')).toHaveCSS(
+    'background-color',
+    'rgb(32, 35, 31)',
+  );
+  await page.screenshot({ animations: 'disabled', path: 'docs/previews/reader-dark.png' });
+  await page.getByLabel('返回书架', { exact: true }).click();
+  await page.screenshot({ animations: 'disabled', path: 'docs/previews/library-dark.png' });
+  await app.evaluate(
+    ({ dialog }, file) => {
+      dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] });
+    },
+    path.join(root, 'public/samples/quiet-spaces.pdf'),
+  );
+  await page.getByRole('button', { name: '导入 PDF', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('已在书库中');
+  const sharp = (await import('sharp')).default;
+  const image = await sharp(
+    Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="450"><rect width="1200" height="450" fill="white"/><text x="70" y="160" fill="black" font-family="Arial" font-size="50">Reading is a quiet adventure.</text></svg>',
+    ),
+  )
+    .png()
+    .toBuffer();
+  const scan = await PDFDocument.create();
+  scan.setTitle('Offline scanned page');
+  const scanImage = await scan.embedPng(image);
+  scan.addPage([600, 225]).drawImage(scanImage, { x: 0, y: 0, width: 600, height: 225 });
+  const scanFile = path.join(userData, 'scan.pdf');
+  await writeFile(scanFile, await scan.save());
+  await app.evaluate(({ dialog }, file) => {
+    dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] });
+  }, scanFile);
+  await page.getByRole('button', { name: '导入 PDF', exact: true }).click();
+  await page.getByRole('button', { name: '阅读 Offline scanned page', exact: true }).click();
+  await page.getByRole('button', { name: '舒适阅读', exact: true }).click();
+  await page.getByRole('button', { name: '识别本页文字', exact: true }).click();
+  await expect(page.locator('.reflow-content')).toContainText('Reading is a quiet adventure', {
+    timeout: 45000,
+  });
+  expect(errors).toEqual([]);
+  console.log(
+    'Packaged desktop checks passed: offline PDF, sandbox, native open/save IPC, annotations, reflow, themes and offline OCR.',
+  );
+} finally {
+  await app.close();
+}

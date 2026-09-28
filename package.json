@@ -1,0 +1,92 @@
+{
+  "name": "folio-reader",
+  "version": "1.0.0",
+  "description": "Folio \u2014 a quiet space for your PDFs",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.cjs",
+  "author": "Folio",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "desktop": "concurrently -k \"npm:dev\" \"wait-on http://127.0.0.1:5173 && electron . --dev\"",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "samples": "node scripts/samples.mjs",
+    "assets": "node scripts/assets.mjs",
+    "postinstall": "npm run assets",
+    "pack": "npm run build && electron-builder --dir",
+    "dist:mac": "npm run build && electron-builder --mac -c.mac.identity=null",
+    "dist:win": "npm run build && electron-builder --win --x64 -c.win.signExecutable=false",
+    "format": "prettier --write src electron scripts tests *.ts *.json *.html docs README.md",
+    "test:desktop": "node scripts/desktop-test.mjs"
+  },
+  "build": {
+    "appId": "app.folio.reader",
+    "productName": "Folio",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json",
+      "licenses/**/*",
+      "THIRD_PARTY_NOTICES.md"
+    ],
+    "asar": true,
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "public/icon.png"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "public/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "fileAssociations": [
+      {
+        "ext": "pdf",
+        "name": "PDF document",
+        "role": "Viewer"
+      }
+    ]
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.6.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "concurrently": "^10.0.5",
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
+    "prettier": "^3.9.9",
+    "sharp": "^0.35.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2",
+    "wait-on": "^9.1.0",
+    "idb": "^8.0.3",
+    "lucide-react": "^1.48.0",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.3.289",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "tesseract.js": "^7.0.0"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  }
+}

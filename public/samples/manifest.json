@@ -1,0 +1,117 @@
+[
+  {
+    "slug": "art-of-noticing",
+    "title": "The Art of Noticing",
+    "author": "Folio Editions",
+    "category": "设计与灵感",
+    "color": "#c85639",
+    "ink": "#f7ebd2",
+    "lines": [
+      "THE ART",
+      "OF",
+      "NOTICING"
+    ],
+    "subtitle": "A field guide to everyday attention",
+    "shape": "sun"
+  },
+  {
+    "slug": "quiet-spaces",
+    "title": "Quiet Spaces",
+    "author": "Folio Editions",
+    "category": "设计与灵感",
+    "color": "#d6d9cd",
+    "ink": "#294a44",
+    "lines": [
+      "Quiet",
+      "Spaces"
+    ],
+    "subtitle": "Finding room for a slower life",
+    "shape": "arch"
+  },
+  {
+    "slug": "designing-systems",
+    "title": "Designing Systems",
+    "author": "Folio Editions",
+    "category": "技术与思考",
+    "color": "#253a96",
+    "ink": "#f2ad68",
+    "lines": [
+      "designing",
+      "systems."
+    ],
+    "subtitle": "Small rules. Meaningful connections.",
+    "shape": "grid"
+  },
+  {
+    "slug": "creative-practice",
+    "title": "A Creative Practice",
+    "author": "Folio Editions",
+    "category": "设计与灵感",
+    "color": "#eaca70",
+    "ink": "#313e39",
+    "lines": [
+      "A CREATIVE",
+      "PRACTICE"
+    ],
+    "subtitle": "Make something. Learn something.",
+    "shape": "circle"
+  },
+  {
+    "slug": "ways-of-seeing",
+    "title": "Ways of Seeing Slowly",
+    "author": "Folio Editions",
+    "category": "生活与阅读",
+    "color": "#e8dcd2",
+    "ink": "#8e403b",
+    "lines": [
+      "ways of",
+      "seeing",
+      "slowly"
+    ],
+    "subtitle": "Notes on the everyday",
+    "shape": "lines"
+  },
+  {
+    "slug": "less-but-better",
+    "title": "Less, but Better",
+    "author": "Folio Editions",
+    "category": "设计与灵感",
+    "color": "#353b35",
+    "ink": "#ece6cc",
+    "lines": [
+      "LESS,",
+      "BUT",
+      "BETTER."
+    ],
+    "subtitle": "A reader on thoughtful simplicity",
+    "shape": "sun"
+  },
+  {
+    "slug": "human-interface",
+    "title": "The Human Interface",
+    "author": "Folio Editions",
+    "category": "技术与思考",
+    "color": "#96bbce",
+    "ink": "#233b50",
+    "lines": [
+      "THE HUMAN",
+      "INTERFACE"
+    ],
+    "subtitle": "Building with empathy",
+    "shape": "arch"
+  },
+  {
+    "slug": "collected-thoughts",
+    "title": "Collected Thoughts",
+    "author": "Folio Editions",
+    "category": "生活与阅读",
+    "color": "#c69ba7",
+    "ink": "#4e2940",
+    "lines": [
+      "Collected",
+      "Thoughts"
+    ],
+    "subtitle": "A small notebook of big questions",
+    "shape": "circle"
+  }
+]
