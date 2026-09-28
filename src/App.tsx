@@ -22,10 +22,6 @@ import { IconButton, Modal, SettingsModal, Spinner } from './components/UI';
 const defaults: Settings = {
   theme: 'light',
   readerTheme: 'follow',
-  fontSize: 19,
-  font: 'serif',
-  lineHeight: 1.8,
-  width: 660,
 };
 function readSettings() {
   try {
@@ -415,7 +411,7 @@ export default function App() {
       {about && (
         <Modal title="关于 Folio" onClose={() => setAbout(false)}>
           <div className="about-logo">
-            Folio<span>1.3</span>
+            Folio<span>1.4</span>
           </div>
           <p>本地 PDF 阅读器，支持原版阅读、统一排版和文字批注。</p>
           <div className="about-features">
@@ -425,7 +421,7 @@ export default function App() {
             </span>
             <span>
               <BookOpen size={17} />
-              原版与全书统一阅读
+              连续滚动与文字批注
             </span>
             <span>
               <NotebookPen size={17} />
@@ -456,7 +452,7 @@ export default function App() {
           </div>
           <p className="small muted">
             示例书籍是 Folio 原创演示文档。应用会检查整份
-            PDF，适合的文档统一排版并保留图片；无法完整、可靠地重排时，整本使用原版。文档不会上传。
+            PDF，保留原始字体、图片和版面，支持连续滚动、定位续读和文字批注。文档不会上传。
           </p>
         </Modal>
       )}

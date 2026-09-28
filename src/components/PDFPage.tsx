@@ -1,18 +1,10 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { TextLayer } from 'pdfjs-dist';
-import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
+import type { PDFDocumentProxy, RenderTask, PageViewport } from 'pdfjs-dist';
 import type { Annotation, PageContent } from '../types';
 import { colors } from '../lib/export';
-import { captureSelection, type SelectionAnchor } from '../lib/selection';
-import { Spinner } from './UI';
-
-type Viewport = ReturnType<Awaited<ReturnType<PDFDocumentProxy['getPage']>>['getViewport']>;
-interface Frame {
-  scrollTop: number;
-  scrollLeft: number;
-  page: number;
-  content: PageContent;
-  viewport: Viewport;
+import type { PageText } from '../lib/selection';
+interface Frame extends PageText {
   canvas: HTMLCanvasElement;
   layer: HTMLDivElement;
 }
@@ -20,58 +12,54 @@ export function PDFPage({
   pdf,
   page,
   content,
+  width,
   marks,
-  zoom,
   dark,
-  onSelection,
+  query,
+  activeOffset,
+  onDestination,
+  onReady,
   onError,
 }: {
   pdf: PDFDocumentProxy;
   page: number;
   content: PageContent;
+  width: number;
   marks: Annotation[];
-  zoom: number;
   dark: boolean;
-  onSelection: (a: SelectionAnchor | null) => void;
+  query: string;
+  activeOffset?: number;
+  onDestination: (destination: string | unknown[]) => void;
+  onReady: (page: number, frame: PageText) => void;
   onError: (message: string) => void;
 }) {
-  const outer = useRef<HTMLDivElement>(null);
-  const wrapper = useRef<HTMLDivElement>(null);
   const visual = useRef<HTMLDivElement>(null);
-  const previous = useRef<Frame | null>(null);
-  const [width, setWidth] = useState(0);
   const [frame, setFrame] = useState<Frame | null>(null);
-  const [loading, setLoading] = useState(true);
-  useLayoutEffect(() => {
-    const element = outer.current!;
-    const measure = () => {
-      const style = getComputedStyle(element);
-      setWidth(
-        Math.max(
-          260,
-          element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight),
-        ),
-      );
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
+  const [links, setLinks] = useState<{ rect: number[]; dest: string | unknown[] }[]>([]);
   useEffect(() => {
-    if (!width || content.page !== page) return;
+    let disposed = false;
+    void pdf
+      .getPage(page)
+      .then((p) => p.getAnnotations())
+      .then((items) => {
+        if (!disposed) setLinks(items.filter((a) => a.subtype === 'Link' && a.dest));
+      })
+      .catch(() => {});
+    return () => {
+      disposed = true;
+    };
+  }, [pdf, page]);
+  useEffect(() => {
     let disposed = false;
     let render: RenderTask | undefined;
     let text: TextLayer | undefined;
-    setLoading(true);
-    async function draw() {
+    void (async () => {
       try {
         const p = await pdf.getPage(page);
         if (disposed) return;
         const base = p.getViewport({ scale: 1 });
-        const viewport = p.getViewport({ scale: (Math.min(width, 1000) / base.width) * zoom });
+        const viewport = p.getViewport({ scale: width / base.width });
         const ratio = Math.min(window.devicePixelRatio || 1, 2);
-        // Render offscreen so a slow page never clears the last complete frame.
         const canvas = document.createElement('canvas');
         canvas.width = Math.ceil(viewport.width * ratio);
         canvas.height = Math.ceil(viewport.height * ratio);
@@ -89,169 +77,156 @@ export function PDFPage({
         });
         await render.promise;
         if (disposed) return;
-        if (content.source === 'text') {
-          const source = await p.getTextContent();
-          if (disposed) return;
-          text = new TextLayer({ textContentSource: source, container: layer, viewport });
-          await text.render();
-          if (disposed) return;
-          const original = [...content.tokens].sort((a, b) => a.originalIndex - b.originalIndex);
-          let cursor = 0;
-          for (const span of text.textDivs) {
-            const str = span.textContent || '';
-            const token = original.slice(cursor).find((t) => t.text === str);
-            if (token) {
-              span.dataset.start = String(token.start);
-              cursor = original.indexOf(token) + 1;
-            }
-          }
-        } else {
-          for (const token of content.tokens) {
-            const span = document.createElement('span');
-            span.textContent = token.text;
+        const source = await p.getTextContent();
+        if (disposed) return;
+        text = new TextLayer({ textContentSource: source, container: layer, viewport });
+        await text.render();
+        if (disposed) return;
+        const original = [...content.tokens].sort((a, b) => a.originalIndex - b.originalIndex);
+        let cursor = 0;
+        for (const span of text.textDivs) {
+          const token = original.slice(cursor).find((t) => t.text === span.textContent);
+          if (token) {
             span.dataset.start = String(token.start);
-            Object.assign(span.style, {
-              left: token.x * viewport.scale + 'px',
-              top: token.y * viewport.scale + 'px',
-              fontSize: token.height * viewport.scale + 'px',
-              fontFamily: 'sans-serif',
-            });
-            layer.appendChild(span);
+            cursor = original.indexOf(token) + 1;
           }
         }
-        if (!disposed) {
-          setFrame({
-            page,
-            content,
-            viewport,
-            canvas,
-            layer,
-            scrollTop: outer.current?.parentElement?.scrollTop || 0,
-            scrollLeft: outer.current?.parentElement?.scrollLeft || 0,
-          });
-          setLoading(false);
-        }
+        setFrame({ content, viewport, canvas, layer });
       } catch (error) {
-        if (!disposed) {
-          setLoading(false);
-          onError(error instanceof Error ? error.message : '无法渲染此页');
-        }
+        if (!disposed) onError(error instanceof Error ? error.message : '无法渲染此页');
       }
-    }
-    void draw();
+    })();
     return () => {
       disposed = true;
       render?.cancel();
       text?.cancel();
     };
-  }, [pdf, page, content, width, zoom, onError]);
+  }, [pdf, page, content, width, onError]);
   useLayoutEffect(() => {
-    if (!frame || !visual.current || !outer.current) return;
-    const scroller = outer.current.parentElement!;
-    const old = previous.current;
+    if (!frame || !visual.current) return;
+    // Commit the canvas and selectable text together; retain the previous frame during rendering.
     visual.current.replaceChildren(frame.canvas, frame.layer);
-    if (old && old.page === frame.page) {
-      const scale = frame.viewport.width / old.viewport.width;
-      const padding = parseFloat(getComputedStyle(outer.current).paddingTop);
-      scroller.scrollTop = Math.max(0, (frame.scrollTop - padding) * scale + padding);
-      scroller.scrollLeft = frame.scrollLeft * scale;
-    } else scroller.scrollTo(0, 0);
-    previous.current = frame;
-  }, [frame]);
-  const rects = useMemo(
-    () =>
-      !frame || frame.page !== page
-        ? []
-        : marks.flatMap((mark) =>
-            mark.rects.map((r) => {
-              const v = [
-                ...frame.viewport.convertToViewportPoint(r[0], r[1]),
-                ...frame.viewport.convertToViewportPoint(r[2], r[3]),
-              ];
-              return {
-                mark,
-                rect: [
-                  Math.min(v[0], v[2]),
-                  Math.min(v[1], v[3]),
-                  Math.abs(v[2] - v[0]),
-                  Math.abs(v[3] - v[1]),
-                ],
-              };
-            }),
-          ),
-    [frame, page, marks],
-  );
-  const pending = loading || frame?.page !== page;
+    onReady(page, frame);
+  }, [frame, page, onReady]);
+  const [searchRects, setSearchRects] = useState<{ rect: number[]; active: boolean }[]>([]);
+  useLayoutEffect(() => {
+    if (!frame || !query.trim()) {
+      setSearchRects([]);
+      return;
+    }
+    const result: { rect: number[]; active: boolean }[] = [];
+    const box = frame.layer.getBoundingClientRect();
+    for (const span of frame.layer.querySelectorAll<HTMLElement>('[data-start]')) {
+      const value = span.textContent || '';
+      let index = value.toLowerCase().indexOf(query.toLowerCase());
+      while (index >= 0 && span.firstChild) {
+        const range = document.createRange();
+        range.setStart(span.firstChild, index);
+        range.setEnd(span.firstChild, index + query.length);
+        for (const r of range.getClientRects())
+          result.push({
+            rect: [r.left - box.left, r.top - box.top, r.width, r.height],
+            active: Number(span.dataset.start) + index === activeOffset,
+          });
+        index = value.toLowerCase().indexOf(query.toLowerCase(), index + query.length);
+      }
+    }
+    setSearchRects(result);
+  }, [frame, query, activeOffset]);
+  const pending = !frame || Math.abs(frame.viewport.width - width) > 0.1;
   return (
-    <div className="pdf-stage" ref={outer} aria-busy={pending}>
-      {!frame && <Spinner text="正在绘制书页…" />}
-      {frame && (
-        <>
-          {pending && <div className="page-render-progress" aria-label="正在准备页面" />}
-          <div
-            className={`pdf-paper ${dark ? 'dark-paper' : ''}`}
-            ref={wrapper}
-            data-page={frame.page}
-            aria-busy={pending}
-            style={{ width: frame.viewport.width, height: frame.viewport.height }}
-            onMouseUp={() => {
-              if (!wrapper.current || pending) return;
-              const anchor = captureSelection(wrapper.current, frame.content);
-              const selected = window.getSelection();
-              if (anchor && selected?.rangeCount) {
-                const box = wrapper.current.getBoundingClientRect();
-                anchor.rects = Array.from(selected.getRangeAt(0).getClientRects())
-                  .filter((r) => r.width > 0.5 && r.height > 0.5)
-                  .map((r) => {
-                    const a = frame.viewport.convertToPdfPoint(
-                      r.left - box.left,
-                      r.bottom - box.top,
-                    );
-                    const b = frame.viewport.convertToPdfPoint(r.right - box.left, r.top - box.top);
-                    return [
-                      Math.min(a[0], b[0]),
-                      Math.min(a[1], b[1]),
-                      Math.max(a[0], b[0]),
-                      Math.max(a[1], b[1]),
-                    ];
-                  });
+    <div
+      className={`pdf-paper ${dark ? 'dark-paper' : ''}`}
+      data-page={page}
+      aria-busy={pending}
+      style={{ width: '100%', height: '100%' }}
+    >
+      {!frame && <span className="page-placeholder">{page}</span>}
+      <div
+        className="pdf-frame"
+        style={
+          frame
+            ? {
+                width: frame.viewport.width,
+                height: frame.viewport.height,
+                transform: `scale(${width / frame.viewport.width})`,
               }
-              onSelection(anchor);
-            }}
+            : undefined
+        }
+      >
+        <div className="pdf-visual" ref={visual} />
+        {frame && (
+          <svg
+            className="annotation-overlay"
+            width={frame.viewport.width}
+            height={frame.viewport.height}
           >
-            <div className="pdf-visual" ref={visual} />
-            <svg
-              className="annotation-overlay"
-              width={frame.viewport.width}
-              height={frame.viewport.height}
-            >
-              {rects.map(({ mark, rect }, i) =>
-                mark.kind === 'highlight' ? (
-                  <rect
-                    key={mark.id + i}
-                    x={rect[0]}
-                    y={rect[1]}
-                    width={rect[2]}
-                    height={rect[3]}
-                    fill={colors[mark.color]}
-                    opacity=".38"
-                  />
-                ) : (
-                  <line
-                    key={mark.id + i}
-                    x1={rect[0]}
-                    y1={rect[1] + rect[3]}
-                    x2={rect[0] + rect[2]}
-                    y2={rect[1] + rect[3]}
-                    stroke={colors[mark.color]}
-                    strokeWidth="2"
-                  />
-                ),
-              )}
-            </svg>
-          </div>
-        </>
-      )}
+            {marks.map((mark) => (
+              <g
+                key={mark.id}
+                data-mark-id={mark.id}
+                opacity={mark.kind === 'highlight' ? 0.38 : 1}
+              >
+                {mark.rects.map((r, i) => {
+                  const v = pdfRect(frame.viewport, r);
+                  return mark.kind === 'highlight' ? (
+                    <rect
+                      key={i}
+                      x={v[0]}
+                      y={v[1]}
+                      width={v[2]}
+                      height={v[3]}
+                      fill={colors[mark.color]}
+                    />
+                  ) : (
+                    <line
+                      key={i}
+                      x1={v[0]}
+                      y1={v[1] + v[3]}
+                      x2={v[0] + v[2]}
+                      y2={v[1] + v[3]}
+                      stroke={colors[mark.color]}
+                      strokeWidth="2"
+                    />
+                  );
+                })}
+              </g>
+            ))}
+            <g fill="#e7bd5f" className="search-matches">
+              {searchRects.map(({ rect: r, active }, i) => (
+                <rect
+                  key={i}
+                  className={active ? 'current-search-match' : ''}
+                  opacity={active ? 0.65 : 0.28}
+                  x={r[0]}
+                  y={r[1]}
+                  width={r[2]}
+                  height={r[3]}
+                />
+              ))}
+            </g>
+          </svg>
+        )}
+        {frame &&
+          links.map((link, i) => {
+            const r = pdfRect(frame.viewport, link.rect);
+            return (
+              <button
+                key={i}
+                className="pdf-link"
+                aria-label="跳转文档链接"
+                title="跳转文档链接"
+                style={{ left: r[0], top: r[1], width: r[2], height: r[3] }}
+                onClick={() => onDestination(link.dest)}
+              />
+            );
+          })}
+      </div>
     </div>
   );
+}
+function pdfRect(viewport: PageViewport, r: number[]) {
+  const a = viewport.convertToViewportPoint(r[0], r[1]),
+    b = viewport.convertToViewportPoint(r[2], r[3]);
+  return [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1])];
 }

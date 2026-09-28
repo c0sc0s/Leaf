@@ -11,6 +11,7 @@ export function IconButton({
   active = false,
   disabled = false,
   className = '',
+  shortcut,
 }: {
   children: ReactNode;
   label: string;
@@ -18,6 +19,7 @@ export function IconButton({
   active?: boolean;
   disabled?: boolean;
   className?: string;
+  shortcut?: string;
 }) {
   return (
     <Tooltip.Root>
@@ -35,6 +37,7 @@ export function IconButton({
       <Tooltip.Portal>
         <Tooltip.Content className="tooltip" sideOffset={6}>
           {label}
+          {shortcut && <kbd className="tooltip-shortcut">{shortcut}</kbd>}
         </Tooltip.Content>
       </Tooltip.Portal>
     </Tooltip.Root>
@@ -135,65 +138,19 @@ export function SettingsModal({
           <option value="light">始终浅色</option>
           <option value="dark">始终深色</option>
         </select>
-        <p className="small muted">原版采用护眼色彩转换；统一阅读直接使用深浅色文字与背景。</p>
+        <p className="small muted">深色页面会转换整页颜色，包括图片；可单独保留原始颜色。</p>
       </div>
       <div className="settings-section">
-        <label>统一阅读字体</label>
-        <div className="segmented">
-          <button
-            className={settings.font === 'serif' ? 'selected' : ''}
-            onClick={() => onChange({ ...settings, font: 'serif' })}
-          >
-            衬线体
-          </button>
-          <button
-            className={settings.font === 'sans' ? 'selected' : ''}
-            onClick={() => onChange({ ...settings, font: 'sans' })}
-          >
-            无衬线体
-          </button>
-        </div>
-      </div>
-      <div className="settings-section">
-        <label htmlFor="font-size">
-          字号 <span>{settings.fontSize}px</span>
-        </label>
-        <input
-          id="font-size"
-          type="range"
-          min="14"
-          max="30"
-          value={settings.fontSize}
-          onChange={(e) => onChange({ ...settings, fontSize: Number(e.target.value) })}
-        />
-      </div>
-      <div className="settings-section">
-        <label htmlFor="line-height">
-          行距 <span>{settings.lineHeight.toFixed(1)}</span>
-        </label>
-        <input
-          id="line-height"
-          type="range"
-          min="1.4"
-          max="2.2"
-          step="0.1"
-          value={settings.lineHeight}
-          onChange={(e) => onChange({ ...settings, lineHeight: Number(e.target.value) })}
-        />
-      </div>
-      <div className="settings-section">
-        <label htmlFor="reading-width">
-          正文宽度 <span>{settings.width}px</span>
-        </label>
-        <input
-          id="reading-width"
-          type="range"
-          min="440"
-          max="850"
-          step="10"
-          value={settings.width}
-          onChange={(e) => onChange({ ...settings, width: Number(e.target.value) })}
-        />
+        <label htmlFor="original-colors">原版颜色</label>
+        <select
+          id="original-colors"
+          value={settings.originalColors ? 'original' : 'follow'}
+          onChange={(e) => onChange({ ...settings, originalColors: e.target.value === 'original' })}
+        >
+          <option value="follow">跟随页面外观</option>
+          <option value="original">整页保持原始颜色</option>
+        </select>
+        <p className="small muted">核对图片与图表颜色时，可保留原始页面颜色。</p>
       </div>
       <div className="settings-footer">
         <span className="status-dot" />

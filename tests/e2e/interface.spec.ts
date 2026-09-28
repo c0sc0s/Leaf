@@ -29,7 +29,7 @@ test('supports keyboard menus, category changes, and dialog focus restoration', 
   const dialog = page.getByRole('dialog', { name: '阅读偏好' });
   await expect(dialog).toBeVisible();
   await page.keyboard.press('Shift+Tab');
-  await expect(dialog.getByLabel('正文宽度')).toBeFocused();
+  await expect(dialog.getByLabel('原版颜色', { exact: true })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
   await expect(settings).toBeFocused();

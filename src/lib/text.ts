@@ -1,4 +1,4 @@
-import type { Block, ContentStructure, PageContent, Token } from '../types';
+import type { ContentStructure, PageContent, Token } from '../types';
 export interface RawToken {
   text: string;
   x: number;
@@ -63,7 +63,7 @@ export function semanticMap(tree: Structure | null) {
   if (tree) visit(tree);
   return roles;
 }
-export function reconstruct(
+export function indexText(
   raw: RawToken[],
   page: number,
   pageWidth: number,
@@ -74,7 +74,6 @@ export function reconstruct(
   const baseSize = bodyFontSize(valid);
   const roles = semanticMap(tree);
   let lines = linesOf(valid);
-  let columns = 1;
   // A persistent empty gutter is stronger evidence of columns than isolated indents.
   const gutter = pageWidth * 0.5;
   const body = valid.filter((t) => t.fontSize < baseSize * 1.35);
@@ -82,7 +81,6 @@ export function reconstruct(
   const right = body.filter((t) => t.x > gutter + 8);
   const crossing = body.filter((t) => t.x < gutter && t.x + t.width > gutter);
   if (!tree && left.length > 5 && right.length > 5 && crossing.length < body.length * 0.05) {
-    columns = 2;
     const spanning = lines.filter(
       (l) =>
         l.tokens.some((t) => t.x < gutter && t.x + t.width > gutter) || l.size >= baseSize * 1.35,
@@ -111,77 +109,14 @@ export function reconstruct(
   }
   const tokens: Token[] = [];
   let text = '';
-  const blocks: Block[] = [];
-  let current: Block | undefined;
-  let previous: Line | undefined;
+  // Keep canonical token offsets stable so existing annotations still locate their source text.
   for (const line of lines) {
-    const role = roles.get(line.tokens[0].markedId || '');
-    const heading =
-      /^H[1-6]$/.test(role || '') ||
-      (!role &&
-        line.size >= baseSize * 1.3 &&
-        line.tokens.map((t) => t.text).join('').length < 180);
-    const list = role === 'LI' || /^\s*(?:[•●▪–]|\d+[.)])\s/.test(line.tokens[0].text);
-    const type: Block['type'] = heading
-      ? 'heading'
-      : list
-        ? 'list'
-        : role === 'BlockQuote'
-          ? 'quote'
-          : role === 'Quote'
-            ? 'quote'
-            : role === 'Caption' || /^(?:Fig(?:ure)?\.?|图|表)\s*\d/i.test(line.tokens[0].text)
-              ? 'caption'
-              : 'paragraph';
-    const breakBlock =
-      !current ||
-      type !== current.type ||
-      type === 'heading' ||
-      type === 'list' ||
-      (previous &&
-        (Math.abs(line.y - previous.y) > baseSize * 1.9 ||
-          line.y < previous.y - 3 ||
-          Math.abs(line.x - previous.x) > baseSize * 2.5));
-    if (breakBlock) {
-      current = {
-        type,
-        text: '',
-        start: text.length,
-        end: text.length,
-        level: heading ? Number(role?.slice(1)) || 2 : undefined,
-        markedId: line.tokens[0].markedId,
-        bounds: [Infinity, Infinity, -Infinity, -Infinity],
-      };
-      blocks.push(current);
-    }
     for (const rawToken of line.tokens) {
-      const bounds = current!.bounds!;
-      bounds[0] = Math.min(bounds[0], rawToken.x);
-      bounds[1] = Math.min(bounds[1], rawToken.y);
-      bounds[2] = Math.max(bounds[2], rawToken.x + rawToken.width);
-      bounds[3] = Math.max(bounds[3], rawToken.y + rawToken.height);
       const start = text.length;
       text += rawToken.text;
       tokens.push({ ...rawToken, start, end: text.length });
       text += ' ';
     }
-    current!.end = text.length - 1;
-    current!.text = text.slice(current!.start, current!.end);
-    previous = line;
   }
-  const warnings = [];
-  if (!valid.length) warnings.push('这一页没有可提取的文字。扫描件默认使用整本原版阅读。');
-  if (columns > 1) warnings.push('检测到双栏排版，已按列重组阅读顺序。');
-  if (valid.length && !tree) warnings.push('此 PDF 没有语义标签，段落与标题由版面推断。');
-  return { page, text, tokens, blocks, source, tagged: !!tree, columns, warnings };
-}
-export function tokenRects(content: PageContent, start: number, end: number) {
-  return content.tokens
-    .filter((t) => t.end > start && t.start < end)
-    .map((t) => {
-      const [x1, y1, x2, y2] = t.rect;
-      const a = Math.max(0, (start - t.start) / t.text.length),
-        b = Math.min(1, (end - t.start) / t.text.length);
-      return [x1 + (x2 - x1) * a, y1, x1 + (x2 - x1) * b, y2];
-    });
+  return { page, text, tokens, source };
 }

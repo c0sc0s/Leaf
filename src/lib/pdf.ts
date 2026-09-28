@@ -1,7 +1,7 @@
 import { getDocument, GlobalWorkerOptions, Util } from 'pdfjs-dist';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-import { reconstruct, type RawToken, type Structure } from './reflow';
+import { indexText, type RawToken, type Structure } from './text';
 import type { Book, PageContent } from '../types';
 import { fingerprint } from './db';
 GlobalWorkerOptions.workerSrc = workerUrl;
@@ -66,44 +66,9 @@ export async function extractPage(pdf: PDFDocumentProxy, number: number): Promis
       markedId,
     });
   }
-  const result = reconstruct(raw, number, viewport.width, tree as Structure | null);
+  const result = indexText(raw, number, viewport.width, tree as Structure | null);
   result.width = viewport.width;
-  result.structure = tree as Structure | null;
   result.height = viewport.height;
-  result.issues = [];
-  if (page.rotate !== 0)
-    result.issues.push({
-      page: number,
-      code: 'order',
-      message: '页面带旋转方向，首版使用原版保证阅读顺序。',
-    });
-  if (content.items.some((item) => 'str' in item && item.str.trim() && item.dir === 'rtl'))
-    result.issues.push({
-      page: number,
-      code: 'order',
-      message: '包含从右向左的文字片段，首版无法可靠恢复其顺序。',
-    });
-  if (content.items.some((item) => 'str' in item && item.str.trim() && item.width <= 0))
-    result.issues.push({
-      page: number,
-      code: 'content',
-      message: '有文字缺少有效位置，无法完整重排。',
-    });
-  if (
-    content.items.some(
-      (item) =>
-        'str' in item &&
-        item.str.trim() &&
-        (Math.abs(item.transform[1]) > 0.1 ||
-          Math.abs(item.transform[2]) > 0.1 ||
-          item.dir === 'ttb'),
-    )
-  )
-    result.issues.push({
-      page: number,
-      code: 'order',
-      message: '包含旋转、倾斜或竖排文字，阅读顺序无法可靠恢复。',
-    });
   return result;
 }
 export async function importPDF(blob: Blob, filename: string, password?: string): Promise<Book> {

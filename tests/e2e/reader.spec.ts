@@ -4,7 +4,6 @@ import { readFile } from 'node:fs/promises';
 async function openBook(page: import('@playwright/test').Page) {
   await page.goto('/');
   await page.getByRole('button', { name: '阅读 The Art of Noticing', exact: true }).click();
-  await page.getByRole('button', { name: '原版阅读', exact: true }).click();
   await page.getByLabel('页码', { exact: true }).fill('2');
   await page.getByLabel('页码', { exact: true }).press('Enter');
   await expect(
@@ -24,7 +23,7 @@ async function select(page: import('@playwright/test').Page, selector: string, t
     el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
   });
 }
-test('renders PDFs, persists cross-mode annotations, exports native PDF marks and restores progress', async ({
+test('renders PDFs, persists annotations, exports native PDF marks and restores progress', async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -33,10 +32,7 @@ test('renders PDFs, persists cross-mode annotations, exports native PDF marks an
   await select(page, '.textLayer [data-start]', 'We move');
   await page.getByLabel('高光标注', { exact: true }).click();
   await expect(page.locator('.annotation-overlay rect')).toHaveCount(1);
-  await page.getByRole('button', { name: '统一阅读', exact: true }).click();
-  await expect(page.locator('.reflow-content')).toContainText('We move through the world');
-  await expect(page.locator('.reflow-content span[style*=background]')).toHaveCount(1);
-  await select(page, '.reflow-content [data-source-page="2"] p [data-start]');
+  await select(page, '.textLayer [data-start]', 'We move');
   await page.getByLabel('划线标注', { exact: true }).click();
   await page.getByLabel('阅读笔记', { exact: true }).last().click();
   await expect(page.locator('.note-card')).toHaveCount(2);
@@ -45,12 +41,12 @@ test('renders PDFs, persists cross-mode annotations, exports native PDF marks an
   await page.getByLabel('切换深色模式', { exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await expect(page.locator('.reading-canvas')).toHaveClass(/reader-dark/);
-  await page.getByRole('button', { name: '原版阅读', exact: true }).click();
-  await expect(page.locator('.pdf-paper')).toHaveClass(/dark-paper/);
+  await expect(page.locator('.pdf-paper[data-page="2"]')).toHaveClass(/dark-paper/);
   await expect(page.locator('.annotation-overlay line')).toHaveCount(1);
   await page.getByLabel('添加书签', { exact: true }).click();
   const download = page.waitForEvent('download');
-  await page.getByLabel('导出批注 PDF', { exact: true }).click();
+  await page.getByLabel('更多阅读操作', { exact: true }).click();
+  await page.getByRole('menuitem', { name: '导出批注 PDF', exact: true }).click();
   const file = await download;
   const exported = await PDFDocument.load(await readFile((await file.path())!));
   const pageNode = exported.getPage(1).node;
@@ -74,7 +70,6 @@ test('preserves a page chosen while the PDF worker is still loading', async ({ p
     await route.continue();
   });
   await page.getByRole('button', { name: '阅读 The Art of Noticing', exact: true }).click();
-  await page.getByRole('button', { name: '原版阅读', exact: true }).click();
   await page.getByLabel('页码', { exact: true }).fill('2');
   await page.getByLabel('页码', { exact: true }).press('Enter');
   await expect(
@@ -82,7 +77,7 @@ test('preserves a page chosen while the PDF worker is still loading', async ({ p
   ).toBeVisible();
   await expect(page.getByLabel('页码', { exact: true })).toHaveValue('2');
 });
-test('imports real files, rejects duplicates, searches all pages and changes typography', async ({
+test('imports real files, rejects duplicates, searches all pages and locates search results', async ({
   page,
 }) => {
   await page.goto('/');
@@ -107,13 +102,8 @@ test('imports real files, rejects duplicates, searches all pages and changes typ
   await page.getByLabel('搜索文档内容', { exact: true }).fill('Needle');
   await page.locator('.search-result').click();
   await expect(page.getByLabel('页码', { exact: true })).toHaveValue('2');
-  await expect(page.locator('.search-match')).toHaveText('Needle');
-  await page.getByRole('button', { name: '统一阅读', exact: true }).click();
-  await expect(page.locator('.reflow-article')).toBeVisible();
-  await page.getByLabel('阅读偏好', { exact: true }).click();
-  await page.getByLabel('字号').fill('25');
-  await page.getByRole('button', { name: '关闭', exact: true }).click();
-  await expect(page.locator('.reflow-article')).toHaveCSS('font-size', '25px');
+  await expect(page.locator('.pdf-paper[data-page="2"] .search-matches rect')).toHaveCount(1);
+  await expect(page.locator('.pdf-paper[data-page="2"]')).toBeInViewport();
   await page.getByLabel('返回书架', { exact: true }).click();
   await page.getByLabel('搜索书库', { exact: true }).fill('Imported');
   await expect(page.locator('.book-card')).toHaveCount(1);

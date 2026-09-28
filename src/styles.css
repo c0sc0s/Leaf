@@ -1055,14 +1055,6 @@ p {
   padding-right: 12px;
   border-right: 1px solid var(--line);
 }
-.reader-mode {
-  flex-shrink: 0;
-  margin: 0;
-}
-.reader-mode button {
-  padding: 6px 9px;
-  font-size: 11px;
-}
 .reader-actions {
   gap: 3px;
 }
@@ -1072,12 +1064,6 @@ p {
 }
 .reader-focus .reader-header {
   height: 40px;
-}
-.reader-focus .reader-navigation,
-.reader-focus .reader-mode,
-.reader-focus .reader-actions > :not(:last-child),
-.reader-focus .reader-status {
-  display: none;
 }
 .reader-focus .reader-actions {
   margin-left: auto;
@@ -1296,14 +1282,10 @@ p {
   --reading-line: #303035;
   --reading-muted: #9999a3;
 }
-.reading-canvas.reflow-mode {
-  background: var(--reading-bg);
-  color: var(--reading-text);
-}
 .pdf-stage {
   min-height: 100%;
   width: 100%;
-  padding: 16px 20px 24px;
+  padding: 16px 20px;
   position: relative;
 }
 .pdf-paper {
@@ -1362,118 +1344,6 @@ p {
 .dark-paper .annotation-overlay {
   mix-blend-mode: screen;
 }
-.page-caption {
-  font:
-    11px Georgia,
-    serif;
-  color: #8a9284;
-  text-align: center;
-  margin-top: 20px;
-  letter-spacing: 2px;
-}
-.page-caption span {
-  margin: 0 6px;
-  opacity: 0.5;
-}
-.page-loading {
-  position: absolute;
-  top: 100px;
-  left: 0;
-  width: 100%;
-  z-index: 5;
-  pointer-events: none;
-}
-.page-loading .loading {
-  display: inline-flex;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  padding: 16px 25px;
-  border-radius: 7px;
-  margin-left: calc(50% - 110px);
-  box-shadow: var(--shadow);
-}
-.reflow-stage {
-  padding: 42px 50px 24px;
-  min-height: 100%;
-}
-.reflow-article {
-  margin: auto;
-}
-.font-serif .reflow-content {
-  font-family: Georgia, 'Songti SC', 'SimSun', serif;
-}
-.font-sans .reflow-content {
-  font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
-}
-.reflow-kicker {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  color: var(--reading-muted);
-  font-family: -apple-system, sans-serif;
-  font-size: 11px;
-  line-height: 1.6;
-  letter-spacing: 0.6px;
-  padding-bottom: 22px;
-  border-bottom: 1px solid var(--reading-line);
-}
-.reflow-notice {
-  margin: 20px 0 30px;
-  border: 1px solid var(--reading-line);
-  border-radius: 6px;
-  color: var(--reading-muted);
-  font:
-    10px/1.8 -apple-system,
-    sans-serif;
-}
-.reflow-notice summary {
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 10px 12px;
-  list-style: none;
-}
-.reflow-notice summary::-webkit-details-marker {
-  display: none;
-}
-.reflow-notice summary > span {
-  margin-left: auto;
-  font-size: 11px;
-}
-.reflow-notice p {
-  padding: 0 13px 10px;
-}
-.reflow-notice button {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  margin: 0 10px 12px;
-  font-size: 12px;
-  color: var(--accent);
-}
-.reflow-content :is(h1, h2, h3, h4, h5, h6) {
-  font-weight: 500;
-  font-size: 1.7em;
-  letter-spacing: -0.4px;
-  line-height: 1.4;
-  margin: 1.3em 0 0.8em;
-}
-.reflow-content p {
-  margin: 0 0 1.3em;
-  overflow-wrap: anywhere;
-}
-.reflow-content h1 {
-  font-size: 2em;
-}
-.reflow-content :is(h3, h4, h5, h6) {
-  font-size: 1.25em;
-}
-.reflow-content section {
-  position: relative;
-  padding-top: 1em;
-  scroll-margin-top: 16px;
-}
 .source-page-label {
   display: block;
   color: var(--reading-muted);
@@ -1483,91 +1353,9 @@ p {
   margin-bottom: 1.2em;
   user-select: none;
 }
-.reflow-figure {
-  margin: 1.5em 0;
-  display: flex;
-  justify-content: center;
-}
-.reflow-figure img {
-  display: block;
-  max-width: 100%;
-  height: auto;
-  object-fit: contain;
-  border-radius: 4px;
-}
-.reflow-content .figure-caption {
-  color: var(--reading-muted);
-  font-size: 0.85em;
-}
-.document-status {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-.document-status button {
-  color: var(--muted);
-  font-size: 11px;
-  padding: 0;
-}
-.document-status button:hover {
-  color: var(--text);
-}
-.document-status progress {
-  width: 120px;
-  height: 4px;
-  accent-color: var(--accent);
-}
-.document-report {
-  flex-shrink: 0;
-  max-height: 210px;
-  overflow: auto;
-  padding: 14px 24px;
-  border-bottom: 1px solid var(--line);
-  background: var(--surface);
-  font-size: 12px;
-  line-height: 1.8;
-}
-.document-report p {
-  margin: 5px 0;
-}
-.document-report button {
-  color: var(--accent);
-  margin-top: 8px;
-}
-.reflow-content .list-line {
-  margin-bottom: 0.55em;
-}
-.reflow-content blockquote {
-  margin: 1.3em 0;
-  padding-left: 1.3em;
-  border-left: 2px solid var(--accent);
-  color: var(--reading-muted);
-}
-.reflow-content > h2:first-child {
-  margin-top: 0;
-}
-.reflow-footer {
-  display: flex;
-  justify-content: space-between;
-  margin: 45px 0 5px;
-  border-top: 1px solid var(--reading-line);
-  padding-top: 18px;
-  font:
-    8px -apple-system,
-    sans-serif;
-  letter-spacing: 1.6px;
-  color: var(--reading-muted);
-}
 .search-match {
   background: #e7bd5f77;
   border-radius: 2px;
-}
-.scan-empty {
-  color: var(--reading-muted);
-}
-.scan-empty h3 {
-  color: var(--reading-text);
 }
 .text-button {
   font-size: 11px;
@@ -1719,29 +1507,8 @@ p {
   padding: 3px;
   width: 42px;
 }
-.reader-status .document-status button {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: left;
-  font-size: 10px;
-}
 .reader-status .toolbar-separator {
   display: none;
-}
-.page-render-progress {
-  position: fixed;
-  top: 51px;
-  left: 0;
-  right: 0;
-  height: 2px;
-  z-index: 10;
-  background: var(--accent);
-  opacity: 0.5;
-  pointer-events: none;
-}
-.reader-focus .page-render-progress {
-  top: 39px;
 }
 .pdf-paper[aria-busy='true'] .textLayer {
   pointer-events: none;
@@ -1784,19 +1551,6 @@ p {
   outline: 1px solid var(--subtle);
   outline-offset: 2px;
 }
-.ocr-badge {
-  position: absolute;
-  bottom: 55px;
-  left: 100px;
-  background: var(--surface);
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 9px;
-  border-radius: 5px;
-  color: var(--muted);
-}
 ::-webkit-scrollbar {
   width: 7px;
   height: 7px;
@@ -1834,9 +1588,6 @@ p {
 .pdf-paper .textLayer .markedContent {
   display: contents;
 }
-.reflow-content .list-line {
-  padding-left: 0.1em;
-}
 
 @media (max-width: 1100px) {
   .library-sidebar {
@@ -1855,18 +1606,12 @@ p {
   .notes-panel {
     width: 250px;
   }
-  .reader-mode {
-    margin-right: 0;
-  }
   .reader-header {
     gap: 7px;
     padding-inline: 10px;
   }
   .reader-actions {
     gap: 0;
-  }
-  .reader-mode button {
-    padding-inline: 7px;
   }
 }
 @media (max-width: 760px) {
@@ -1922,9 +1667,6 @@ p {
   .reader-title {
     min-width: 0;
   }
-  .reader-mode svg {
-    display: none;
-  }
   .reader-header {
     gap: 4px;
   }
@@ -1950,9 +1692,6 @@ p {
     right: 0;
     width: 270px;
   }
-  .reflow-stage {
-    padding: 24px;
-  }
   .reader-toolbar {
     padding-inline: 10px;
     gap: 4px;
@@ -1966,7 +1705,221 @@ p {
   .pdf-stage {
     padding-inline: 18px;
   }
-  .reader-status .document-status {
-    visibility: hidden;
-  }
+}
+.note-history {
+  display: flex;
+  gap: 8px;
+  padding: 0 18px 14px;
+}
+.note-history .secondary {
+  flex: 1;
+  min-height: 30px;
+  padding: 5px 8px;
+  font-size: 11px;
+}
+
+.pdf-slot {
+  position: relative;
+  margin: 0 auto 16px;
+  flex-shrink: 0;
+  background: #fff;
+  box-shadow: 0 2px 12px #0000000c;
+  overflow: hidden;
+}
+.pdf-slot:last-child {
+  margin-bottom: 0;
+}
+.pdf-slot.dark-paper {
+  background: #202023;
+}
+.pdf-frame {
+  position: relative;
+  transform-origin: top left;
+}
+.page-placeholder {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  color: var(--reading-muted);
+  font-size: 11px;
+  user-select: none;
+}
+.reading-status-label {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.reader-focus .reader-navigation,
+.reader-focus .reader-actions > :not(:last-child),
+.reader-focus .reader-status {
+  display: none;
+}
+
+.pdf-stage.layout-spread {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 16px;
+}
+.pdf-stage.layout-spread .pdf-slot {
+  margin: 0;
+}
+.layout-select {
+  width: 108px;
+  padding: 4px 8px;
+  color: var(--muted);
+  font-size: 11px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 5px;
+}
+
+.note-format {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 10px;
+}
+.note-format select {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  padding: 3px 4px;
+}
+.note-format .note-date {
+  margin: 0 0 0 auto;
+}
+
+.reader-body {
+  position: relative;
+}
+.notes-panel {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 18;
+  box-shadow: -6px 0 20px #0000000a;
+}
+.reader-header .icon-button {
+  width: 44px;
+  height: 44px;
+}
+.reader-header {
+  gap: 6px;
+}
+.reader-navigation {
+  padding-right: 6px;
+  gap: 0;
+}
+.reader-actions {
+  gap: 0;
+}
+.reader-zoom {
+  gap: 0;
+}
+.reader-zoom .icon-button {
+  width: 36px;
+}
+.reader-zoom .toolbar-separator {
+  display: none;
+}
+.reader-focus .reader-zoom {
+  display: none;
+}
+.reader-focus .reader-header .icon-button {
+  height: 36px;
+}
+.palette-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+.reading-progress {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-self: end;
+  gap: 12px;
+}
+.reading-progress input {
+  width: 110px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.save-state {
+  color: var(--muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+.progress-preview {
+  position: absolute;
+  bottom: 38px;
+  right: 0;
+  width: 140px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+.progress-preview .thumbnail {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+.progress-preview canvas {
+  width: 100%;
+}
+.active-tool,
+.undo-notice {
+  position: fixed;
+  bottom: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  z-index: 45;
+  font-size: 12px;
+}
+.active-tool button,
+.undo-notice button {
+  color: var(--accent);
+}
+.pdf-link {
+  position: absolute;
+  z-index: 4;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  border-radius: 0;
+  cursor: pointer;
+}
+.pdf-link:hover {
+  outline: 1px solid #79a7dc88;
+  background: #79a7dc16;
+}
+.printed-page {
+  color: var(--muted);
+  white-space: nowrap;
+  font-size: 10px;
+}
+
+.tooltip-shortcut {
+  margin-left: 10px;
+  font-size: 10px;
+  opacity: 0.65;
 }

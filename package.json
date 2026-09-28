@@ -1,6 +1,6 @@
 {
   "name": "folio-reader",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Folio — a quiet space for your PDFs",
   "private": true,
   "type": "module",

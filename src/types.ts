@@ -1,6 +1,18 @@
 export type Theme = 'light' | 'dark' | 'system';
 export type MarkKind = 'highlight' | 'underline';
 export type MarkColor = 'amber' | 'green' | 'blue' | 'pink';
+export interface ReadingLocation {
+  page: number;
+  offset?: number;
+  ratio: number;
+  xRatio?: number;
+  screenY?: number;
+}
+export type ReadingLayout = 'continuous' | 'single' | 'spread';
+export interface ReadingState extends ReadingLocation {
+  layout: ReadingLayout;
+  zoom: number;
+}
 export interface Book {
   id: string;
   title: string;
@@ -14,9 +26,9 @@ export interface Book {
   page: number;
   favorite: boolean;
   bookmarks?: number[];
+  bookmarkLocations?: Record<number, ReadingLocation>;
   sample?: boolean;
   category: string;
-  readingMode?: 'original' | 'reflow';
 }
 export interface Annotation {
   id: string;
@@ -46,44 +58,13 @@ export interface Token {
   rect: number[];
   markedId?: string;
 }
-export interface Block {
-  type: 'heading' | 'paragraph' | 'list' | 'quote' | 'caption' | 'figure';
-  text: string;
-  start: number;
-  end: number;
-  level?: number;
-  bounds?: number[];
-  markedId?: string;
-  coveredTokens?: number[];
-  image?: { src: string; width: number; height: number; kind: string; alt: string };
-}
-export interface AnalysisIssue {
-  page: number;
-  code: 'scan' | 'order' | 'structure' | 'graphics' | 'extraction' | 'content';
-  message: string;
-}
-export interface DocumentContent {
-  version: number;
-  pages: PageContent[];
-  totalPages: number;
-  suitable: boolean;
-  issues: AnalysisIssue[];
-  analyzedAt: number;
-}
 export interface PageContent {
   page: number;
   text: string;
   tokens: Token[];
-  blocks: Block[];
   source: 'text' | 'ocr';
-  tagged: boolean;
-  columns: number;
-  warnings: string[];
   width?: number;
   height?: number;
-  issues?: AnalysisIssue[];
-  background?: string;
-  structure?: ContentStructure | null;
 }
 export interface ContentStructure {
   role?: string;
@@ -95,10 +76,7 @@ export interface ContentStructure {
 export interface Settings {
   theme: Theme;
   readerTheme: 'follow' | 'light' | 'dark';
-  fontSize: number;
-  font: 'serif' | 'sans';
-  lineHeight: number;
-  width: number;
+  originalColors?: boolean;
 }
 export interface DesktopAPI {
   openPDF: () => Promise<{ name: string; data: Uint8Array }[] | null>;

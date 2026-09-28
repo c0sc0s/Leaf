@@ -7,7 +7,6 @@ test('prioritizes the page and provides one search entry and reversible focus mo
   await page.setViewportSize({ width: 900, height: 640 });
   await page.goto('/');
   await page.getByRole('button', { name: '阅读 The Art of Noticing', exact: true }).click();
-  await expect(page.locator('.reflow-content')).toBeVisible();
   await expect(page.locator('.titlebar')).toHaveCount(0);
   await expect(page.locator('.reader-header')).toHaveCSS('height', '52px');
   expect((await page.locator('.reading-canvas').boundingBox())!.height).toBeGreaterThanOrEqual(550);
@@ -55,8 +54,7 @@ test('swaps complete pages without blank frames and preserves a reading anchor o
     buffer: Buffer.from(await pdf.save()),
   });
   await page.getByRole('button', { name: '阅读 Page navigation specimen', exact: true }).click();
-  await page.getByRole('button', { name: '原版阅读', exact: true }).click();
-  const paper = page.locator('.pdf-paper');
+  let paper = page.locator('.pdf-paper[data-page="1"]');
   await expect(paper).toHaveAttribute('aria-busy', 'false');
   await page.locator('.reading-canvas').evaluate((el) => {
     const samples: number[] = [];
@@ -69,24 +67,28 @@ test('swaps complete pages without blank frames and preserves a reading anchor o
   const jump = async (n: string) => {
     await page.getByLabel('页码', { exact: true }).fill(n);
     await page.getByLabel('页码', { exact: true }).press('Enter');
-    await expect(paper).toHaveAttribute('data-page', n);
+    paper = page.locator(`.pdf-paper[data-page="${n}"]`);
+    await expect(paper).toBeInViewport();
     await expect(paper).toHaveAttribute('aria-busy', 'false');
   };
   await jump('3');
   await jump('2');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
-  await expect(paper).toHaveAttribute('data-page', '4');
+  paper = page.locator('.pdf-paper[data-page="4"]');
+  await expect(paper).toBeInViewport();
   await expect(paper).toHaveAttribute('aria-busy', 'false');
-  await expect(page.locator('.textLayer')).toContainText('Page 4 line 0');
+  await expect(paper.locator('.textLayer')).toContainText('Page 4 line 0');
   await page.keyboard.press('PageDown');
   await expect
     .poll(() => page.locator('.reading-canvas').evaluate((el) => el.scrollTop))
     .toBeGreaterThan(300);
-  await expect(paper).toHaveAttribute('data-page', '4');
+  paper = page.locator('.pdf-paper[data-page="4"]');
+  await expect(paper).toBeInViewport();
   const before = await paper.evaluate((el) => ({
     width: el.clientWidth,
-    top: el.parentElement!.parentElement!.scrollTop,
+    top:
+      el.closest('.reading-canvas')!.getBoundingClientRect().top - el.getBoundingClientRect().top,
   }));
   await page.getByLabel('文档导航', { exact: true }).click();
   await expect(page.locator('.thumbnail.selected')).toBeInViewport();
@@ -95,7 +97,9 @@ test('swaps complete pages without blank frames and preserves a reading anchor o
     .poll(async () => {
       const current = await paper.evaluate((el) => ({
         width: el.clientWidth,
-        top: el.parentElement!.parentElement!.scrollTop,
+        top:
+          el.closest('.reading-canvas')!.getBoundingClientRect().top -
+          el.getBoundingClientRect().top,
       }));
       return Math.abs((current.top - 16) / current.width - (before.top - 16) / before.width);
     })

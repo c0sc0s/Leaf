@@ -131,7 +131,7 @@ const chapters = [
     'A small conclusion',
     [
       'The most useful tools often become quiet through use. They do not disappear entirely; they simply make fewer demands on our attention. We remember the book, the idea, and the mark we left beside an important sentence.',
-      'This specimen was written for Folio to demonstrate real PDF rendering, selectable text, reflow, and annotations. It is an original sample document rather than an excerpt from a published book.',
+      'This specimen was written for Folio to demonstrate real PDF rendering, selectable text, continuous scrolling, and annotations. It is an original sample document rather than an excerpt from a published book.',
       'Take what is useful and make it your own. Keep a record of the passages you return to. Let a reading practice be something that grows with you, one page at a time.',
     ],
   ],
