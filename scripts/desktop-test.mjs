@@ -96,6 +96,7 @@ try {
     path.join(root, 'public/samples/quiet-spaces.pdf'),
   );
   await page.getByRole('button', { name: '导入文件', exact: true }).click();
+  await page.getByRole('menuitem', { name: /^导入文件(?!夹)/ }).click();
   await expect(page.getByRole('status')).toContainText('已在书库中');
   const sharp = (await import('sharp')).default;
   const image = await sharp(
@@ -115,6 +116,7 @@ try {
     dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] });
   }, scanFile);
   await page.getByRole('button', { name: '导入文件', exact: true }).click();
+  await page.getByRole('menuitem', { name: /^导入文件(?!夹)/ }).click();
   await page.getByRole('button', { name: '阅读 Offline scanned page', exact: true }).click();
   await expect(page.locator('.pdf-paper canvas').first()).toBeVisible();
   expect(errors).toEqual([]);

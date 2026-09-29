@@ -34,10 +34,13 @@ const platformClass =
       ? 'native-win'
       : '';
 
-export default function App() {
+export default function App({ startupNotice }: { startupNotice?: string }) {
   const route = useAppRoute();
   const toast = useToast();
   const { notify } = toast;
+  useEffect(() => {
+    if (startupNotice) notify(startupNotice);
+  }, [startupNotice, notify]);
   useEffect(() => {
     const failed = () => notify('本地存储操作失败，请重试');
     window.addEventListener('leaf:storage-error', failed);

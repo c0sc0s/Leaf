@@ -4,6 +4,11 @@
   <p><strong>把注意力，留给正在读的这一页。</strong></p>
   <p>一款面向 macOS 与 Windows 的本地 PDF 与 Markdown 阅读器。</p>
   <p>
+    <a href="https://github.com/c0sc0s/Leaf/releases/latest/download/Leaf-mac-arm64.dmg">下载 macOS 版（Apple Silicon）</a>
+    ·
+    <a href="https://github.com/c0sc0s/Leaf/releases/latest/download/Leaf-win-x64.exe">下载 Windows 版（x64）</a>
+  </p>
+  <p>
     <img src="docs/readme/platforms.svg" alt="macOS 与 Windows 桌面应用" height="26" />
     <img src="docs/readme/local.svg" alt="本地保存，离线阅读" height="26" />
     <img src="docs/readme/themes.svg" alt="浅色与深色主题" height="26" />
@@ -54,15 +59,20 @@ Markdown 阅读支持标题目录、表格、任务列表、代码块、整本�
 
 ## 白天清爽，夜晚柔和
 
-鼠尾草绿搭配简洁的中性色界面，支持浅色、深色和跟随系统。应用界面与 PDF 页面外观可以分别设置；查看照片、图表时，也可以让文档保持原始颜色。
+克制的中性色界面搭配半透明毛玻璃材质，支持浅色、深色和跟随系统。应用界面与 PDF 页面外观可以分别设置；查看照片、图表时，也可以让文档保持原始颜色。
 
 工具按需展开，笔记随手可记。让你把更多时间花在内容上。
 
 ## 开发
 
+官网位于 `site/`，使用 React + Vite。`npm run dev:site` 启动官网开发服务，`npm run build:site` 构建静态文件，`npm run preview:site` 预览生产构建；详见 [官网开发说明](site/README.md)。
+
 `npm run desktop` 启动桌面开发环境，`npm run build` 构建生产前端。
 `npm test` 运行单元测试，`npm run test:e2e` 验证浏览器与原生桌面阅读流程。
 `npm run test:production` 构建并验证生产文件加载、搜索及批注导出。
+`npm run dist:mac` 打包 macOS 安装包（临时签名、未公证，输出到 `release/`），`npm run test:desktop` 用打好的应用验证原生流程并更新 README 截图。
+`npm run release -- minor` 发布新版本，自动构建并上传 macOS 与 Windows 安装包；详见 [发版说明](docs/release.md)。
+`npm run icon` 从 `assets/icon/reading-cat.png` 重新生成各平台图标，详见 [图标说明](docs/icon-design.md)。
 
 模块划分与本地数据迁移见 [架构说明](docs/architecture.md)，Worker、缓存策略和实测结果见 [性能说明](docs/performance.md)。
 

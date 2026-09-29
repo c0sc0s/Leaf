@@ -12,10 +12,10 @@ test('uses distinct favorites, search and recent states with useful actions', as
   await page.goto('/');
   await expect(page.locator('.book-card')).toHaveCount(8);
   await page.getByRole('navigation').getByRole('button', { name: '收藏' }).click();
-  await expectArt(page, 'empty-favorites');
+  await expectArt(page, 'empty');
   await page.getByRole('button', { name: '浏览书架', exact: true }).click();
   await page.getByLabel('搜索书库', { exact: true }).fill('no-such-book-xyz');
-  await expectArt(page, 'empty-search');
+  await expectArt(page, 'empty');
   await page
     .locator('[data-empty-scene="search"]')
     .getByRole('button', { name: '清空搜索' })
@@ -33,7 +33,7 @@ test('uses distinct favorites, search and recent states with useful actions', as
 test('shows the real empty library state and recovers from unknown routes', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('folio-initialized', '1'));
   await page.goto('/');
-  await expectArt(page, 'empty-library');
+  await expectArt(page, 'empty');
   await page.evaluate(() => {
     location.hash = '/missing-page';
   });
@@ -42,7 +42,7 @@ test('shows the real empty library state and recovers from unknown routes', asyn
   await expect(page.locator('.leaf-not-found')).toHaveCount(0);
   await page.goto('/#/another-missing-page');
   await page.getByRole('button', { name: '返回书架', exact: true }).click();
-  await expectArt(page, 'empty-library');
+  await expectArt(page, 'empty');
 });
 
 test('renders small sidebar illustrations and settings in both themes without moving the PDF', async ({
@@ -53,9 +53,9 @@ test('renders small sidebar illustrations and settings in both themes without mo
   await expect(page.locator('.pdf-paper').first()).toHaveAttribute('aria-busy', 'false');
   await page.getByLabel('文档导航', { exact: true }).click();
   await page.getByRole('tab', { name: '文档书签' }).click();
-  await expectArt(page, 'empty-bookmarks');
+  await expectArt(page, 'empty');
   await page.getByLabel('阅读笔记', { exact: true }).last().click();
-  await expectArt(page, 'empty-notes');
+  await expectArt(page, 'reading');
   const position = await page.locator('.reading-canvas').evaluate((el) => el.scrollTop);
   await page.getByLabel('更多阅读操作', { exact: true }).click();
   await page.getByRole('menuitem', { name: '阅读偏好' }).click();
@@ -65,7 +65,7 @@ test('renders small sidebar illustrations and settings in both themes without mo
   const settingsArt = page.locator('.leaf-settings-intro img[src$="/settings.png"]');
   await expect(settingsArt).toBeVisible();
   await expect(settingsArt).toHaveCSS('image-rendering', 'auto');
-  await expect(settingsArt).toHaveCSS('filter', 'none');
+  await expect(settingsArt).toHaveCSS('filter', 'invert(1)');
   await page.getByRole('button', { name: '关闭', exact: true }).click();
   await expect
     .poll(() => page.locator('.reading-canvas').evaluate((el) => el.scrollTop))

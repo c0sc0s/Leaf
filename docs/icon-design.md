@@ -1,12 +1,17 @@
 # Leaf 图标
 
-正式图标使用「黑猫 + 打开的书」意象：无眼镜黑猫、米白书页与绿色圆角底板。主色以 `#798B64` 为目标，圆角外保留透明背景。
+正式图标是一只捧书阅读的黑色线稿猫，放在米白纸色的圆角方形底板上。
 
 ## 资源与生成
 
-- 唯一源文件：`assets/leaf-icon-cat-book.png`。
-- 运行 `npm run icon`，生成 1024 × 1024 的 `public/icon.png`。
-- 应用标题栏、浏览器 favicon 和 Electron 窗口 / Dock 使用该 PNG。
-- Vite 构建将 PNG 复制到 `dist/icon.png`；electron-builder 的 macOS 和 Windows 配置均使用 `public/icon.png`，打包时生成原生 ICNS / ICO。
+唯一源文件是 `assets/icon/reading-cat.png`。运行 `npm run icon` 会提取线稿，重新上色为 `#1c1b18`，放到上浅下深的纸色渐变底板上，然后生成以下产物：
 
-使用内置 imagegen 生成。[设计说明及完整提示词](design/leaf-icon-cat-book.md)记录角色与造型约束，[尺寸预览](design/leaf-icon-preview.html)展示浅色、深色背景以及 16–256 px 效果。
+| 产物                      | 用途                                           | 处理                                                                     |
+| :------------------------ | :--------------------------------------------- | :----------------------------------------------------------------------- |
+| `build/icon.png`          | macOS 应用图标（打包时转为 ICNS）、开发时 Dock | 1024 画布，824 超椭圆底板，按 Apple 图标网格留边并带柔和投影             |
+| `build/icon.ico`          | Windows 应用图标                               | 16–256 px 多尺寸，底板铺满；≤ 48 px 加粗线条，16 px 只保留猫头以保证可辨 |
+| `public/icon.png`         | 应用内标识、favicon、窗口图标                  | 512 px，底板铺满                                                         |
+| `site/public/icon.png`    | 官网 PNG 图标、添加到主屏幕图标                | 与 `public/icon.png` 一致                                                |
+| `site/public/favicon.ico` | 官网浏览器标签页图标                           | 与 `build/icon.ico` 一致，包含小尺寸优化                                 |
+
+修改源图或参数后重新运行 `npm run icon`，再用 `npm run dist:mac` 打包验证。

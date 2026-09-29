@@ -15,6 +15,9 @@
   object-fit: contain;
   user-select: none;
 }
+.dark .leaf-mascot img {
+  filter: invert(1);
+}
 .leaf-mascot--sidebar {
   --mascot-size: 104px;
 }
@@ -59,12 +62,8 @@
 .leaf-settings-intro {
   display: flex;
   align-items: center;
-  gap: 14px;
+  justify-content: center;
   margin: -4px 0 0;
-}
-.leaf-settings-intro p {
-  color: var(--muted-foreground);
-  font-size: 12px;
 }
 .leaf-not-found {
   flex: 1;

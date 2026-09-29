@@ -18,12 +18,16 @@
     "icon": "node scripts/icon.mjs",
     "assets": "node scripts/assets.mjs",
     "postinstall": "npm run assets",
-    "pack": "npm run build && electron-builder --dir",
-    "dist:mac": "npm run build && electron-builder --mac -c.mac.identity=null",
-    "dist:win": "npm run build && electron-builder --win --x64 -c.win.signExecutable=false",
+    "pack": "npm run build && electron-builder --dir --publish never",
+    "dist:mac": "npm run build && electron-builder --mac --arm64 -c.mac.identity=- --publish never",
+    "dist:win": "npm run build && electron-builder --win --x64 -c.win.signExecutable=false --publish never",
     "format": "prettier --write src electron scripts tests *.ts *.json *.html docs README.md",
     "test:desktop": "node scripts/desktop-test.mjs",
-    "test:production": "npm run build && node scripts/production-test.mjs"
+    "test:production": "npm run build && node scripts/production-test.mjs",
+    "release": "node scripts/release.mjs",
+    "dev:site": "npm --prefix site run dev",
+    "build:site": "npm --prefix site run build",
+    "preview:site": "npm --prefix site run preview"
   },
   "build": {
     "appId": "app.leaf.reader",
@@ -45,13 +49,16 @@
         "dmg",
         "zip"
       ],
-      "icon": "public/icon.png"
+      "artifactName": "${productName}-mac-${arch}.${ext}",
+      "hardenedRuntime": false,
+      "icon": "build/icon.png"
     },
     "win": {
       "target": [
         "nsis"
       ],
-      "icon": "public/icon.png"
+      "artifactName": "${productName}-win-${arch}.${ext}",
+      "icon": "build/icon.ico"
     },
     "nsis": {
       "oneClick": false,

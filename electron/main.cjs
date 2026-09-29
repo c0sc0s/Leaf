@@ -74,7 +74,9 @@ else {
     const icon = path.join(__dirname, development ? '../public/icon.png' : '../dist/icon.png');
     if (process.platform === 'darwin') {
       if (hiddenWindow) app.dock.hide();
-      else app.dock.setIcon(icon);
+      // A packaged app shows its bundled ICNS; only the unbundled dev build needs the
+      // Dock-shaped icon, which carries the margin and shadow of Apple's icon grid.
+      else if (development) app.dock.setIcon(path.join(__dirname, '../build/icon.png'));
     }
     session.defaultSession.setPermissionRequestHandler((contents, permission, callback) =>
       callback(permission === 'clipboard-sanitized-write' && contents === window?.webContents),

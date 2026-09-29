@@ -41,15 +41,10 @@
   scrollbar-color: var(--border) transparent;
 }
 .settings-dialog .leaf-settings-intro {
-  gap: 10px;
   margin: 0 0 20px;
 }
 .settings-dialog .leaf-settings-intro .leaf-mascot {
-  --mascot-size: 48px;
-}
-.settings-dialog .leaf-settings-intro p {
-  font-size: 12px;
-  line-height: 1.6;
+  --mascot-size: 112px;
 }
 .preferences-section + .preferences-section {
   margin-top: 24px;

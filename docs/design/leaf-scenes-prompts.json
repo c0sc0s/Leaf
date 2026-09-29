@@ -1,58 +1,23 @@
 {
-  "tool": "image_gen",
   "character": "Leaf 猫猫",
-  "eyewear": false,
   "transparent_background": true,
-  "prompt": "Use case: precise-object-edit. Edit this Leaf cat mascot illustration. REMOVE ALL EYEGLASSES COMPLETELY. Remove both green circular spectacle rims, bridge, temples and any glasses on the forehead. Fill those removed parts naturally with the same solid charcoal cat fur. Keep the ivory oval eyes and pupils in their current positions, or keep the closed sleeping eyes for the sleeping pose. No eye outlines, no green rings, no eyewear of any kind anywhere in the image. Keep the cat recognizable and cute. Preserve EVERYTHING ELSE: same head/ear/body proportions, pose, expression, paws, whiskers, tail, book or other props, sage-green and ivory palette, hand-drawn matte style, composition and generous margins. For the searching cat only, the raised paw can rest against its temple naturally instead of holding glasses. True TRANSPARENT alpha background; clean crisp cutout, no glow, no shadows, no added background, no text, no logo. One image, one cat. This request specifically overrides the reference's glasses: final character must be WITHOUT GLASSES.",
+  "prompt": "Preserve the reference cat identity: tall triangular ears, deep V between ears, close round eyes, dot nose, two whiskers per cheek. Rough black hand-drawn ink strokes with visible grain and uneven edges. Transparent background. Everyday physical scenes. Settings cat looks toward the desk lamp.",
   "assets": [
     {
       "id": "reading",
       "file": "public/mascot/reading.png"
     },
     {
-      "id": "empty-library",
-      "file": "public/mascot/empty-library.png"
+      "id": "empty",
+      "file": "public/mascot/empty.png"
     },
     {
-      "id": "empty-search",
-      "file": "public/mascot/empty-search.png"
-    },
-    {
-      "id": "empty-notes",
-      "file": "public/mascot/empty-notes.png"
-    },
-    {
-      "id": "empty-favorites",
-      "file": "public/mascot/empty-favorites.png"
-    },
-    {
-      "id": "welcome-sleeping",
-      "file": "public/mascot/welcome-sleeping.png"
-    },
-    {
-      "id": "empty-collection",
-      "file": "public/mascot/empty-collection.png"
+      "id": "not-found",
+      "file": "public/mascot/not-found.png"
     },
     {
       "id": "settings",
       "file": "public/mascot/settings.png"
-    },
-    {
-      "id": "empty-bookmarks",
-      "file": "public/mascot/empty-bookmarks.png"
-    },
-    {
-      "id": "empty-tags",
-      "file": "public/mascot/empty-tags.png"
-    },
-    {
-      "id": "empty-outline",
-      "file": "public/mascot/empty-outline.png"
-    },
-    {
-      "id": "not-found",
-      "file": "public/mascot/not-found.png",
-      "prompt": "Create the missing-page (404) scene for the Leaf app using this exact cute black cat character as reference. Same simple ivory oval eyes and black pupils, tiny ivory nose, rounded triangular ears, short round body, round paws, three whiskers each side, sage green #798B64 books. NO GLASSES, NO EYEWEAR. One cat only, centered, full body, sitting upright with both little back feet naturally on the ground, a compact rounded torso. Tilt its head slightly to one side, pupils looking at a single loose cream paper leaf beside a small open sage-green book resting naturally on the ground at its feet. One front paw gently touches its cheek in a puzzled but sweet pose; other front paw rests on its knee. Clear charming silhouette, tidy anatomy, no stretched body, no oversized paws. The small open book is a prop beside its feet, does not hide or merge with its body. Flat matte editorial hand-drawn mascot, restrained simple linework, subtle paper texture, minimal shading. Match reference face and proportions. Transparent alpha background, clean sharp cutout edges, no glow, no shadows, no scenery, no circular backplate, no lettering, no numbers, no question mark. Ample transparent padding all around. Illustration for a friendly 404 page; layout code adds the error text."
     }
   ]
 }

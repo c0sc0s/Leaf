@@ -19,9 +19,9 @@ import { resolveBookLink } from '@/lib/markdown';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Exiting, IconButton } from '@/components/UI';
+import { BookmarkToggle } from './BookmarkToggle';
 import {
   ArrowLeft,
-  Bookmark,
   ChevronLeft,
   ChevronRight,
   Maximize,
@@ -263,7 +263,7 @@ export function MarkdownReader({
   useEffect(() => {
     if (searching) input.current?.focus();
   }, [searching]);
-  const bookmarked = book.bookmarks?.includes(page);
+  const bookmarked = book.bookmarks?.includes(page) ?? false;
   const bookmark = () =>
     onUpdate({
       ...book,
@@ -309,13 +309,6 @@ export function MarkdownReader({
             >
               <Search size={17} />
             </IconButton>
-            <IconButton
-              label={bookmarked ? '移除书签' : '添加书签'}
-              active={bookmarked}
-              onClick={bookmark}
-            >
-              <Bookmark size={17} fill={bookmarked ? 'currentColor' : 'none'} />
-            </IconButton>
           </div>
         </div>
         <div className="reader-title" title={book.title}>
@@ -339,6 +332,7 @@ export function MarkdownReader({
             </IconButton>
           </div>
           <div className="tool-group reader-actions">
+            <BookmarkToggle bookmarked={bookmarked} onToggle={bookmark} />
             <IconButton
               label="阅读笔记"
               active={annotation.right}

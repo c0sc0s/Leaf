@@ -1,19 +1,18 @@
-import type { ReactNode } from 'react';
 import { Button } from './ui/button';
 import { cn } from '../lib/utils';
 import './mascot.css';
 
 const mascotScenes = {
   reading: 'reading',
-  welcome: 'welcome-sleeping',
-  library: 'empty-library',
-  search: 'empty-search',
-  favorites: 'empty-favorites',
+  welcome: 'reading',
+  library: 'empty',
+  search: 'empty',
+  favorites: 'empty',
   settings: 'settings',
-  bookmarks: 'empty-bookmarks',
-  notes: 'empty-notes',
-  tags: 'empty-tags',
-  outline: 'empty-outline',
+  bookmarks: 'empty',
+  notes: 'reading',
+  tags: 'empty',
+  outline: 'empty',
   notFound: 'not-found',
 } as const;
 export type MascotScene = keyof typeof mascotScenes;
@@ -104,11 +103,10 @@ export function NotFound({ onHome, onBack }: { onHome: () => void; onBack?: () =
   );
 }
 
-export function SettingsIllustration({ children }: { children?: ReactNode }) {
+export function SettingsIllustration() {
   return (
     <div className="leaf-settings-intro">
       <Mascot scene="settings" size="compact" />
-      <p>{children || '把阅读调成你喜欢的样子。'}</p>
     </div>
   );
 }

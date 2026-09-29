@@ -18,11 +18,13 @@ import './styles/notes.css';
 import './styles/materials.css';
 async function start() {
   const initialize = async () => {
-    await migrateLegacyStorage();
+    const notice = await migrateLegacyStorage();
     await loadPreferences();
+    return notice;
   };
-  if (navigator.locks) await navigator.locks.request('leaf-storage-bootstrap', initialize);
-  else await initialize();
+  const startupNotice = navigator.locks
+    ? await navigator.locks.request('leaf-storage-bootstrap', initialize)
+    : await initialize();
   window.desktop?.storage?.onBeforeClose(flushStorage);
   applyGlassAppearance(readSettings());
   document.documentElement.dataset.platform = window.desktop?.platform ?? 'web';
@@ -32,7 +34,7 @@ async function start() {
         <LazyMotion features={domMax} strict>
           <MotionConfig reducedMotion="user" transition={transition}>
             <TooltipProvider delayDuration={450}>
-              <App />
+              <App startupNotice={startupNotice} />
             </TooltipProvider>
           </MotionConfig>
         </LazyMotion>

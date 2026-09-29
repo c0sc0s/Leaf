@@ -1,14 +1,3 @@
-# Leaf 圆脸猫猫设定
+# Leaf 猫猫
 
-素材：`assets/mascot/leaf-cat-concept-v3.png`。
-
-使用内置 image_gen 编辑参考图，调整为大头、圆脸、短耳朵、短爪和小身体，保留黑猫、绿色圆眼镜与阅读主题。用于角色方向评审，尚未接入应用。
-
-## 完整提示词
-
-Use case: logo-brand, character redesign. Edit the supplied Leaf black-cat mascot concept sheet. The user says it is NOT CUTE ENOUGH. Make a decisive transformation in the character's anatomy and expression, not a minor cosmetic update. Preserve ONLY the recognizable idea of a simple black cat wearing sage-green round reading spectacles and enjoying books. Keep minimal flat hand-drawn graphic art, white background, restrained sage green and cream palette.
-NEW SHAPE LANGUAGE: an irresistibly cute little kitten shaped like a squishy round rice ball. Very wide round cheeks, a HUGE soft circular head taking about 65 percent of the total sitting height; two SHORT rounded triangular ears, ears no longer than 15 percent of head height; a tiny plump bean body immediately beneath head with no visible neck; stubby mitten paws and two tiny oval feet almost tucked beneath its belly. Compact curved tail. Seated or loafing, never standing upright like a person. Charcoal-black silhouette with only necessary flat cream facial marks, no fur, no realism, no 3D, no gradients.
-EXPRESSION: sweet, gently curious, a little clumsy, affectionate rather than serious or startled. Small warm-cream oval eye areas with large dark rounded pupils, subtly looking upward toward the viewer; facial features grouped low on face with abundant forehead. A tiny cream w-shaped kitten mouth and little cream nose. Tiny muted dusty-pink cheek dashes are allowed, very restrained. No giant glaring white stare, no sharp pupils. Oversized delicate sage-green circular spectacles sitting slightly low on the nose, round frames must be distinct from the eyes with a connecting bridge. Slight asymmetry and a small head tilt for charm. Glasses look a bit too big for this small kitten.
-MAIN POSE: the kitten seated with its tiny front paws hugging a small open sage-green book against its little belly, a short ochre pencil resting beside one foot. Book small enough to reveal adorable full face and round cheeks, avoid a massive book swallowing its body. Head tilted just a little; tiny paws curling over book edge. Warm cute stationery mascot, highly minimal iconic silhouette.
-COMPOSITION: a clean landscape character sheet. One large main character on left taking about 55 percent of sheet; three matching small poses on right in a loose vertical stack with generous whitespace: kitten peeking shyly over a closed book so only eyes, ears and two tiny paws show; kitten flopped belly-down reading a book with rear paws lifted; kitten rolled into a tiny sleeping ball cuddling a closed book, glasses set neatly beside it. SAME kitten anatomy and face in all poses. Small handwritten word 'Leaf' upper left, no other text. No borders, no extra decorative hearts or stars, no interface mockups, no shadows. The major change must clearly be softer, rounder, shorter and much cuter than the reference, while retaining the black kitten and green glasses identity.
-
+当前角色、素材和使用规范见 [Leaf 猫猫插图](leaf-mascot.md)。

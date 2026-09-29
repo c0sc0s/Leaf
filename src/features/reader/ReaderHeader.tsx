@@ -2,7 +2,6 @@ import { Button } from '@/components/ui/button';
 import { memo } from 'react';
 import {
   ArrowLeft,
-  Bookmark,
   History,
   Maximize,
   Minimize,
@@ -15,6 +14,7 @@ import {
 } from '@/components/icons';
 import * as Menu from '@/components/ui/dropdown-menu';
 import { IconButton } from '../../components/UI';
+import { BookmarkToggle } from './BookmarkToggle';
 import { MAX_ZOOM, MIN_ZOOM } from './zoom';
 
 const mac = window.desktop?.platform === 'darwin';
@@ -95,13 +95,6 @@ export const ReaderHeader = memo(function ReaderHeader({
           <IconButton label="返回刚才的位置" disabled={!canReturn} onClick={onReturn}>
             <History size={17} />
           </IconButton>
-          <IconButton
-            label={bookmarked ? '移除书签' : '添加书签'}
-            active={bookmarked}
-            onClick={onToggleBookmark}
-          >
-            <Bookmark size={17} fill={bookmarked ? 'currentColor' : 'none'} />
-          </IconButton>
         </div>
       </div>
       <div className="reader-title" title={`${title} · ${author}`}>
@@ -130,6 +123,7 @@ export const ReaderHeader = memo(function ReaderHeader({
           </IconButton>
         </div>
         <div className="tool-group reader-actions">
+          <BookmarkToggle bookmarked={bookmarked} onToggle={onToggleBookmark} />
           <IconButton label="阅读笔记" active={notesOpen} onClick={onToggleNotes}>
             <NotebookPen size={18} />
           </IconButton>

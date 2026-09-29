@@ -58,8 +58,17 @@ test('composites overlapping legacy highlight rectangles at one consistent opaci
         ...image.data.subarray((y * image.info.width + x) * 3, (y * image.info.width + x) * 3 + 3),
       ];
     };
-    expect(pixel(325), `${theme} overlapping area`).toEqual(pixel(310));
-    expect(pixel(365), `${theme} final line`).toEqual(pixel(310));
+    // GPU compositing can round channels differently across macOS and Windows.
+    const baseline = pixel(310);
+    for (const [position, label] of [
+      [325, 'overlapping area'],
+      [365, 'final line'],
+    ] as const) {
+      const differences = pixel(position).map((channel, index) =>
+        Math.abs(channel - baseline[index]),
+      );
+      expect(Math.max(...differences), `${theme} ${label}`).toBeLessThanOrEqual(2);
+    }
   }
 });
 

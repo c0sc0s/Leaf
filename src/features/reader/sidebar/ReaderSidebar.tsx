@@ -44,11 +44,9 @@ export function ReaderSidebar({
               const label = value === 'pages' ? pagesLabel : defaultLabel;
               return (
                 <Tip key={value} label={label} side="bottom">
-                  <span className="contents">
-                    <TabsTrigger value={value} aria-label={label}>
-                      <Icon size={16} />
-                    </TabsTrigger>
-                  </span>
+                  <TabsTrigger value={value} aria-label={label}>
+                    <Icon size={16} />
+                  </TabsTrigger>
                 </Tip>
               );
             })}

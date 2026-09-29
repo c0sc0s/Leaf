@@ -1,5 +1,11 @@
 import type { Annotation, Book, BookContent } from '../types';
-import { fingerprint, stageBook, releaseUploads, type ContentReference } from './db';
+import {
+  fingerprint,
+  stageBook,
+  releaseUploads,
+  type ContentReference,
+  type StoredBook,
+} from './db';
 import { storageRequest } from './storageClient';
 
 const databaseName = 'folio-library';
@@ -68,7 +74,7 @@ async function snapshot() {
     db.close();
   }
 }
-async function digestSnapshot(value: Awaited<ReturnType<typeof snapshot>>) {
+async function digestSnapshot(value: unknown) {
   // Hash every byte before deleting the source, including Markdown image assets.
   const serialize = async (value: unknown): Promise<unknown> => {
     if (value instanceof Blob)
@@ -94,6 +100,42 @@ async function digestSnapshot(value: Awaited<ReturnType<typeof snapshot>>) {
   };
   return fingerprint(new TextEncoder().encode(JSON.stringify(await serialize(value))).buffer);
 }
+async function alreadyMigrated(value: Awaited<ReturnType<typeof snapshot>>) {
+  const reference = async (blob: Blob): Promise<ContentReference> => ({
+    hash: await fingerprint(await blob.arrayBuffer()),
+    size: blob.size,
+    type: blob.type,
+  });
+  for (const book of value.books) {
+    const stored = await storageRequest<(StoredBook & { lease: string }) | null>('book', book.id);
+    if (!stored) return false;
+    try {
+      const content = {
+        blob: await reference(book.blob),
+        chapters: book.chapters,
+        assets:
+          book.assets === undefined
+            ? undefined
+            : await Promise.all(
+                book.assets.map(async (asset) => ({
+                  path: asset.path,
+                  blob: await reference(asset.blob),
+                })),
+              ),
+      };
+      if ((await digestSnapshot(content)) !== (await digestSnapshot(stored.content))) return false;
+    } finally {
+      await storageRequest('release', stored.lease);
+    }
+  }
+  const saved = new Map(
+    (await storageRequest<Annotation[]>('annotations')).map((mark) => [mark.id, mark]),
+  );
+  for (const mark of value.annotations) {
+    if ((await digestSnapshot(mark)) !== (await digestSnapshot(saved.get(mark.id)))) return false;
+  }
+  return true;
+}
 async function migrateLegacyLibrary() {
   const initial = await snapshot();
   if (!initial.exists && !Object.keys(initial.preferences).length) return;
@@ -107,8 +149,12 @@ async function migrateLegacyLibrary() {
       return;
     }
   }
-  if (receipt && receipt !== digest)
+  if (receipt && receipt !== digest) {
+    // An older app can recreate its source after migration. Keep it intact and
+    // retain SQLite progress and preferences when all source content is already present.
+    if (await alreadyMigrated(initial)) return '已打开现有书库。检测到旧版书库副本，旧数据已保留。';
     throw new Error('旧库在迁移后发生变化，已保留旧数据，请检查后重试');
+  }
   const references: ContentReference[] = [];
   try {
     if (!receipt) {
@@ -142,10 +188,10 @@ async function migrateLegacyLibrary() {
 }
 
 export async function migrateLegacyStorage() {
-  await migrateLegacyLibrary();
+  const notice = await migrateLegacyLibrary();
   const keys = ['leaf-sidebar-width', 'leaf-notes-width'];
   const remaining = keys.filter((key) => localStorage.getItem(key) !== null);
-  if (!remaining.length) return;
+  if (!remaining.length) return notice;
   // These keys were outside the original snapshot. Keep its digest stable for pending cleanups.
   const saved = await storageRequest<Record<string, string>>('preferences');
   for (const key of remaining) {
@@ -153,4 +199,5 @@ export async function migrateLegacyStorage() {
     if (saved[key] === undefined) await storageRequest('setPreference', { key, value });
     localStorage.removeItem(key);
   }
+  return notice;
 }

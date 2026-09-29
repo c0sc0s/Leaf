@@ -3,13 +3,15 @@ import { cn } from '@/lib/utils';
 import { Tooltip as TooltipPrimitive } from 'radix-ui';
 
 function TooltipProvider({
-  delayDuration = 0,
+  delayDuration = 450,
+  skipDelayDuration = 0,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
   return (
     <TooltipPrimitive.Provider
       data-slot="tooltip-provider"
       delayDuration={delayDuration}
+      skipDelayDuration={skipDelayDuration}
       {...props}
     />
   );
@@ -19,8 +21,21 @@ function Tooltip({ ...props }: React.ComponentProps<typeof TooltipPrimitive.Root
   return <TooltipPrimitive.Root data-slot="tooltip" {...props} />;
 }
 
-function TooltipTrigger({ ...props }: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
-  return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />;
+function TooltipTrigger({
+  onFocus,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
+  return (
+    <TooltipPrimitive.Trigger
+      data-slot="tooltip-trigger"
+      {...props}
+      onFocus={(event) => {
+        onFocus?.(event);
+        // Pointer-driven focus restoration should not open a tooltip away from the cursor.
+        if (!event.currentTarget.matches(':focus-visible')) event.preventDefault();
+      }}
+    />
+  );
 }
 
 function TooltipContent({

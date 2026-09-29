@@ -4,7 +4,8 @@ import {
   ArrowLeftIcon as ArrowLeftGlyph,
   ArrowUpRightIcon as ArrowUpRightGlyph,
   BookOpenIcon as BookOpenGlyph,
-  BookmarkIcon as BookmarkGlyph,
+  Bookmark02Icon as BookmarkGlyph,
+  BookmarkPlusIcon as BookmarkPlusGlyph,
   CheckIcon as CheckGlyph,
   ArrowDown01Icon as ChevronDownGlyph,
   ArrowLeft01Icon as ChevronLeftGlyph,
@@ -61,6 +62,7 @@ export const ArrowLeft = icon(ArrowLeftGlyph, 'ArrowLeft');
 export const ArrowUpRight = icon(ArrowUpRightGlyph, 'ArrowUpRight');
 export const BookOpen = icon(BookOpenGlyph, 'BookOpen');
 export const Bookmark = icon(BookmarkGlyph, 'Bookmark');
+export const BookmarkPlus = icon(BookmarkPlusGlyph, 'BookmarkPlus');
 export const Check = icon(CheckGlyph, 'Check');
 export const ChevronDown = icon(ChevronDownGlyph, 'ChevronDown');
 export const ChevronLeft = icon(ChevronLeftGlyph, 'ChevronLeft');
