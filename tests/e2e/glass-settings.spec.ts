@@ -65,9 +65,12 @@ test('changes native glass live and retains the toggle and transparency after re
       .locator('.library-main')
       .evaluate((el) => getComputedStyle(el).backgroundColor);
     expect(background).toContain('/ 0.99)');
-    expect(
-      await page.locator('.window-controls').evaluate((el) => getComputedStyle(el).backgroundColor),
-    ).toBe(background);
+    if ((await page.evaluate(() => window.desktop?.platform)) === 'win32') {
+      await expect(page.locator('.window-controls')).toHaveCSS('background-color', background);
+    } else {
+      // macOS uses native traffic lights instead of the Windows control overlay.
+      await expect(page.locator('.window-controls')).toHaveCount(0);
+    }
     await toggle.click();
     await expect(toggle).not.toBeChecked();
     await expect(slider).toBeDisabled();
