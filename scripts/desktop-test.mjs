@@ -18,7 +18,12 @@ const executable =
 await mkdir('docs/previews', { recursive: true });
 const app = await _electron.launch({
   executablePath: executable,
-  env: { LEAF_HIDDEN_WINDOW: '1', ...process.env, LEAF_USER_DATA: userData },
+  // Windows CI needs a live native compositor when backdrop changes precede screenshots.
+  env: {
+    LEAF_HIDDEN_WINDOW: process.env.CI && process.platform === 'win32' ? '0' : '1',
+    ...process.env,
+    LEAF_USER_DATA: userData,
+  },
   timeout: 30000,
 });
 try {
