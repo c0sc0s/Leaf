@@ -90,7 +90,8 @@ else {
       ),
       minWidth: 900,
       minHeight: 640,
-      show: !hiddenWindow,
+      // Shown by revealWindow once the renderer has drawn the app, so launch never shows a blank page.
+      show: false,
       paintWhenInitiallyHidden: true,
       backgroundColor: translucent ? '#00000000' : '#18181b',
       title: 'Leaf',
@@ -151,24 +152,35 @@ else {
         canClose = true;
         window.close();
       } catch (error) {
-        window?.setEnabled(true);
+        window?.show();
         dialog.showErrorBox('书库尚未保存', error.message);
       }
     });
-    // Maximising or entering full screen would show a window meant to stay hidden.
-    if (!hiddenWindow && savedWindow?.maximized) window.maximize();
-    if (!hiddenWindow && savedWindow?.fullScreen) window.setFullScreen(true);
-    // Record the placement as the user asks to close, before the library flush may defer it.
-    window.on('close', () => writeWindowState(windowStateFile, window));
+    let revealed = false;
+    const revealWindow = () => {
+      if (revealed || hiddenWindow) return;
+      revealed = true;
+      // Maximising while still hidden lets the window appear at its final size instead of growing.
+      if (savedWindow?.maximized) window.maximize();
+      window.show();
+      if (savedWindow?.fullScreen) window.setFullScreen(true);
+    };
+    // Record the placement as the user asks to close; by the deferred close the window is hidden
+    // and no longer reports whether it was maximised.
+    window.on('close', () => {
+      if (!canClose && !closeRequest) writeWindowState(windowStateFile, window);
+    });
     window.on('close', (event) => {
       if (canClose || !storageReady) return;
       event.preventDefault();
       if (closeRequest) return;
-      window.setEnabled(false);
+      // Hiding rather than setEnabled(false): on macOS that attaches a sheet which lingers as a
+      // second layer while the window closes.
+      window.hide();
       const id = randomUUID();
       const timer = setTimeout(() => {
         closeRequest = undefined;
-        window?.setEnabled(true);
+        window?.show();
         dialog.showErrorBox('书库尚未保存', '保存未完成，窗口已保留。请稍后重试。');
       }, 30000);
       closeRequest = { id, timer };
@@ -265,6 +277,7 @@ else {
     ipcMain.on('renderer:ready', (event) => {
       if (!trusted(event)) return;
       ready = true;
+      revealWindow();
       pending.splice(0).forEach((data) => window.webContents.send('pdf:open', data));
     });
     window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));

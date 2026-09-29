@@ -53,4 +53,5 @@ void start().catch((error: unknown) => {
   retry.textContent = '重试';
   retry.onclick = () => location.reload();
   root.replaceChildren(heading, detail, retry);
+  window.desktop?.ready();
 });
