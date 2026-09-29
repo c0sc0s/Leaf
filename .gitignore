@@ -7,3 +7,5 @@ public/vendor/
 .DS_Store
 *.log
 *.tsbuildinfo
+
+.leaf-data/

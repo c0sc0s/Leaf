@@ -16,7 +16,7 @@ import { resolveDestination, type Destination } from '../../../lib/destination';
 import { sameSpread } from '../../../lib/layout';
 import { capturePDFSelection, type DocumentSelection, type PageText } from '../../../lib/selection';
 import { PDFPage } from './PDFPage';
-import { Spinner } from '../../../components/UI';
+import { PageSkeleton } from '../PageSkeleton';
 import { arrangeSlots, fitWidth, PAGE_GAP, type PageSize, type Slot } from './geometry';
 export interface PDFViewportHandle {
   capture: () => ReadingLocation;
@@ -438,7 +438,7 @@ export const PDFViewport = forwardRef<PDFViewportHandle, Props>(function PDFView
       }}
     >
       {!slots.length ? (
-        <Spinner text="正在打开当前页…" />
+        <PageSkeleton label="正在打开当前页…" />
       ) : (
         slots.map((item) => (
           <PageSlot

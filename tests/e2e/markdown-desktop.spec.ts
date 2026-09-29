@@ -26,6 +26,7 @@ test('desktop imports Markdown files and folders through native dialogs', async 
       path.join(root, 'single.md'),
     );
     await page.getByRole('button', { name: '导入文件', exact: true }).click();
+    await page.getByRole('menuitem', { name: /^导入文件(?!夹)/ }).click();
     await expect(page.locator('.book-card')).toHaveCount(9);
     await page.getByRole('button', { name: '阅读 Desktop Single', exact: true }).click();
     await expect(page.locator('.markdown-content h1')).toHaveText('Desktop Single');
@@ -33,7 +34,8 @@ test('desktop imports Markdown files and folders through native dialogs', async 
     await app.evaluate(({ dialog }, file) => {
       dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] });
     }, folder);
-    await page.getByRole('button', { name: '导入文件夹', exact: true }).click();
+    await page.getByRole('button', { name: '导入文件', exact: true }).click();
+    await page.getByRole('menuitem', { name: '导入文件夹', exact: true }).click();
     await expect(page.locator('.book-card')).toHaveCount(10);
     await page.getByRole('button', { name: '阅读 Desktop Book', exact: true }).click();
     await expect(page.locator('.outline-item.depth-0')).toHaveCount(2);

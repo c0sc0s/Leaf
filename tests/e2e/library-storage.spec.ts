@@ -159,26 +159,14 @@ test('migrates legacy PDF and Markdown content, then updates metadata without re
   const updated = await page.evaluate(async () => {
     const { storage } = await import('/src/lib/db.ts');
     const metadata = (await storage.metadata('legacy-md'))!;
-    const original = IDBObjectStore.prototype.put;
-    const writes: string[] = [];
-    IDBObjectStore.prototype.put = function (...args) {
-      writes.push(this.name);
-      return original.apply(this, args);
-    };
-    try {
-      await storage.updateBook({ ...metadata, favorite: true, page: 1 });
-    } finally {
-      IDBObjectStore.prototype.put = original;
-    }
+    await storage.updateBook({ ...metadata, favorite: true, page: 1 });
     const book = (await storage.book('legacy-md'))!;
     return {
-      writes,
       metadata: await storage.metadata('legacy-md'),
       source: await book.blob.text(),
       asset: await book.assets![0].blob.text(),
     };
   });
-  expect(updated.writes).toEqual(['books']);
   expect(updated.metadata).toMatchObject({ favorite: true, page: 1, bookmarks: [2] });
   expect(updated.source).toBe('markdown source');
   expect(updated.asset).toBe(image);
@@ -189,35 +177,127 @@ test('migrates legacy PDF and Markdown content, then updates metadata without re
     await storage.deleteBook('legacy-pdf');
     // A delayed progress write must not recreate a deleted book.
     await storage.updateBook(metadata);
-    const raw = await new Promise<{ content: unknown; ocrKeys: IDBValidKey[]; version: number }>(
-      (resolve, reject) => {
-        const request = indexedDB.open('folio-library');
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => {
-          const db = request.result;
-          const tx = db.transaction(['bookContents', 'ocr']);
-          const content = tx.objectStore('bookContents').get('legacy-pdf');
-          const ocr = tx.objectStore('ocr').getAllKeys();
-          tx.oncomplete = () => {
-            resolve({ content: content.result ?? null, ocrKeys: ocr.result, version: db.version });
-            db.close();
-          };
-        };
-      },
-    );
+    const { readPreference } = await import('/src/lib/preferences.ts');
     return {
-      ...raw,
+      legacyExists: (await indexedDB.databases()).some((db) => db.name === 'folio-library'),
       book: await storage.book('legacy-pdf'),
+      metadataMissing: (await storage.metadata('legacy-pdf')) === undefined,
       notes: await storage.annotations('legacy-pdf'),
-      position: localStorage.getItem('folio-position:legacy-pdf'),
+      position: readPreference('folio-position:legacy-pdf'),
     };
   });
   expect(removed).toEqual({
-    content: null,
-    ocrKeys: ['other-book:1'],
-    version: 5,
+    legacyExists: false,
     book: null,
+    metadataMissing: true,
     notes: [],
     position: null,
+  });
+});
+
+test('keeps v5 source data after an import failure and succeeds after repairing the source', async ({
+  page,
+}) => {
+  await page.route('http://127.0.0.1:5173/', (route) =>
+    route.fulfill({ contentType: 'text/html', body: '<html></html>' }),
+  );
+  await page.goto('/');
+  await page.evaluate(async () => {
+    await new Promise<void>((resolve, reject) => {
+      const opening = indexedDB.open('folio-library', 5);
+      opening.onupgradeneeded = () => {
+        for (const store of ['books', 'bookContents', 'annotations'])
+          opening.result.createObjectStore(store, { keyPath: 'id' });
+      };
+      opening.onerror = () => reject(opening.error);
+      opening.onsuccess = () => {
+        const db = opening.result;
+        const tx = db.transaction(['books', 'bookContents', 'annotations'], 'readwrite');
+        tx.objectStore('books').put({
+          id: 'v5-book',
+          title: 'Preserved v5 book',
+          author: '',
+          filename: 'v5.pdf',
+          pages: 1,
+          page: 1,
+          favorite: false,
+          cover: '',
+          addedAt: 1,
+          openedAt: 1,
+        });
+        tx.objectStore('bookContents').put({
+          id: 'v5-book',
+          blob: new Blob(['preserve these original bytes'], { type: 'application/pdf' }),
+        });
+        tx.objectStore('annotations').put({
+          id: 'v5-note',
+          bookId: 'missing-book',
+          note: 'Preserve this note',
+          quote: 'text',
+          page: 1,
+          start: 0,
+          end: 4,
+          color: 'amber',
+          kind: 'highlight',
+          rects: [],
+          source: 'text',
+          createdAt: 1,
+        });
+        tx.oncomplete = () => {
+          db.close();
+          resolve();
+        };
+        tx.onerror = () => reject(tx.error);
+      };
+    });
+    localStorage.setItem('folio-initialized', '1');
+  });
+  await page.unroute('http://127.0.0.1:5173/');
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '无法打开书库' })).toBeVisible();
+  expect(
+    await page.evaluate(async () => {
+      const { storage } = await import('/src/lib/db.ts');
+      return {
+        books: await storage.books(),
+        legacy: (await indexedDB.databases()).some((db) => db.name === 'folio-library'),
+        initialized: localStorage.getItem('folio-initialized'),
+      };
+    }),
+  ).toEqual({ books: [], legacy: true, initialized: '1' });
+  await page.evaluate(async () => {
+    await new Promise<void>((resolve, reject) => {
+      const opening = indexedDB.open('folio-library');
+      opening.onsuccess = () => {
+        const db = opening.result;
+        const tx = db.transaction('annotations', 'readwrite');
+        const read = tx.objectStore('annotations').get('v5-note');
+        read.onsuccess = () =>
+          tx.objectStore('annotations').put({ ...read.result, bookId: 'v5-book' });
+        tx.oncomplete = () => {
+          db.close();
+          resolve();
+        };
+        tx.onerror = () => reject(tx.error);
+      };
+    });
+  });
+  await page.reload();
+  await expect(page.locator('.book-card')).toHaveCount(1);
+  expect(
+    await page.evaluate(async () => {
+      const { storage } = await import('/src/lib/db.ts');
+      return {
+        bytes: await (await storage.book('v5-book'))!.blob.text(),
+        note: (await storage.annotations())[0].note,
+        legacy: (await indexedDB.databases()).some((db) => db.name === 'folio-library'),
+        initialized: localStorage.getItem('folio-initialized'),
+      };
+    }),
+  ).toEqual({
+    bytes: 'preserve these original bytes',
+    note: 'Preserve this note',
+    legacy: false,
+    initialized: null,
   });
 });

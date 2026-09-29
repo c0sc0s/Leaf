@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { BookOpen, Clock3, Heart, Moon, NotebookPen, Settings2, Sun } from '@/components/icons';
 import type { BookMetadata } from '../../types';
 import { IconButton } from '../../components/UI';
+import { AppBrand } from '../../components/AppBrand';
 import type { LibraryView } from './Library';
 
 const views = [
@@ -46,6 +47,7 @@ export function LibrarySidebar({
 }) {
   return (
     <aside className="library-sidebar">
+      <AppBrand onClick={() => onView('all')} />
       <div className="sidebar-section-label">书库</div>
       <div className="sidebar-navigation" role="navigation" aria-label="书库导航">
         {views.map(([value, label, Icon]) => (

@@ -1,3 +1,4 @@
+import { readPreference, rememberPreference } from '../../lib/preferences';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import type { Annotation, MarkColor, MarkKind } from '@/types';
@@ -18,7 +19,7 @@ export function useMarkdownAnnotations(
   const [active, setActive] = useState<{ id: string; x: number; y: number } | null>(null);
   const [right, setRight] = useState(false);
   const [color, setColor] = useState<MarkColor>(() => {
-    const value = localStorage.getItem('folio-mark-color');
+    const value = readPreference('folio-mark-color');
     return value && value in colors ? (value as MarkColor) : 'amber';
   });
   const dragging = useRef(false);
@@ -27,7 +28,7 @@ export function useMarkdownAnnotations(
     [annotations.marks, page],
   );
   useEffect(() => {
-    localStorage.setItem('folio-mark-color', color);
+    rememberPreference('folio-mark-color', color);
   }, [color]);
   useEffect(() => {
     let disposed = false;

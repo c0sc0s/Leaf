@@ -22,7 +22,6 @@ import {
   HighlighterIcon as HighlighterGlyph,
   HistoryIcon as HistoryGlyph,
   ListIcon as ListGlyph,
-  Loading03Icon as LoaderCircleGlyph,
   LockKeyholeIcon as LockKeyholeGlyph,
   MaximizeIcon as MaximizeGlyph,
   MinimizeIcon as MinimizeGlyph,
@@ -79,7 +78,6 @@ export const Heart = icon(HeartGlyph, 'Heart');
 export const Highlighter = icon(HighlighterGlyph, 'Highlighter');
 export const History = icon(HistoryGlyph, 'History');
 export const List = icon(ListGlyph, 'List');
-export const LoaderCircle = icon(LoaderCircleGlyph, 'LoaderCircle');
 export const LockKeyhole = icon(LockKeyholeGlyph, 'LockKeyhole');
 export const Maximize = icon(MaximizeGlyph, 'Maximize');
 export const Minimize = icon(MinimizeGlyph, 'Minimize');

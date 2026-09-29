@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Leaf · 新视觉设计</title>
+    <style>
+      :root { color-scheme: light; --paper:#f5f4ef; --panel:#fffefa; --ink:#202522; --muted:#707872; --line:#dce0d8; --green:#445a51; }
+      * { box-sizing:border-box; }
+      body { margin:0; background:var(--paper); color:var(--ink); font-family:Inter,"Helvetica Neue",Arial,"PingFang SC",sans-serif; transition:background .2s,color .2s; }
+      body.dark { color-scheme:dark; --paper:#171b19; --panel:#202622; --ink:#efefe7; --muted:#a1aaa3; --line:#374039; }
+      button,a { font:inherit; }
+      button { cursor:pointer; border:1px solid var(--line); border-radius:99px; background:transparent; color:var(--ink); padding:10px 18px; }
+      button:focus-visible,a:focus-visible { outline:3px solid #87a594; outline-offset:5px; }
+      .wrap { max-width:1240px; margin:auto; padding:34px 48px 44px; }
+      nav { display:flex; align-items:center; justify-content:space-between; padding-bottom:32px; border-bottom:1px solid var(--line); }
+      .brand { font-size:26px; font-weight:650; letter-spacing:-1px; }
+      .eyebrow { color:var(--muted); font-size:10px; letter-spacing:2px; text-transform:uppercase; }
+      header { display:flex; justify-content:space-between; align-items:end; gap:32px; padding:40px 0 32px; }
+      h1 { font-size:48px; line-height:1.12; letter-spacing:-2px; font-weight:550; margin:9px 0 0; }
+      header p { font-size:13px; max-width:300px; color:var(--muted); line-height:1.9; margin:0; }
+      .hero { display:grid; grid-template-columns:1fr 1.3fr; gap:20px; }
+      .panel { border:1px solid var(--line); background:var(--panel); border-radius:22px; overflow:hidden; }
+      .label { padding:24px 28px; display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:12px; }
+      .label span { color:var(--muted); font-size:10px; letter-spacing:1px; }
+      .visual { height:330px; display:flex; align-items:center; justify-content:center; }
+      .app-icon { width:240px; height:240px; object-fit:contain; }
+      .character { width:340px; height:340px; object-fit:contain; }
+      .caption { padding:18px 28px 26px; color:var(--muted); font-size:12px; line-height:1.8; }
+      .sizes { margin-top:20px; display:grid; grid-template-columns:1.65fr 1fr; }
+      .scale { padding:28px; border-right:1px solid var(--line); }
+      .scale-row { display:flex; align-items:end; gap:30px; margin-top:24px; min-height:116px; }
+      figure { margin:0; text-align:center; }
+      figure img { object-fit:contain; display:block; margin:auto; }
+      figcaption { margin-top:12px; color:var(--muted); font-size:10px; }
+      .swatches { padding:28px; }
+      .swatch-row { display:flex; gap:16px; margin-top:24px; }
+      .swatch { width:54px; height:54px; border-radius:50%; border:1px solid #00000012; margin-bottom:11px; }
+      .swatch-name { font-size:10px; color:var(--muted); line-height:1.8; }
+      .context { margin-top:20px; display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+      .context-card { padding:26px 28px; min-height:176px; display:flex; align-items:center; gap:25px; border-radius:22px; }
+      .context-light { background:#eceee7; color:#242b26; }
+      .context-dark { background:#2c3530; color:#f3f2eb; }
+      .context-card img { width:118px; height:118px; object-fit:contain; }
+      .context-card h2 { font-weight:550; font-size:17px; letter-spacing:-.5px; margin:8px 0; }
+      .context-card p { font-size:11px; opacity:.6; margin:0; line-height:1.8; }
+      footer { display:flex; justify-content:space-between; align-items:center; gap:20px; padding-top:26px; font-size:10px; color:var(--muted); }
+      footer a { color:inherit; text-underline-offset:4px; margin-left:16px; }
+      @media(max-width:760px) { .wrap { padding:24px; } header { display:block; padding-top:30px; } h1 { font-size:36px; } header p { margin-top:20px; } .hero,.sizes,.context { grid-template-columns:1fr; } .scale { border-right:0; border-bottom:1px solid var(--line); } .scale-row { gap:22px; } footer { align-items:start; flex-direction:column; } footer a { margin:0 16px 0 0; } }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <nav><div class="brand">Leaf<span style="color:#8a9b8e">.</span></div><button id="theme" aria-pressed="false">切换深色</button></nav>
+      <header><div><div class="eyebrow">Visual identity · Design proposal</div><h1>安静，也有自己的样子。</h1></div><p>为专注阅读设计的全新 Icon 与 IP。<br />简洁的轮廓、克制的表情，让陪伴自然融入阅读空间。</p></header>
+      <div class="hero">
+        <section class="panel"><div class="label">应用图标 <span>01 / APP ICON</span></div><div class="visual"><img class="app-icon" src="icon.png" alt="Leaf 新版应用图标" /></div><div class="caption">青蛙大脸形成紧凑标识，深绿底板承托灰绿轮廓。<br />减少细碎装饰，让小尺寸也能保持识别。</div></section>
+        <section class="panel"><div class="label">阅读伙伴 <span>02 / CHARACTER</span></div><div class="visual"><img class="character" src="character.png" alt="Leaf 新版青蛙 IP，安静捧书阅读" /></div><div class="caption">灰绿的柔和体块，带一点好奇的目光。<br />低光泽材质与简洁道具，建立安静、精致的角色气质。</div></section>
+      </div>
+      <section class="panel sizes"><div class="scale"><div class="eyebrow">Icon at actual sizes</div><div class="scale-row"><figure><img src="icon.png" width="16" height="16" alt="16 像素图标" /><figcaption>16 px</figcaption></figure><figure><img src="icon.png" width="24" height="24" alt="24 像素图标" /><figcaption>24 px</figcaption></figure><figure><img src="icon.png" width="32" height="32" alt="32 像素图标" /><figcaption>32 px</figcaption></figure><figure><img src="icon.png" width="48" height="48" alt="48 像素图标" /><figcaption>48 px</figcaption></figure><figure><img src="icon.png" width="96" height="96" alt="96 像素图标" /><figcaption>96 px</figcaption></figure></div></div><div class="swatches"><div class="eyebrow">Material & palette</div><div class="swatch-row"><div><div class="swatch" style="background:#202522"></div><div class="swatch-name">墨黑<br />#202522</div></div><div><div class="swatch" style="background:#f5f1df"></div><div class="swatch-name">纸白<br />#F5F1DF</div></div><div><div class="swatch" style="background:#445a51"></div><div class="swatch-name">深绿<br />#445A51</div></div><div><div class="swatch" style="background:#8fa88b"></div><div class="swatch-name">灰绿<br />#8FA88B</div></div></div></div></section>
+      <div class="context"><section class="context-card context-light"><img src="character.png" alt="" /><div><div class="eyebrow">Light / Library</div><h2>从一本书开始。</h2><p>放进你的第一本书，<br />给自己留一点安静的时间。</p></div></section><section class="context-card context-dark"><img src="character.png" alt="" /><div><div class="eyebrow" style="color:#a7b2a9">Dark / Reading</div><h2>接着上次，慢慢读。</h2><p>读过的页，留下的想法，<br />都在这里等你。</p></div></section></div>
+      <footer><span>LEAF · Icon & IP 视觉提案 · 配色为设计目标，生成素材存在局部色值差异</span><div><a href="icon.png" download="leaf-modern-icon.png">下载 Icon</a><a href="character.png" download="leaf-modern-character.png">下载 IP</a><a href="design.md">设计说明</a></div></footer>
+    </main>
+    <script>const toggle=document.getElementById('theme');toggle.addEventListener('click',()=>{const dark=document.body.classList.toggle('dark');toggle.textContent=dark?'切换浅色':'切换深色';toggle.setAttribute('aria-pressed',String(dark));});</script>
+  </body>
+</html>

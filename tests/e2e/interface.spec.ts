@@ -31,12 +31,12 @@ test('keeps controls readable in both themes and at the minimum desktop size', a
   await expect(page.getByRole('button', { name: '导入文件', exact: true })).toBeInViewport();
   await expect(page.getByLabel('搜索书库', { exact: true })).toBeInViewport();
   expect(
-    await page.locator('.library-main').evaluate((el) => el.scrollWidth <= el.clientWidth),
+    await page.locator('.library-scroll').evaluate((el) => el.scrollWidth <= el.clientWidth),
   ).toBe(true);
   await page.getByLabel('列表视图', { exact: true }).click();
   await expect(page.locator('.book-list .book-card')).toHaveCount(8);
   await page.getByLabel('切换浅色模式', { exact: true }).click();
-  await expect(page.locator('.book-title').first()).toHaveCSS('color', 'rgb(38, 49, 44)');
+  await expect(page.locator('.book-title').first()).toHaveCSS('color', 'oklch(0.145 0 0)');
   await page.getByRole('button', { name: '设置', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: '阅读偏好' });
   await expect(dialog.getByRole('button', { name: '关闭', exact: true })).toBeInViewport();

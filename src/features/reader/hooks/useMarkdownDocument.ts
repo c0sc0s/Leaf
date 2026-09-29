@@ -93,6 +93,8 @@ export function useMarkdownDocument(
 
   return {
     tree: rendered?.page === page ? rendered.tree : null,
+    /** The chapter still on screen while the requested one renders, so it never blanks. */
+    previous: rendered && rendered.page !== page ? rendered : null,
     outline,
     results,
     error,

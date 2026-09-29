@@ -1,3 +1,4 @@
+import { registerStorageFlusher, trackStorage } from './storageClient';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Annotation } from '../types';
 import { storage } from './db';
@@ -21,6 +22,7 @@ export function useAnnotations(notify: (message: string) => void) {
   const undoStack = useRef<Edit[]>([]);
   const redoStack = useRef<Edit[]>([]);
   const queue = useRef(Promise.resolve());
+  const lastError = useRef<unknown>(undefined);
   const notifier = useRef(notify);
   notifier.current = notify;
   // Actions only touch refs and setters, so they stay identical across renders.
@@ -40,14 +42,16 @@ export function useAnnotations(notify: (message: string) => void) {
       const next = queue.current.then(async () => {
         setStatus('saving');
         await operation();
+        lastError.current = undefined;
         setStatus('saved');
       });
       queue.current = next.catch((error) => {
+        lastError.current = error;
         reportError('批注保存失败', error);
         setStatus('error');
         notifier.current('批注未保存成功，请检查存储空间后重试。');
       });
-      return queue.current;
+      return trackStorage(queue.current);
     };
     const edit = (resolve: () => Omit<Edit, 'time'>) =>
       run(async () => {
@@ -71,6 +75,7 @@ export function useAnnotations(notify: (message: string) => void) {
       },
       flush: async () => {
         await queue.current;
+        if (lastError.current) throw lastError.current;
         return current.current;
       },
       add: (after: Annotation[]) => edit(() => ({ before: [], after })),
@@ -110,5 +115,12 @@ export function useAnnotations(notify: (message: string) => void) {
         }),
     };
   }, []);
+  useEffect(
+    () =>
+      registerStorageFlusher(async () => {
+        await actions.flush();
+      }),
+    [actions],
+  );
   return { marks, status, history, ...actions };
 }

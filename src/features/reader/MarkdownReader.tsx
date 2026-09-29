@@ -1,3 +1,5 @@
+import { PageSkeleton } from './PageSkeleton';
+import { useDelayed } from '../../lib/useDelayed';
 import {
   useCallback,
   useDeferredValue,
@@ -89,6 +91,13 @@ export function MarkdownReader({
   const renderQuery = useDeferredValue(searching ? query : '');
   const document = useMarkdownDocument(chapters, page, renderQuery, annotation.pageMarks, notify);
   const { tree, results, error, ready } = document;
+  // Keep the previous chapter up briefly instead of flashing an empty page between chapters.
+  const slowChapter = useDelayed(!tree && document.previous ? page : null, 250) !== null;
+  const shown = tree
+    ? { tree, path: chapter.path }
+    : document.previous && !slowChapter
+      ? { tree: document.previous.tree, path: chapters[document.previous.page - 1].path }
+      : null;
   const chapterItems = useMemo(
     () =>
       chapters.map((entry, index) => ({
@@ -433,7 +442,7 @@ export function MarkdownReader({
         >
           <article
             ref={article}
-            className="markdown-content typeset typeset-docs max-w-[42em]"
+            className={`markdown-content typeset typeset-docs max-w-[42em] ${tree ? '' : 'stale'}`}
             style={{ '--typeset-size': `${18 * zoom}px` } as CSSProperties}
             aria-label={chapter?.title || 'Markdown 正文'}
             onClick={(event) => annotation.openMark(event.target as HTMLElement)}
@@ -441,16 +450,16 @@ export function MarkdownReader({
             {chapter ? (
               error ? (
                 <p role="alert">无法读取这一章：{error}</p>
-              ) : tree ? (
+              ) : shown ? (
                 <MarkdownContent
-                  tree={tree}
-                  path={chapter.path}
+                  tree={shown.tree}
+                  path={shown.path}
                   assets={assets}
                   onLink={handleLink}
                   onImageLoad={handleImageLoad}
                 />
               ) : (
-                <div role="status">正在读取章节…</div>
+                <PageSkeleton label="正在读取章节…" paper={false} />
               )
             ) : (
               <p>这本书没有可阅读的 Markdown 章节。</p>

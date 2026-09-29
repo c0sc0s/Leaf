@@ -1,3 +1,4 @@
+import { readPreference, writePreference } from '../../lib/preferences';
 import { storage } from '../../lib/db';
 import type { BookMetadata } from '../../types';
 
@@ -5,7 +6,7 @@ let initialLoad: Promise<BookMetadata[]> | undefined;
 
 async function initialize() {
   const books = await storage.books();
-  if (books.length || localStorage.getItem('folio-initialized')) return books;
+  if (books.length || readPreference('folio-initialized')) return books;
   const manifest = (await fetch('./samples/manifest.json').then((r) => r.json())) as {
     slug: string;
   }[];
@@ -16,7 +17,7 @@ async function initialize() {
     const book = await importPDF(await response.blob(), entry.slug + '.pdf');
     await storage.putBook({ ...book, sample: true, addedAt: Date.now() - index * 1000 });
   }
-  localStorage.setItem('folio-initialized', '1');
+  await writePreference('folio-initialized', '1');
   return storage.books();
 }
 

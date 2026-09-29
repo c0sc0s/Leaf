@@ -1,3 +1,4 @@
+import { registerStorageFlusher } from '../../lib/storageClient';
 import { Textarea } from '@/components/ui/textarea';
 import { useEffect, useRef, useState } from 'react';
 import type { Annotation } from '../../types';
@@ -20,7 +21,7 @@ export function NoteEditor({
     clearTimeout(timer.current);
     if (dirty.current) {
       dirty.current = false;
-      void saving.current(mark.id, latest.current);
+      return saving.current(mark.id, latest.current);
     }
   };
   useEffect(() => {
@@ -30,8 +31,10 @@ export function NoteEditor({
     }
   }, [mark.note]);
   useEffect(() => {
+    const unregister = registerStorageFlusher(flush);
     window.addEventListener('pagehide', flush);
     return () => {
+      unregister();
       window.removeEventListener('pagehide', flush);
       flush();
     };

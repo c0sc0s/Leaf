@@ -1,4 +1,5 @@
-import { X, LoaderCircle } from '@/components/icons';
+import { X } from '@/components/icons';
+import { Loading } from 'loading-dev';
 import { useRef } from 'react';
 import type { ButtonHTMLAttributes, ReactElement, ReactNode } from 'react';
 import { Dialog, DialogContent, DialogTitle } from './ui/dialog';
@@ -63,12 +64,27 @@ export function IconButton({
     </Tip>
   );
 }
-export function Spinner({ text = '正在加载…' }: { text?: string }) {
+export function Spinner({ text = '正在加载…', size = 20 }: { text?: string; size?: number }) {
   return (
     <div className="loading">
-      <LoaderCircle className="spin" size={22} />
-      <span>{text}</span>
+      <Loading size={size} />
+      <ShimmerText text={text} />
     </div>
+  );
+}
+/**
+ * Text with a highlight sweeping across it. The highlight is a window that slides right
+ * while the bright copy inside it slides left by the same amount, so the letters stay put;
+ * both only translate, keeping the sweep smooth while the main thread is busy.
+ */
+export function ShimmerText({ text }: { text: string }) {
+  return (
+    <span className="shimmer-text">
+      {text}
+      <span className="shimmer-window" aria-hidden>
+        <span className="shimmer-bright">{text}</span>
+      </span>
+    </span>
   );
 }
 export function Modal({

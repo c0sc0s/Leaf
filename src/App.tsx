@@ -1,26 +1,31 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, m } from 'motion/react';
 import { NotFound } from '@/components/Mascot';
 import { WindowControls } from '@/components/WindowControls';
+import { AppBrand } from '@/components/AppBrand';
 import { Button } from '@/components/ui/button';
 import { Upload, X } from '@/components/icons';
 import { useAppRoute } from '@/lib/useAppRoute';
 import type { BookMetadata } from './types';
 import { browserFolder } from './lib/markdown';
-import { fade, pop, rise } from './lib/motion';
+import { frostedPanel, pop, rise, scrim } from './lib/motion';
 import { Exiting, Spinner } from './components/UI';
 import { usePasswordPrompt } from './components/PasswordDialog';
 import { useToast } from './components/useToast';
 import { Library, type LibraryView } from './features/library/Library';
 import { LibrarySidebar } from './features/library/LibrarySidebar';
 import { DeleteBookDialog } from './features/library/DeleteBookDialog';
-import { useLibrary } from './features/library/useLibrary';
+import { openingLabel, useLibrary } from './features/library/useLibrary';
+import { useReaderReveal } from './features/reader/useReaderReveal';
 import { useBookImport } from './features/library/useBookImport';
 import { useFileDrop } from './features/import/useFileDrop';
 import { AboutDialog } from './features/about/AboutDialog';
 import { SettingsModal } from './features/settings/SettingsModal';
 import { useSettings } from './features/settings/useSettings';
-import { BookReader } from './features/reader/BookReader';
+import { BookReader, preloadReadersWhenIdle } from './features/reader/BookReader';
+
+/** The opening overlay stays up at least this long, so a fast open does not flash. */
+const OPENING_MIN_MS = 500;
 
 const platformClass =
   window.desktop?.platform === 'darwin'
@@ -33,6 +38,11 @@ export default function App() {
   const route = useAppRoute();
   const toast = useToast();
   const { notify } = toast;
+  useEffect(() => {
+    const failed = () => notify('本地存储操作失败，请重试');
+    window.addEventListener('leaf:storage-error', failed);
+    return () => window.removeEventListener('leaf:storage-error', failed);
+  }, [notify]);
   const { settings, setSettings, dark, toggleTheme } = useSettings();
   const library = useLibrary(notify);
   const password = usePasswordPrompt();
@@ -49,7 +59,14 @@ export default function App() {
   });
   const { dragging, dropProps } = useFileDrop(imports.importFiles, notify);
   const { active, closeReader } = library;
-  const busy = imports.busy || library.opening;
+  const reader = useReaderReveal(active, library.openingId, OPENING_MIN_MS);
+  const opening = reader.openingId
+    ? (library.books.find((book) => book.id === reader.openingId) ?? active)
+    : null;
+  const busy = imports.busy ?? (opening ? openingLabel(opening.title) : null);
+  useEffect(() => {
+    if (!library.loading) return preloadReadersWhenIdle();
+  }, [library.loading]);
   const openSettings = useCallback(() => setSettingsOpen(true), []);
   const navigate = (next: LibraryView) => {
     if (route.notFound) route.home();
@@ -62,17 +79,9 @@ export default function App() {
 
   return (
     <div className="app-shell" {...dropProps}>
-      {(!active || route.notFound) && (
+      {(!reader.shown || route.notFound) && (
         <div className={`titlebar ${platformClass}`}>
-          <Button
-            variant="ghost"
-            className="app-brand"
-            aria-label="Leaf 我的书架"
-            onClick={() => navigate('all')}
-          >
-            <img src={`${import.meta.env.BASE_URL}icon.png`} alt="" width="24" height="24" />
-            <span>Leaf</span>
-          </Button>
+          {route.notFound && <AppBrand onClick={() => navigate('all')} />}
         </div>
       )}
       <div className="app-body">
@@ -81,47 +90,55 @@ export default function App() {
             onHome={() => navigate('all')}
             onBack={route.canReturn ? () => history.back() : undefined}
           />
-        ) : active ? (
-          <BookReader
-            key={active.id}
-            book={active}
-            settings={settings}
-            dark={dark}
-            onClose={closeReader}
-            onUpdate={library.updateBook}
-            onSettings={openSettings}
-            notify={notify}
-            askPassword={password.ask}
-          />
         ) : (
           <>
-            <LibrarySidebar
-              view={view}
-              books={library.books}
-              noteCounts={library.counts}
-              dark={dark}
-              onView={setView}
-              onToggleTheme={toggleTheme}
-              onSettings={openSettings}
-              onAbout={() => setAboutOpen(true)}
-            />
-            <main className="library-main">
-              {library.loading ? (
-                <Spinner text="正在整理你的书架…" />
-              ) : (
-                <Library
-                  books={library.books}
-                  view={view}
-                  noteCounts={library.counts}
-                  onImport={imports.openImport}
-                  onImportFolder={imports.openFolderImport}
-                  onOpen={library.openBook}
+            {active && (
+              <div ref={reader.stage} className={`reader-stage ${reader.shown ? '' : 'pending'}`}>
+                <BookReader
+                  key={active.id}
+                  book={active}
+                  settings={settings}
+                  dark={dark}
+                  onClose={closeReader}
                   onUpdate={library.updateBook}
-                  onDelete={setDeleting}
-                  onBrowse={showAllBooks}
+                  onSettings={openSettings}
+                  notify={notify}
+                  askPassword={password.ask}
                 />
-              )}
-            </main>
+              </div>
+            )}
+            {!reader.shown && (
+              <>
+                <LibrarySidebar
+                  view={view}
+                  books={library.books}
+                  noteCounts={library.counts}
+                  dark={dark}
+                  onView={setView}
+                  onToggleTheme={toggleTheme}
+                  onSettings={openSettings}
+                  onAbout={() => setAboutOpen(true)}
+                />
+                <main className="library-main">
+                  {library.loading ? (
+                    <Spinner text="正在整理你的书架…" />
+                  ) : (
+                    <Library
+                      books={library.books}
+                      view={view}
+                      noteCounts={library.counts}
+                      onImport={imports.openImport}
+                      onImportFolder={imports.openFolderImport}
+                      onOpen={library.openBook}
+                      onPrefetch={library.prefetchBook}
+                      onUpdate={library.updateBook}
+                      onDelete={setDeleting}
+                      onBrowse={showAllBooks}
+                    />
+                  )}
+                </main>
+              </>
+            )}
           </>
         )}
       </div>
@@ -175,8 +192,10 @@ export default function App() {
       <AnimatePresence>
         {busy && (
           <Exiting key="busy">
-            <m.div className="busy-overlay" {...fade}>
-              <Spinner text={busy} />
+            <m.div className="busy-overlay" {...scrim}>
+              <m.div className="busy-panel" {...frostedPanel}>
+                <Spinner text={busy} size={48} />
+              </m.div>
             </m.div>
           </Exiting>
         )}

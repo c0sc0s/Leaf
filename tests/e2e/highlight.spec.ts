@@ -119,9 +119,7 @@ test('copies the actual selected text and creates precise multi-line highlight r
   expect(widths.map(Math.round)).toEqual([...new Set(selected.widths.map(Math.round))]);
 });
 
-test('upgrades old libraries: drops obsolete caches, moves PDFs out of book records, keeps notes', async ({
-  page,
-}) => {
+test('migrates old libraries to SQLite and deletes the legacy database', async ({ page }) => {
   await page.route('http://127.0.0.1:5173/', (route) =>
     route.fulfill({ contentType: 'text/html', body: '<html></html>' }),
   );
@@ -178,13 +176,7 @@ test('upgrades old libraries: drops obsolete caches, moves PDFs out of book reco
   ).toBeVisible();
   const saved = await page.evaluate(async () => {
     const { storage } = await import('/src/lib/db.ts');
-    const stores = await new Promise<string[]>((resolve) => {
-      const r = indexedDB.open('folio-library');
-      r.onsuccess = () => {
-        resolve([...r.result.objectStoreNames]);
-        r.result.close();
-      };
-    });
+    const stores = (await indexedDB.databases()).map((db) => db.name);
     return {
       books: await storage.books(),
       notes: await storage.annotations(),
@@ -192,9 +184,7 @@ test('upgrades old libraries: drops obsolete caches, moves PDFs out of book reco
       stores,
     };
   });
-  expect(saved.stores).not.toContain('documents');
-  expect(saved.stores).toContain('bookContents');
-  expect(saved.stores).not.toContain('files');
+  expect(saved.stores).not.toContain('folio-library');
   expect(saved.file).toBe('legacy pdf bytes');
   expect(saved.books[0]).not.toHaveProperty('blob');
   expect(saved.books[0]).not.toHaveProperty('category');

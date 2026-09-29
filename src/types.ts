@@ -116,6 +116,10 @@ export interface WindowState {
   fullscreen: boolean;
 }
 export interface DesktopAPI {
+  storage: {
+    request: (operation: string, input?: unknown) => Promise<unknown>;
+    onBeforeClose: (callback: () => Promise<void>) => () => void;
+  };
   openPDF: () => Promise<DesktopFile[] | null>;
   openFolder: () => Promise<{ name: string; files: DesktopFile[] } | null>;
   openExternal: (url: string) => Promise<void>;

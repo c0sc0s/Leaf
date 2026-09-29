@@ -2,6 +2,7 @@ import { test, expect, _electron } from '@playwright/test';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { glassOpacity, type GlassPlatform } from '../../src/lib/appearance';
 
 test('explains unavailable native glass controls in the browser', async ({ page }) => {
   await page.goto('/');
@@ -64,9 +65,16 @@ test('changes native glass live and retains the toggle and transparency after re
     const background = await page
       .locator('.library-main')
       .evaluate((el) => getComputedStyle(el).backgroundColor);
-    expect(background).toContain('/ 0.99)');
-    if ((await page.evaluate(() => window.desktop?.platform)) === 'win32') {
-      await expect(page.locator('.window-controls')).toHaveCSS('background-color', background);
+    const platform = (await page.evaluate(() => window.desktop?.platform)) as GlassPlatform;
+    expect(Number(background.match(/\/ ([\d.]+)\)$/)?.[1])).toBeCloseTo(
+      glassOpacity(platform, 1, false).surface,
+      3,
+    );
+    if (platform === 'win32') {
+      await expect(page.locator('.window-controls')).toHaveCSS(
+        'background-color',
+        'rgba(0, 0, 0, 0)',
+      );
     } else {
       // macOS uses native traffic lights instead of the Windows control overlay.
       await expect(page.locator('.window-controls')).toHaveCount(0);
@@ -87,7 +95,7 @@ test('changes native glass live and retains the toggle and transparency after re
           };
         }),
       )
-      .toEqual({ color: '#f7f8f5', removed: true });
+      .toEqual({ color: '#ffffff', removed: true });
     await page.getByRole('radio', { name: '深色', exact: true }).click();
     await page.screenshot({
       path: test.info().outputPath('glass-settings-dark.png'),
@@ -99,7 +107,7 @@ test('changes native glass live and retains the toggle and transparency after re
           BrowserWindow.getAllWindows()[0].getBackgroundColor().toLowerCase(),
         ),
       )
-      .toBe('#111111');
+      .toBe('#0a0a0a');
     await app.close();
     app = await launch();
     page = await app.firstWindow();

@@ -89,11 +89,6 @@
   color: var(--foreground);
   background: color-mix(in srgb, var(--foreground) 4%, transparent);
 }
-.settings-dialog .preferences-themes button.selected {
-  color: var(--sidebar-primary);
-  background: var(--sidebar-accent);
-  box-shadow: 0 1px 3px #0000000d;
-}
 .preferences-glass,
 .preferences-reading {
   border: 1px solid var(--border);

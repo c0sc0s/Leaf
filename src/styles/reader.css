@@ -784,10 +784,6 @@
   background: color-mix(in oklch, var(--foreground) 5%, transparent);
   color: var(--foreground);
 }
-.sidebar-tabs [role='tab'][aria-selected='true'] {
-  background: color-mix(in oklch, var(--foreground) 8%, transparent);
-  color: var(--foreground);
-}
 .outline-item {
   height: auto;
   white-space: normal;
@@ -807,4 +803,43 @@
 }
 .annotation-overlay .active-mark[data-kind='underline'] line {
   stroke-width: 3.5;
+}
+/* The reader mounts here, invisible, until its first screen is drawn; see readerReady.ts. */
+.reader-stage {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+.reader-stage.pending {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.page-skeleton {
+  width: min(42em, calc(100% - 48px));
+  margin: 48px auto;
+}
+.page-skeleton.paper {
+  width: min(720px, calc(100% - 48px));
+  aspect-ratio: 1 / 1.414;
+  padding: 9% 10%;
+  background: var(--reading-bg);
+  box-shadow: 0 5px 30px #25332516;
+}
+.page-skeleton-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.page-skeleton-lines i {
+  display: block;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--reading-line);
+}
+.page-skeleton-lines i:first-child {
+  height: 18px;
+  margin-bottom: 10px;
 }

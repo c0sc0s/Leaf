@@ -22,8 +22,10 @@ for (let page = 1; page <= 3; page++)
     .drawText(`Production ALPHA ${page}`, { font, size: 18, x: 50, y: 700 });
 await writeFile(pdfFile, await source.save());
 const app = await _electron.launch({
-  args: ['electron/main.cjs'],
-  env: { ...process.env, LEAF_USER_DATA: path.join(directory, 'profile') },
+  ...(process.env.LEAF_EXECUTABLE
+    ? { executablePath: process.env.LEAF_EXECUTABLE, args: [] }
+    : { args: ['electron/main.cjs'] }),
+  env: { LEAF_HIDDEN_WINDOW: '1', ...process.env, LEAF_USER_DATA: path.join(directory, 'profile') },
 });
 try {
   const page = await app.firstWindow();
@@ -39,6 +41,7 @@ try {
     }, file);
   await choose(markdownFile);
   await page.getByRole('button', { name: '导入文件', exact: true }).click();
+  await page.getByRole('menuitem', { name: /^导入文件(?!夹)/ }).click();
   await expect(page.locator('.book-card')).toHaveCount(9);
   await page.getByRole('button', { name: '阅读 Production Markdown', exact: true }).click();
   await expect(page.locator('.markdown-content h1')).toHaveText('Production Markdown');
@@ -50,6 +53,7 @@ try {
   await page.getByLabel('返回书架', { exact: true }).click();
   await choose(pdfFile);
   await page.getByRole('button', { name: '导入文件', exact: true }).click();
+  await page.getByRole('menuitem', { name: /^导入文件(?!夹)/ }).click();
   await expect(page.locator('.book-card')).toHaveCount(10);
   await page.getByRole('button', { name: '阅读 Production PDF', exact: true }).click();
   await expect(page.locator('.pdf-paper[data-page="1"]')).toHaveAttribute('aria-busy', 'false');

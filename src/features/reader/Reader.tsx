@@ -11,6 +11,7 @@ import { ReadingScheduler } from '../../lib/scheduler';
 import { useAnnotations } from '../../lib/useAnnotations';
 import { rise } from '../../lib/motion';
 import { Exiting, Spinner } from '../../components/UI';
+import { PageSkeleton } from './PageSkeleton';
 import { SelectionTools, MarkTools } from './AnnotationTools';
 import { NotesPanel } from './NotesPanel';
 import { ReaderHeader } from './ReaderHeader';
@@ -71,7 +72,7 @@ export function Reader({
   );
   const { exporting, exportPDF, exportNotes } = useExports(book, annotations.flush, notify);
   const [color, setColor] = useMarkColor();
-  usePinchZoom(scroller, position.setZoom);
+  usePinchZoom(scroller, position.zoom, position.setZoom);
 
   const [left, setLeft] = useState(false);
   const [right, setRight] = useState(false);
@@ -326,7 +327,7 @@ export function Reader({
               </Button>
             </div>
           ) : !pdf ? (
-            <Spinner text="正在打开 PDF…" />
+            <PageSkeleton label="正在打开 PDF…" />
           ) : (
             <PDFViewport
               ref={viewer}

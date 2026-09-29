@@ -4,11 +4,16 @@ import { storage } from '../../lib/db';
 import { bookMetadata } from '../../lib/bookData';
 import { initializeLibrary } from './initializeLibrary';
 
+export const openingLabel = (title: string) => `正在打开 ${title}…`;
+const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
 export function useLibrary(notify: (message: string) => void) {
   const [books, setBooks] = useState<BookMetadata[]>([]);
   const [active, setActive] = useState<Book | null>(null);
   const [loading, setLoading] = useState(true);
-  const [opening, setOpening] = useState<string | null>(null);
+  const [openingId, setOpeningId] = useState<string | null>(null);
+  // One book read ahead while the pointer rests on it, so the click only waits for rendering.
+  const prefetched = useRef<{ id: string; book: Promise<Book | null> } | null>(null);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const openRevision = useRef(0);
 
@@ -43,19 +48,36 @@ export function useLibrary(notify: (message: string) => void) {
     };
   }, [notify, refreshCounts]);
 
+  const prefetchBook = useCallback((id: string) => {
+    if (prefetched.current?.id === id) return;
+    const book = storage.book(id);
+    // A failed read ahead surfaces when the book is actually opened.
+    book.catch(() => {});
+    prefetched.current = { id, book };
+  }, []);
+
   const openBook = useCallback(
     async (metadata: BookMetadata) => {
       const revision = ++openRevision.current;
-      setOpening(`正在打开 ${metadata.title}…`);
+      setOpeningId(metadata.id);
       try {
-        const book = await storage.book(metadata.id);
+        // Let the pressed book paint its loading state before storage and the reader
+        // take over the main thread.
+        await nextFrame();
+        await nextFrame();
+        const read =
+          prefetched.current?.id === metadata.id
+            ? prefetched.current.book
+            : storage.book(metadata.id);
+        prefetched.current = null;
+        const book = await read;
         if (revision !== openRevision.current) return;
         if (!book) throw new Error('这本书已从书库移除');
         setActive(book);
       } catch (error) {
         if (revision === openRevision.current) notify('无法打开书籍：' + String(error));
       } finally {
-        if (revision === openRevision.current) setOpening(null);
+        if (revision === openRevision.current) setOpeningId(null);
       }
     },
     [notify],
@@ -63,7 +85,7 @@ export function useLibrary(notify: (message: string) => void) {
 
   const closeReader = useCallback(() => {
     openRevision.current++;
-    setOpening(null);
+    setOpeningId(null);
     setActive(null);
     refreshCounts();
   }, [refreshCounts]);
@@ -71,6 +93,7 @@ export function useLibrary(notify: (message: string) => void) {
   const updateBook = useCallback(
     (book: BookMetadata) => {
       const metadata = bookMetadata(book);
+      if (prefetched.current?.id === book.id) prefetched.current = null;
       setBooks((current) => current.map((entry) => (entry.id === book.id ? metadata : entry)));
       // Retain the loaded content and its identity while only metadata changes.
       setActive((current) => (current?.id === book.id ? { ...current, ...metadata } : current));
@@ -88,6 +111,7 @@ export function useLibrary(notify: (message: string) => void) {
   const removeBook = useCallback(
     async (id: string) => {
       try {
+        if (prefetched.current?.id === id) prefetched.current = null;
         await storage.deleteBook(id);
         setBooks((current) => current.filter((entry) => entry.id !== id));
         refreshCounts();
@@ -105,7 +129,8 @@ export function useLibrary(notify: (message: string) => void) {
     books,
     active,
     loading,
-    opening,
+    openingId,
+    prefetchBook,
     counts,
     openBook,
     closeReader,

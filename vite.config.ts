@@ -3,8 +3,9 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath, URL } from 'node:url';
 import { createRequire } from 'node:module';
+const sqlite = createRequire(import.meta.url)('./scripts/sqlite-vite.cjs');
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), sqlite()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

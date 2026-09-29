@@ -1,3 +1,4 @@
+import { readPreference, writePreference } from './preferences';
 import type { Book, ReadingLocation, ReadingState } from '../types';
 import { defaultLayout, parseLayout } from './layout';
 export function initialReadingState(book: Book): ReadingState {
@@ -10,7 +11,7 @@ export function initialReadingState(book: Book): ReadingState {
     layout: defaultLayout,
   };
   try {
-    const saved = JSON.parse(localStorage.getItem(`folio-position:${book.id}`) || 'null');
+    const saved = JSON.parse(readPreference(`folio-position:${book.id}`) || 'null');
     if (!saved || !Number.isFinite(saved.page)) return fallback;
     return {
       layout: parseLayout(saved.layout),
@@ -26,7 +27,7 @@ export function initialReadingState(book: Book): ReadingState {
   }
 }
 export function saveReadingState(id: string, state: ReadingState) {
-  localStorage.setItem(`folio-position:${id}`, JSON.stringify(state));
+  return writePreference(`folio-position:${id}`, JSON.stringify(state));
 }
 export function captureLocation(container: HTMLElement, page: number): ReadingLocation | null {
   const section = container.querySelector<HTMLElement>(`.pdf-slot[data-page="${page}"]`);

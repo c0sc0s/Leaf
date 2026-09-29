@@ -38,6 +38,29 @@ export const fade: Preset = {
   transition,
 };
 
+/*
+ * A frosted panel over a scrim. An ancestor with opacity below 1 stops backdrop-filter
+ * from seeing the page, so fading the whole overlay made the blur snap on at the end.
+ * The scrim fades its colour instead, and only the panel itself fades, keeping its blur
+ * live throughout.
+ */
+const reveal: Transition = { duration: 0.2, ease: easeOut };
+const conceal: Transition = { duration: 0.14, ease: easeOut };
+
+export const scrim: Preset = {
+  initial: { backgroundColor: 'rgb(0 0 0 / 0)' },
+  animate: { backgroundColor: 'rgb(0 0 0 / 0.16)' },
+  exit: { backgroundColor: 'rgb(0 0 0 / 0)', transition: conceal },
+  transition: reveal,
+};
+
+export const frostedPanel: Preset = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0, transition: conceal },
+  transition: reveal,
+};
+
 export function staggered(index: number): Transition {
   return { ...transition, delay: Math.min(index, 16) * 0.022, layout: transition };
 }

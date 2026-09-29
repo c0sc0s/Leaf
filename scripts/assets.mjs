@@ -10,7 +10,6 @@ for (const [name, license] of [
   ['react-dom', 'LICENSE'],
   ['pdfjs-dist', 'LICENSE'],
   ['pdf-lib', 'LICENSE.md'],
-  ['idb', 'LICENSE'],
   ['react-markdown', 'license'],
   ['remark-gfm', 'license'],
   ['unified', 'license'],

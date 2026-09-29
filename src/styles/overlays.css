@@ -133,22 +133,36 @@
   display: flex;
   opacity: 0.6;
 }
+/* A light scrim, so the frosted panel can show the shelf blurred behind it. */
 .busy-overlay {
   position: fixed;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #09090b66;
-  backdrop-filter: blur(4px);
   z-index: 110;
 }
-.busy-overlay .loading {
-  background: var(--background);
+/* The panel carries the frosting itself; see frostedPanel in lib/motion.ts for why. */
+.busy-panel {
+  min-width: 220px;
+  max-width: min(420px, calc(100vw - 48px));
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--background) 62%, transparent);
+  box-shadow: 0 24px 60px -20px rgb(0 0 0 / 0.35);
+  backdrop-filter: blur(24px) saturate(1.6);
+}
+.busy-panel .loading {
+  flex-direction: column;
+  gap: 16px;
+  padding: 28px 32px 24px;
   color: var(--foreground);
-  padding: 28px 35px;
-  border-radius: 12px;
-  box-shadow: var(--shadow);
+  font-size: 13px;
+}
+.busy-panel .shimmer-text {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted-foreground);
 }
 .drop-overlay {
   position: fixed;

@@ -24,10 +24,7 @@ describe('parseSettings', () => {
     });
   });
 
-  it('clears unreadable JSON so it is not parsed again', () => {
-    const removeItem = vi.fn();
-    vi.stubGlobal('localStorage', { removeItem });
+  it('recovers from unreadable JSON', () => {
     expect(parseSettings('{not json')).toEqual(defaults);
-    expect(removeItem).toHaveBeenCalledWith('folio-settings');
   });
 });

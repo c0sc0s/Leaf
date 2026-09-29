@@ -1,3 +1,4 @@
+import { registerStorageFlusher } from '../../../lib/storageClient';
 import { useCallback, useEffect, useRef } from 'react';
 import type { ReadingState } from '../../../types';
 import { saveReadingState } from '../../../lib/position';
@@ -23,12 +24,12 @@ export function useReadingPersistence({
   const lastSaved = useRef('');
   const reported = useRef(false);
 
-  const persist = useCallback(() => {
+  const persist = useCallback(async () => {
     try {
       const state = latest.current.capture();
       const serialized = JSON.stringify(state);
       if (serialized === lastSaved.current) return;
-      saveReadingState(bookId, state);
+      await saveReadingState(bookId, state);
       lastSaved.current = serialized;
     } catch {
       if (!reported.current) {
@@ -54,6 +55,10 @@ export function useReadingPersistence({
   }, [enabled, page, saveProgress]);
   useEffect(() => {
     if (!enabled) return;
+    const unregister = registerStorageFlusher(async () => {
+      await persist();
+      saveProgress();
+    });
     const interval = setInterval(persist, 1000);
     const flush = () => {
       persist();
@@ -61,6 +66,7 @@ export function useReadingPersistence({
     };
     window.addEventListener('pagehide', flush);
     return () => {
+      unregister();
       clearInterval(interval);
       clearTimeout(timer.current);
       window.removeEventListener('pagehide', flush);

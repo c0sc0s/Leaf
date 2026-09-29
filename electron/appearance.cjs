@@ -3,7 +3,7 @@ function applyBackdrop(window, { platform, supported, enabled, dark }) {
   if (platform === 'darwin') window.setVibrancy(active ? 'under-window' : null);
   else if (platform === 'win32' && supported)
     window.setBackgroundMaterial(active ? 'acrylic' : 'none');
-  window.setBackgroundColor(active ? '#00000000' : dark ? '#111111' : '#f7f8f5');
+  window.setBackgroundColor(active ? '#00000000' : dark ? '#0a0a0a' : '#ffffff');
 }
 
 module.exports = { applyBackdrop };

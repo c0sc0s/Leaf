@@ -105,25 +105,28 @@ svg {
 .titlebar.native-mac {
   padding-left: 90px;
 }
-/* The sidebar colour runs through the titlebar so the library reads as one full-height column. */
-.app-shell:has(.library-sidebar) .titlebar {
+/* On the library the titlebar is only a drag strip; the sidebar and shelf run beneath it to the window top. */
+.app-shell:has(.library-sidebar) {
   position: relative;
+}
+.app-shell:has(.library-sidebar) .titlebar {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 5;
+  height: 40px;
   border-bottom-color: transparent;
-  background: linear-gradient(
-    to right,
-    var(--sidebar) var(--library-sidebar-width),
-    var(--background) var(--library-sidebar-width)
-  );
+  background: transparent;
 }
 /* On macOS the window draws a blurred material behind the page: chrome tints it lightly, content a little more, pages stay opaque. */
 :root.vibrant {
-  --surface-opacity: calc(100% - var(--glass-transparency, 13%));
-  --chrome-opacity: max(0%, calc(var(--surface-opacity) - 10%));
+  --surface-opacity: var(--glass-surface-light);
+  --chrome-opacity: var(--glass-chrome-light);
   --chrome: color-mix(in srgb, var(--sidebar) var(--chrome-opacity), transparent);
   --surface: color-mix(in srgb, var(--background) var(--surface-opacity), transparent);
 }
 :root.vibrant.dark {
-  --chrome-opacity: max(0%, calc(var(--surface-opacity) - 4%));
+  --surface-opacity: var(--glass-surface-dark);
+  --chrome-opacity: var(--glass-chrome-dark);
 }
 :root.vibrant body {
   background: transparent;
@@ -139,28 +142,14 @@ svg {
   ) {
   background: var(--chrome);
 }
-:root.vibrant .app-shell:has(.library-sidebar) .titlebar {
-  background: linear-gradient(
-    to right,
-    var(--chrome) var(--library-sidebar-width),
-    var(--surface) var(--library-sidebar-width)
-  );
+:root.vibrant .app-shell:has(.library-sidebar) :is(.titlebar, .window-controls) {
+  background: transparent;
 }
 :root.vibrant .library-main {
   background: var(--surface);
 }
-:root.vibrant .app-shell:has(.library-sidebar) .window-controls {
-  background: var(--surface);
-}
 :root.vibrant .reading-canvas {
   background: color-mix(in srgb, var(--canvas) var(--surface-opacity), transparent);
-}
-.app-shell:has(.library-sidebar) .titlebar::after {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 calc(var(--library-sidebar-width) - 1px);
-  width: 1px;
-  background: var(--border);
 }
 .app-brand {
   display: flex;
@@ -256,12 +245,47 @@ svg {
   font-size: 12px;
   padding: 60px 20px;
 }
-.spin {
-  animation: spin 1s linear infinite;
+/*
+ * Muted text with a highlight sweeping across it; see ShimmerText in components/UI.tsx.
+ * The window is 36% of the text wide and travels from just left of the text to just right
+ * of it (-100% to 100% / 0.36 of its own width); the bright copy inside moves the opposite
+ * way by the same distance (36% to -100% of the text width), so its letters stay aligned.
+ */
+.shimmer-text {
+  position: relative;
+  display: inline-block;
+  white-space: nowrap;
 }
-@keyframes spin {
+.shimmer-window {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 36%;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 45%, #000 55%, transparent);
+  will-change: transform;
+  animation: shimmer-window 1.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+.shimmer-bright {
+  display: block;
+  width: 277.78%;
+  color: var(--foreground);
+  will-change: transform;
+  animation: shimmer-bright 1.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+@keyframes shimmer-window {
+  from {
+    transform: translateX(-100%);
+  }
   to {
-    transform: rotate(360deg);
+    transform: translateX(277.78%);
+  }
+}
+@keyframes shimmer-bright {
+  from {
+    transform: translateX(36%);
+  }
+  to {
+    transform: translateX(-100%);
   }
 }
 @keyframes modal-in {

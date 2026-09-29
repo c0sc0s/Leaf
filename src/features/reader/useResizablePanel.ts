@@ -1,3 +1,4 @@
+import { readPreference, rememberPreference } from '../../lib/preferences';
 import { useRef, useState } from 'react';
 import type { KeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
 
@@ -21,7 +22,7 @@ export function useResizablePanel<T extends HTMLElement>({
 }: PanelSize) {
   const clamp = (value: number) => Math.round(Math.min(max, Math.max(min, value)));
   const [width, setWidth] = useState(() => {
-    const saved = Number(localStorage.getItem(storageKey));
+    const saved = Number(readPreference(storageKey));
     return Number.isFinite(saved) && saved > 0 ? clamp(saved) : initial;
   });
   const panel = useRef<T>(null);
@@ -29,7 +30,7 @@ export function useResizablePanel<T extends HTMLElement>({
   const commit = (value: number) => {
     const next = clamp(value);
     setWidth(next);
-    localStorage.setItem(storageKey, String(next));
+    rememberPreference(storageKey, String(next));
   };
   // Dragging writes the width straight to the element; React only hears about the final value.
   const drag = (event: ReactPointerEvent<HTMLDivElement>) => {

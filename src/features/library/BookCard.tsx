@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { BookOpen, Heart, Highlighter, MoreHorizontal, Trash2 } from '@/components/icons';
-import type { Ref } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { m, useIsPresent } from 'motion/react';
 import * as Menu from '@/components/ui/dropdown-menu';
 import type { BookMetadata } from '../../types';
@@ -12,6 +12,7 @@ export function BookCard({
   index,
   noteCount,
   onOpen,
+  onPrefetch,
   onUpdate,
   onDelete,
 }: {
@@ -20,6 +21,7 @@ export function BookCard({
   index: number;
   noteCount: number;
   onOpen: (b: BookMetadata) => void;
+  onPrefetch: (id: string) => void;
   onUpdate: (b: BookMetadata) => void;
   onDelete: (b: BookMetadata) => void;
 }) {
@@ -27,6 +29,8 @@ export function BookCard({
     <m.article
       ref={ref}
       className="book-card"
+      onPointerEnter={() => onPrefetch(b.id)}
+      onFocus={() => onPrefetch(b.id)}
       inert={!useIsPresent()}
       layout="position"
       {...rise}
@@ -38,13 +42,12 @@ export function BookCard({
         onClick={() => onOpen(b)}
         aria-label={`阅读 ${b.title}`}
       >
-        <div className="book-cover">
-          {b.cover && <img src={b.cover} alt={`${b.title} 封面`} loading="lazy" />}
+        <BookCover book={b} alt={`${b.title} 封面`}>
           <span className="cover-open">
             <BookOpen size={18} />
             开始阅读
           </span>
-        </div>
+        </BookCover>
       </Button>
       <div className="book-info">
         <Button variant="ghost" className="book-title" onClick={() => onOpen(b)}>
@@ -89,6 +92,24 @@ export function BookCard({
         </Menu.DropdownMenu>
       </div>
     </m.article>
+  );
+}
+export function BookCover({
+  book,
+  alt,
+  children,
+}: {
+  book: BookMetadata;
+  alt: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="book-cover">
+      <span className={book.cover ? 'book-face' : 'book-face blank'}>
+        {book.cover && <img src={book.cover} alt={alt} loading="lazy" />}
+      </span>
+      {children}
+    </div>
   );
 }
 export function ReadingProgress({ book }: { book: BookMetadata }) {

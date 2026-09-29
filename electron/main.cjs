@@ -5,16 +5,23 @@ const {
   dialog,
   Menu,
   nativeTheme,
+  screen,
   session,
   shell,
 } = require('electron');
 const { writeFile } = require('node:fs/promises');
 const { isDocument, readDocument, readFolder } = require('./import.cjs');
 const { applyBackdrop } = require('./appearance.cjs');
+const { placeWindow, readWindowState, writeWindowState } = require('./windowState.cjs');
 const path = require('node:path');
 const { release } = require('node:os');
 const { existsSync } = require('node:fs');
+const { pathToFileURL } = require('node:url');
+const { randomUUID } = require('node:crypto');
+const { createStorage } = require('./storage/client.cjs');
 const development = process.argv.includes('--dev');
+// Automated runs render into a window that is never shown, so tests do not take over the desktop.
+const hiddenWindow = process.env.LEAF_HIDDEN_WINDOW === '1';
 // Electron's native Acrylic backdrop requires Windows 11 22H2 (build 22621).
 const [windowsMajor, , windowsBuild] = release().split('.').map(Number);
 const acrylic =
@@ -23,15 +30,19 @@ const acrylic =
 const translucent = process.platform === 'darwin' || acrylic;
 let glassEnabled = translucent;
 app.setName('Leaf');
-const leafProfile = path.join(app.getPath('appData'), 'Leaf');
+const leafProfile = path.join(app.getPath('appData'), development ? 'Leaf Development' : 'Leaf');
 const legacyProfile = path.join(app.getPath('appData'), 'Folio');
 // Reuse the existing profile so a renamed app retains its library and annotations.
 app.setPath(
   'userData',
   process.env.LEAF_USER_DATA ||
-    (!existsSync(leafProfile) && existsSync(legacyProfile) ? legacyProfile : leafProfile),
+    (!development && !existsSync(leafProfile) && existsSync(legacyProfile)
+      ? legacyProfile
+      : leafProfile),
 );
 let window;
+let storage;
+let storageClosed = false;
 let ready = false;
 const pending = [];
 const MAX_BYTES = 512 * 1024 * 1024;
@@ -59,16 +70,26 @@ else {
     argv.filter(isDocument).forEach((file) => void queueFile(file));
   });
   app.whenReady().then(() => {
+    storage = createStorage(path.join(app.getPath('userData'), 'library'));
     const icon = path.join(__dirname, development ? '../public/icon.png' : '../dist/icon.png');
-    if (process.platform === 'darwin') app.dock.setIcon(icon);
+    if (process.platform === 'darwin') {
+      if (hiddenWindow) app.dock.hide();
+      else app.dock.setIcon(icon);
+    }
     session.defaultSession.setPermissionRequestHandler((contents, permission, callback) =>
       callback(permission === 'clipboard-sanitized-write' && contents === window?.webContents),
     );
+    const windowStateFile = path.join(app.getPath('userData'), 'window-state.json');
+    const savedWindow = readWindowState(windowStateFile);
     window = new BrowserWindow({
-      width: 1440,
-      height: 960,
+      ...placeWindow(
+        savedWindow,
+        screen.getAllDisplays().map((display) => display.workArea),
+      ),
       minWidth: 900,
       minHeight: 640,
+      show: !hiddenWindow,
+      paintWhenInitiallyHidden: true,
       backgroundColor: translucent ? '#00000000' : '#18181b',
       title: 'Leaf',
       icon,
@@ -90,14 +111,67 @@ else {
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: true,
+        // A hidden window would otherwise throttle timers and animation frames.
+        backgroundThrottling: !hiddenWindow,
         webSecurity: true,
       },
     });
     const trusted = (event) =>
       event.sender === window?.webContents &&
+      event.senderFrame === window?.webContents.mainFrame &&
       (development
         ? event.senderFrame?.url.startsWith('http://127.0.0.1:5173/')
-        : event.senderFrame?.url.startsWith('file://'));
+        : event.senderFrame?.url.split('#')[0] ===
+          pathToFileURL(path.join(__dirname, '../dist/index.html')).href);
+    ipcMain.handle('storage:request', (event, operation, input) => {
+      if (!trusted(event)) throw new Error('Unauthorized storage request');
+      return storage.request(operation, input);
+    });
+    let canClose = false;
+    let closeRequest;
+    let storageReady = false;
+    window.webContents.on('did-start-loading', () => {
+      storageReady = false;
+    });
+    window.webContents.on('render-process-gone', () => {
+      storageReady = false;
+    });
+    ipcMain.on('storage:ready', (event) => {
+      if (trusted(event)) storageReady = true;
+    });
+    ipcMain.on('storage:flushed', async (event, id, error) => {
+      if (!trusted(event) || closeRequest?.id !== id) return;
+      clearTimeout(closeRequest.timer);
+      closeRequest = undefined;
+      try {
+        if (error) throw new Error(error);
+        await storage.request('flush');
+        canClose = true;
+        window.close();
+      } catch (error) {
+        window?.setEnabled(true);
+        dialog.showErrorBox('书库尚未保存', error.message);
+      }
+    });
+    // Maximising or entering full screen would show a window meant to stay hidden.
+    if (!hiddenWindow && savedWindow?.maximized) window.maximize();
+    if (!hiddenWindow && savedWindow?.fullScreen) window.setFullScreen(true);
+    // Record the placement as the user asks to close, before the library flush may defer it.
+    window.on('close', () => writeWindowState(windowStateFile, window));
+    window.on('close', (event) => {
+      if (canClose || !storageReady) return;
+      event.preventDefault();
+      if (closeRequest) return;
+      window.setEnabled(false);
+      const id = randomUUID();
+      const timer = setTimeout(() => {
+        closeRequest = undefined;
+        window?.setEnabled(true);
+        dialog.showErrorBox('书库尚未保存', '保存未完成，窗口已保留。请稍后重试。');
+      }, 30000);
+      closeRequest = { id, timer };
+      window.webContents.send('storage:flush', id);
+    });
     const updateBackdrop = () => {
       if (window)
         applyBackdrop(window, {
@@ -263,4 +337,19 @@ else {
     });
   });
   app.on('window-all-closed', () => app.quit());
+  app.on('before-quit', (event) => {
+    if (storageClosed || !storage) return;
+    event.preventDefault();
+    if (window) {
+      window.close();
+      return;
+    }
+    void storage
+      .close()
+      .catch((error) => console.error(error))
+      .finally(() => {
+        storageClosed = true;
+        app.quit();
+      });
+  });
 }

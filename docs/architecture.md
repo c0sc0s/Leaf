@@ -18,14 +18,17 @@
 
 类型分为 `BookMetadata` 和 `BookContent`。书架只持有元数据，打开某本书时读取该书正文，组合为完整的 `Book`。收藏、书签和进度更新保留已加载正文的引用，避免重新加载文档或重启 Worker。
 
-IndexedDB `folio-library` 的第 5 版使用以下存储：
+所有业务数据通过 `lib/db.ts` 和 `lib/preferences.ts` 进入同一个 SQLite 服务。桌面走 preload IPC，浏览器开发/预览走本机 Vite 接口；两种传输复用 `electron/storage/` 中的数据库工作线程，没有 IndexedDB 回退。
 
-- `books`：标题、封面、页数、收藏、进度和书签。
-- `bookContents`：PDF Blob，或 Markdown 原始 Blob、章节和本地图片。
-- `annotations`：批注；按 `bookId` 建索引，书架通过索引计数，无需读取所有批注正文与矩形。
-- `ocr`：已有 OCR 缓存。
+- `books`、`bookmarks`：书架元数据、收藏、进度和书签。
+- `book_contents`、`chapters`、`book_assets`：正文和图片的内容引用、Markdown 章节。
+- `annotations`：批注及按书籍统计的索引。
+- `reading_states`、`preferences`：阅读位置、设置、侧栏宽度、颜色及初始化状态。
+- `schema_migrations`：有序结构迁移、校验值和版本；`legacy_imports` 记录一次性导入凭据。
 
-升级在同一个事务中将旧书籍记录拆分；失败时整个升级回滚。导入也在同一事务中保存元数据与正文。进度等操作只更新 `books`。删除同时清理正文、批注、OCR 和本地阅读位置；迟到的进度更新不会重新创建已删除书籍。
+正文文件放在 `userData/library/content/`，以 SHA-256 命名，SQLite 位于 `userData/library/library.sqlite`。上传以 1 MiB 分块，文件写完并同步后才提交引用；上传和读取持有占用记录，工作线程串行执行引用变更与回收。书架更新只修改元数据，删除通过外键清理关联记录，迟到的进度写入不会复活已删除书籍。
+
+SQLite 开启外键、WAL 与 `synchronous=FULL`。结构升级在事务中同时提交 DDL、校验值和 `user_version`，历史校验值不符或版本较新时拒绝启动。已有结构升级前生成备份。桌面关闭窗口会先提交阅读位置、笔记及偏好，等待写入完成后再关闭工作线程；保存失败时保留窗口。
 
 导入任务按队列执行。连续系统文件打开事件不会因为正在导入而丢失，一本书失败也不会阻断后续书籍。重复检测通过书籍 ID 点查询完成。
 
@@ -61,7 +64,11 @@ PDF 导出使用标准 Highlight / Underline，包含 QuadPoints、颜色和 Uni
 
 Renderer 启用 sandbox 和 contextIsolation，关闭 Node.js 集成，禁止外部导航与新窗口。主进程提供原生文档选择、所选文件读取、导出保存、窗口外观/控制和受限外链接口。CSP 限定本机脚本、Worker 和 WASM。书籍按内容 SHA-256 去重并保存副本，移动原文件不影响离线阅读。
 
-Leaf 首次启动沿用已存在的 Folio 用户目录。IndexedDB 与 localStorage 的既有 `folio-*` 存储键保留，避免应用更名导致数据丢失。旧阅读状态仍能读取页码、文字位置和缩放；数据库升级移除不用的 `documents` 缓存。全新安装使用 Leaf 用户目录，测试通过 `LEAF_USER_DATA` 隔离书库。
+正式应用沿用已有 Leaf / Folio 用户目录；Electron 开发模式使用独立的 `Leaf Development`，测试通过 `LEAF_USER_DATA` 指向临时目录。浏览器开发数据放在 `.leaf-data/`，按浏览器 cookie 隔离，可用 `LEAF_BROWSER_DATA` 指定目录；纯静态托管不提供存储服务。
+
+启动时一次性读取当前来源的旧 `folio-library` 和 `folio-*` 偏好，兼容内嵌正文和 v5 分离结构，比较源数据摘要后原子导入。成功提交并确认来源未变后，删除旧数据库及旧偏好键。导入失败或旧库仍被其他窗口占用时阻止进入业务界面并保留可重试状态。应用正常运行不读写 IndexedDB 或 localStorage。
+
+备份及向新目录恢复见 [SQLite 存储设计](design/sqlite-migration.md)。Agent 和向量索引尚未实现，后续通过追加迁移接入。
 
 ## 验证
 

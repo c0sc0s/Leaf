@@ -1,123 +1,122 @@
-import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import type { Book, BookContent, BookMetadata, Annotation } from '../types';
-import { bookContent, bookMetadata } from './bookData';
+import type { Book, BookMetadata, Annotation, MarkdownChapter } from '../types';
+import { bookMetadata } from './bookData';
+import { storageRequest, trackStorage } from './storageClient';
+import { forgetPreference } from './preferences';
 
-interface LibrarySchema extends DBSchema {
-  books: { key: string; value: BookMetadata };
-  bookContents: { key: string; value: BookContent };
-  annotations: { key: string; value: Annotation; indexes: { bookId: string } };
-  ocr: { key: string; value: { id: string; [key: string]: unknown } };
+export interface ContentReference {
+  hash: string;
+  size: number;
+  type: string;
+  token?: string;
+}
+export interface StoredBook {
+  metadata: BookMetadata;
+  content: {
+    blob: ContentReference;
+    chapters?: MarkdownChapter[];
+    assets?: { path: string; blob: ContentReference }[];
+  };
+}
+const chunkSize = 1024 * 1024;
+function encode(bytes: Uint8Array) {
+  let binary = '';
+  for (let offset = 0; offset < bytes.length; offset += 8192)
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 8192));
+  return btoa(binary);
+}
+export async function uploadBlob(blob: Blob): Promise<ContentReference> {
+  const token = await storageRequest<string>('beginBlob', { size: blob.size, type: blob.type });
+  try {
+    for (let offset = 0; offset < blob.size; offset += chunkSize) {
+      const data = encode(
+        new Uint8Array(await blob.slice(offset, offset + chunkSize).arrayBuffer()),
+      );
+      await storageRequest('appendBlob', { token, offset, data });
+    }
+    return await storageRequest<ContentReference>('finishBlob', token);
+  } catch (error) {
+    await storageRequest('abortBlob', token).catch(() => {});
+    throw error;
+  }
+}
+async function readBlob(reference: ContentReference, token: string) {
+  const chunks: Uint8Array<ArrayBuffer>[] = [];
+  for (let offset = 0; offset < reference.size; offset += chunkSize) {
+    const data = await storageRequest<string>('readBlob', { hash: reference.hash, token, offset });
+    const bytes = Uint8Array.from(atob(data), (char) => char.charCodeAt(0));
+    if (bytes.length !== Math.min(chunkSize, reference.size - offset))
+      throw new Error('书籍内容读取不完整');
+    chunks.push(bytes);
+  }
+  return new Blob(chunks, { type: reference.type });
+}
+export async function stageBook(book: Book, references: ContentReference[]): Promise<StoredBook> {
+  const blob = await uploadBlob(book.blob);
+  references.push(blob);
+  const assets =
+    book.assets === undefined ? undefined : ([] as NonNullable<StoredBook['content']['assets']>);
+  for (const asset of book.assets ?? []) {
+    const uploaded = await uploadBlob(asset.blob);
+    references.push(uploaded);
+    assets!.push({ path: asset.path, blob: uploaded });
+  }
+  return { metadata: bookMetadata(book), content: { blob, chapters: book.chapters, assets } };
+}
+export async function releaseUploads(references: ContentReference[]) {
+  await Promise.all(references.map((reference) => storageRequest('release', reference.token)));
 }
 
-const database = openDB<LibrarySchema>('folio-library', 5, {
-  upgrade(db, previous, _next, transaction) {
-    const legacy = db as IDBPDatabase;
-    if (!db.objectStoreNames.contains('ocr')) db.createObjectStore('ocr', { keyPath: 'id' });
-    if (legacy.objectStoreNames.contains('documents')) legacy.deleteObjectStore('documents');
-    if (!db.objectStoreNames.contains('books')) db.createObjectStore('books', { keyPath: 'id' });
-    if (!db.objectStoreNames.contains('annotations')) {
-      const marks = db.createObjectStore('annotations', { keyPath: 'id' });
-      marks.createIndex('bookId', 'bookId');
-    }
-    if (!db.objectStoreNames.contains('bookContents'))
-      db.createObjectStore('bookContents', { keyPath: 'id' });
-    if (previous < 5) {
-      // Moving bytes and metadata uses the same upgrade transaction. A failure
-      // aborts the entire migration, leaving the old library intact.
-      void (async () => {
-        let cursor = await transaction.objectStore('books').openCursor();
-        while (cursor) {
-          const book = cursor.value as Book;
-          await transaction.objectStore('bookContents').put(bookContent(book));
-          await cursor.update(bookMetadata(book));
-          cursor = await cursor.continue();
-        }
-      })().catch(() => {
-        // A failed request may already have aborted the upgrade transaction.
-        try {
-          transaction.abort();
-        } catch {
-          /* Already aborted. */
-        }
-      });
-    }
-  },
-  blocking() {
-    void database.then((db) => db.close());
-  },
-});
-if (import.meta.hot)
-  import.meta.hot.dispose(() => {
-    void database.then((db) => db.close());
-  });
-
 export const storage = {
-  books: async (): Promise<BookMetadata[]> => (await database).getAll('books'),
-  metadata: async (id: string) => (await database).get('books', id),
-  book: async (id: string): Promise<Book | null> => {
-    const tx = (await database).transaction(['books', 'bookContents']);
-    const [metadata, content] = await Promise.all([
-      tx.objectStore('books').get(id),
-      tx.objectStore('bookContents').get(id),
-    ]);
-    if (!metadata) return null;
-    if (!content) throw new Error('书籍正文缺失，请重新导入');
-    return { ...metadata, ...content };
-  },
-  putBook: async (book: Book) => {
-    const tx = (await database).transaction(['books', 'bookContents'], 'readwrite');
-    await Promise.all([
-      tx.objectStore('books').put(bookMetadata(book)),
-      tx.objectStore('bookContents').put(bookContent(book)),
-    ]);
-    await tx.done;
-  },
-  updateBook: async (book: BookMetadata) => {
-    const tx = (await database).transaction('books', 'readwrite');
-    if (await tx.store.getKey(book.id)) await tx.store.put(bookMetadata(book));
-    await tx.done;
-  },
+  books: () => storageRequest<BookMetadata[]>('books'),
+  metadata: (id: string) =>
+    storageRequest<BookMetadata | null | undefined>('metadata', id).then(
+      (value) => value ?? undefined,
+    ),
+  book: (id: string): Promise<Book | null> =>
+    trackStorage(
+      (async () => {
+        const stored = await storageRequest<(StoredBook & { lease: string }) | null>('book', id);
+        if (!stored) return null;
+        try {
+          const blob = await readBlob(stored.content.blob, stored.lease);
+          const assets =
+            stored.content.assets === undefined ? undefined : ([] as NonNullable<Book['assets']>);
+          for (const asset of stored.content.assets ?? [])
+            assets!.push({ path: asset.path, blob: await readBlob(asset.blob, stored.lease) });
+          return {
+            ...stored.metadata,
+            blob,
+            ...(stored.content.chapters === undefined ? {} : { chapters: stored.content.chapters }),
+            ...(assets === undefined ? {} : { assets }),
+          };
+        } finally {
+          await storageRequest('release', stored.lease);
+        }
+      })(),
+    ),
+  putBook: (book: Book) =>
+    trackStorage(
+      (async () => {
+        const references: ContentReference[] = [];
+        try {
+          await storageRequest('putBook', await stageBook(book, references));
+        } finally {
+          await releaseUploads(references);
+        }
+      })(),
+    ),
+  updateBook: (book: BookMetadata) => storageRequest('updateBook', bookMetadata(book)),
   deleteBook: async (id: string) => {
-    const db = await database;
-    const tx = db.transaction(['books', 'bookContents', 'annotations', 'ocr'], 'readwrite');
-    await tx.objectStore('books').delete(id);
-    await tx.objectStore('bookContents').delete(id);
-    const keys = await tx.objectStore('annotations').index('bookId').getAllKeys(id);
-    for (const key of keys) await tx.objectStore('annotations').delete(key);
-    const ocrKeys = await tx.objectStore('ocr').getAllKeys();
-    for (const key of ocrKeys)
-      if (String(key).startsWith(id + ':')) await tx.objectStore('ocr').delete(key);
-    await tx.done;
-    localStorage.removeItem(`folio-position:${id}`);
+    await storageRequest('deleteBook', id);
+    forgetPreference(`folio-position:${id}`);
   },
-  annotations: async (id?: string): Promise<Annotation[]> =>
-    id
-      ? (await database).getAllFromIndex('annotations', 'bookId', id)
-      : (await database).getAll('annotations'),
-  annotationCounts: async (): Promise<Record<string, number>> => {
-    const index = (await database).transaction('annotations').store.index('bookId');
-    const counts: Record<string, number> = {};
-    // The library only needs counts, so avoid cloning every note and rectangle.
-    let cursor = await index.openKeyCursor(undefined, 'nextunique');
-    while (cursor) {
-      counts[cursor.key] = await index.count(cursor.key);
-      cursor = await cursor.continue();
-    }
-    return counts;
-  },
-  putAnnotation: async (mark: Annotation) => (await database).put('annotations', mark),
-  putAnnotations: async (marks: Annotation[]) => {
-    const tx = (await database).transaction('annotations', 'readwrite');
-    for (const mark of marks) await tx.store.put(mark);
-    await tx.done;
-  },
-  replaceAnnotations: async (remove: string[], restore: Annotation[]) => {
-    const tx = (await database).transaction('annotations', 'readwrite');
-    for (const id of remove) await tx.store.delete(id);
-    for (const mark of restore) await tx.store.put(mark);
-    await tx.done;
-  },
-  deleteAnnotation: async (id: string) => (await database).delete('annotations', id),
+  annotations: (id?: string) => storageRequest<Annotation[]>('annotations', id),
+  annotationCounts: () => storageRequest<Record<string, number>>('annotationCounts'),
+  putAnnotation: (mark: Annotation) => storageRequest('putAnnotations', [mark]),
+  putAnnotations: (marks: Annotation[]) => storageRequest('putAnnotations', marks),
+  replaceAnnotations: (remove: string[], restore: Annotation[]) =>
+    storageRequest('replaceAnnotations', { remove, restore }),
+  deleteAnnotation: (id: string) => storageRequest('deleteAnnotation', id),
 };
 export async function fingerprint(data: ArrayBuffer) {
   const digest = await crypto.subtle.digest('SHA-256', data);

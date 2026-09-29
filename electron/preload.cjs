@@ -1,5 +1,21 @@
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('desktop', {
+  storage: {
+    request: (operation, input) => ipcRenderer.invoke('storage:request', operation, input),
+    onBeforeClose: (callback) => {
+      const listener = async (_event, id) => {
+        try {
+          await callback();
+          ipcRenderer.send('storage:flushed', id);
+        } catch (error) {
+          ipcRenderer.send('storage:flushed', id, String(error?.message || error));
+        }
+      };
+      ipcRenderer.on('storage:flush', listener);
+      ipcRenderer.send('storage:ready');
+      return () => ipcRenderer.removeListener('storage:flush', listener);
+    },
+  },
   platform: process.platform,
   translucent: process.argv.includes('--leaf-translucent-window'),
   openPDF: () => ipcRenderer.invoke('pdf:choose'),

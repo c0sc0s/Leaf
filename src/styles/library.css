@@ -1,7 +1,13 @@
+.app-shell:has(.library-sidebar) .app-body {
+  position: relative;
+}
 .library-sidebar {
+  position: relative;
+  z-index: 1;
   width: var(--library-sidebar-width);
   flex-shrink: 0;
-  padding: 12px 12px 16px;
+  /* Clears the titlebar that floats over the top of the sidebar. */
+  padding: 44px 12px 16px;
   display: flex;
   flex-direction: column;
   background: var(--sidebar);
@@ -9,7 +15,23 @@
   overflow-y: auto;
 }
 :root:not(.dark) :is(.library-sidebar, .reader-sidebar, .reader-header, .reader-status) {
-  --muted-foreground: #46554a;
+  --muted-foreground: oklch(0.45 0 0);
+}
+/* Sits just under the traffic lights and aligns with the navigation icons below it. */
+.library-sidebar .app-brand {
+  align-self: flex-start;
+  height: 34px;
+  gap: 9px;
+  margin-bottom: 20px;
+  padding: 0 8px;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+.library-sidebar .app-brand img {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
 }
 .sidebar-section-label {
   color: var(--muted-foreground);
@@ -42,9 +64,6 @@
   color: var(--muted-foreground);
 }
 .sidebar-navigation button.selected {
-  background: var(--sidebar-accent);
-  color: var(--sidebar-accent-foreground);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sidebar-primary) 12%, transparent);
   font-weight: 600;
 }
 .sidebar-navigation button.selected svg {
@@ -92,174 +111,209 @@
 .library-main {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* Cover-derived colour wash across the top of the window, beneath the sidebar and titlebar. */
+.reading-atmosphere {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 480px;
+  overflow: hidden;
+  pointer-events: none;
+  mask-image: linear-gradient(to bottom, #000 35%, transparent);
+}
+.reading-atmosphere::before {
+  content: '';
+  position: absolute;
+  inset: -80px;
+  background: var(--atmosphere-light);
+  filter: blur(56px) saturate(1.2);
+}
+:root.dark .reading-atmosphere::before {
+  background: var(--atmosphere-dark);
+}
+:root.vibrant .reading-atmosphere::before {
+  opacity: 0.85;
+}
+/* Shelf content fades out beneath the transparent titlebar instead of being cut off at its edge. */
+.library-scroll {
+  position: relative;
+  flex: 1;
+  min-height: 0;
   overflow: auto;
+  mask-image: linear-gradient(to bottom, transparent 28px, #000 60px);
 }
 .library {
-  /* The titlebar above already supplies the top breathing room. */
-  padding: 8px 48px 64px;
+  padding: 72px 48px 64px;
   max-width: 1320px;
   margin: 0 auto;
-}
-.library-heading {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 28px;
+  flex-direction: column;
+  gap: 64px;
 }
-.library-heading h1 {
-  font-size: 28px;
-  line-height: 1.2;
-  font-weight: 650;
-  letter-spacing: -0.025em;
-}
-.library-heading p {
-  color: var(--muted-foreground);
-  font-size: 13px;
-  margin-top: 6px;
-}
-.continue-reading {
+.section-heading {
   display: flex;
   align-items: center;
-  gap: 20px;
-  width: 100%;
-  margin-bottom: 40px;
-  padding: 16px 20px 16px 16px;
-  border: 0;
-  border-radius: 16px;
-  text-align: left;
+  gap: 10px;
+  min-height: 32px;
+}
+.section-heading h2 {
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.section-heading p {
+  align-self: flex-end;
+  padding-bottom: 5px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.section-heading .import-trigger {
+  margin-left: auto;
+}
+.import-trigger {
+  padding: 0 13px 0 15px;
+}
+.import-trigger svg:last-child {
+  opacity: 0.7;
+}
+.import-menu {
+  min-width: 200px;
+}
+/* Only the cover and the action open the book; the text beside them is not a target. */
+.continue-reading {
+  display: flex;
+  align-items: flex-end;
+  gap: 32px;
   animation: rise-in var(--duration) var(--ease-out) both;
-  transition:
-    background var(--duration-fast),
-    transform var(--duration) var(--ease-out);
+}
+.continue-reading-cover {
+  flex-shrink: 0;
+  width: 152px;
   height: auto;
-  white-space: normal;
-  background: var(--raised);
-  box-shadow: var(--raised-shadow);
+  padding: 0;
+  border-radius: 4px;
 }
-.continue-reading:hover {
-  transform: translateY(-1px);
-  background: var(--raised-hover);
+.continue-reading-cover:hover,
+.continue-reading-cover:active {
+  background: transparent;
 }
-.continue-reading:active {
-  transform: scale(0.995);
+.continue-reading .book-cover {
+  width: 100%;
+  aspect-ratio: 2 / 3;
 }
-.continue-reading img {
-  width: 56px;
-  height: 76px;
-  flex-shrink: 0;
-  object-fit: cover;
-  border-radius: 3px;
-  box-shadow:
-    0 1px 2px #0000001f,
-    0 6px 14px #00000029;
+.continue-reading-cover:hover .book-face {
+  transform: translateY(-3px);
+  filter: var(--cover-shadow-lift);
 }
-.continue-reading-cover {
-  width: 56px;
-  height: 76px;
-  flex-shrink: 0;
-  object-fit: cover;
-  border-radius: 3px;
-  box-shadow:
-    0 1px 2px #0000001f,
-    0 6px 14px #00000029;
-}
-.continue-reading-cover {
-  display: block;
-  background: var(--muted);
+.continue-reading-cover:active .book-cover {
+  transform: scale(0.985);
+  transition-duration: var(--duration-fast);
 }
 .continue-reading-text {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  align-items: flex-start;
+  padding-bottom: 2px;
 }
-.continue-reading .eyebrow {
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  color: var(--sidebar-primary);
+.continue-reading-action {
+  margin-top: 22px;
+  height: 34px;
+  gap: 4px;
+  padding: 0 12px 0 18px;
+}
+.continue-reading-action svg {
+  transition: translate var(--duration) var(--ease-out);
+}
+.continue-reading-action:hover svg {
+  translate: 2px 0;
 }
 .continue-reading strong {
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 30px;
+  line-height: 1.12;
+  font-weight: 700;
+  letter-spacing: -0.022em;
+}
+.continue-reading-author {
+  margin-top: 6px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: color-mix(in oklch, var(--foreground) 62%, transparent);
+  font-size: 15px;
 }
 .continue-reading-progress {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-top: 6px;
-  color: var(--muted-foreground);
+  margin-top: 22px;
+  color: color-mix(in oklch, var(--foreground) 62%, transparent);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 .continue-reading-progress .book-progress {
-  width: 160px;
+  width: 220px;
   height: 4px;
   margin: 0;
   border-radius: 999px;
-  background: color-mix(in oklch, var(--foreground) 10%, transparent);
+  background: color-mix(in oklch, var(--foreground) 14%, transparent);
 }
 .continue-reading-progress .book-progress i {
+  min-width: 4px;
   border-radius: inherit;
-}
-.continue-reading-go {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  transition:
-    color var(--duration-fast),
-    background var(--duration-fast);
-  color: var(--sidebar-primary);
-  background: var(--sidebar-accent);
-}
-.continue-reading-go svg {
-  transition: transform var(--duration) var(--ease-out);
-}
-.continue-reading:hover .continue-reading-go {
-  color: var(--primary-foreground);
-  background: var(--primary);
-}
-.continue-reading:hover .continue-reading-go svg {
-  transform: translate(1px, -1px);
+  background: var(--foreground);
 }
 .library-tools {
   display: flex;
   align-items: center;
-  margin-bottom: 32px;
-}
-.library-tools > .tool-group {
-  width: 100%;
-  gap: 12px;
+  gap: 4px;
+  margin: 14px 0 28px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
 }
 .search-box {
   display: flex;
   align-items: center;
-  gap: 8px;
-  width: 280px;
-  border: 1px solid var(--border);
+  gap: 7px;
+  width: 300px;
+  min-width: 160px;
+  flex-shrink: 1;
+  height: 32px;
+  padding: 0 6px 0 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   color: var(--muted-foreground);
-  padding: 0 12px;
-  border-radius: 999px;
-  height: 40px;
-  background: var(--field);
-  border-color: var(--field-border);
-  box-shadow: var(--raised-shadow);
+  background: color-mix(in oklch, var(--foreground) 5%, transparent);
+  transition:
+    background var(--duration-fast),
+    border-color var(--duration-fast),
+    box-shadow var(--duration-fast);
+}
+.search-box:hover {
+  background: color-mix(in oklch, var(--foreground) 7%, transparent);
 }
 .search-box button {
+  width: 22px;
+  height: 22px;
   padding: 0;
-  display: flex;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
   color: var(--muted-foreground);
 }
 .search-box:focus-within {
+  background: var(--field);
   border-color: var(--ring);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 16%, transparent);
 }
@@ -284,15 +338,11 @@
 }
 .view-toggle[data-slot='toggle-group'] {
   gap: 2px;
-  padding: 3px;
-  border: 1px solid var(--field-border);
-  border-radius: 12px;
-  background: var(--field);
 }
 /* Items are tooltip triggers, which replace their data-slot and data-state; aria-checked stays reliable. */
 .view-toggle > button {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   padding: 0;
   border: 0;
   border-radius: 8px;
@@ -302,10 +352,6 @@
 .view-toggle > button:hover {
   background: color-mix(in oklch, var(--foreground) 5%, transparent);
   color: var(--foreground);
-}
-.view-toggle > button[aria-checked='true'] {
-  background: var(--sidebar-accent);
-  color: var(--sidebar-accent-foreground);
 }
 .book-grid {
   display: grid;
@@ -327,24 +373,59 @@
   --cover-shadow: drop-shadow(0 1px 1px #0000001a) drop-shadow(0 8px 14px #0000001c);
   --cover-shadow-lift: drop-shadow(0 2px 2px #0000001a) drop-shadow(0 16px 24px #00000029);
   aspect-ratio: 3 / 4;
+  container-type: size;
   position: relative;
   display: flex;
   align-items: flex-end;
   justify-content: center;
   transition: transform var(--duration) var(--ease-out);
 }
-.book-cover img {
+/* Wraps the cover image tightly so the binding and page-edge highlights follow its real proportions. */
+.book-face {
+  position: relative;
   display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  object-position: center bottom;
+  overflow: hidden;
+  border-radius: 2px 4px 4px 2px;
   filter: var(--cover-shadow);
   transition:
     transform var(--duration) var(--ease-out),
     filter var(--duration);
 }
-.book-cover-button:hover img {
+.book-face::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    #00000033 0,
+    #ffffff26 1.5%,
+    #00000014 3.5%,
+    #ffffff0a 5.5%,
+    transparent 9%,
+    transparent 92%,
+    #ffffff12 100%
+  );
+}
+.book-face::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--foreground) 8%, transparent);
+}
+.book-face img {
+  display: block;
+  max-width: 100cqw;
+  max-height: 100cqh;
+}
+.book-face.blank {
+  width: min(100cqw, 100cqh * 0.75);
+  aspect-ratio: 3 / 4;
+  background: var(--muted);
+}
+.book-cover-button:hover .book-face {
   transform: translateY(-4px);
   filter: var(--cover-shadow-lift);
 }
@@ -483,7 +564,7 @@
 .book-list .book-card:hover {
   background: color-mix(in oklch, var(--foreground) 4%, transparent);
 }
-.book-list .book-cover-button:hover img {
+.book-list .book-cover-button:hover .book-face {
   transform: none;
 }
 .book-list .book-cover-button {
@@ -515,7 +596,7 @@
 }
 @media (max-width: 1100px) {
   .library {
-    padding: 8px 32px 32px;
+    padding: 64px 32px 32px;
   }
   .book-grid {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -535,23 +616,21 @@
     display: none;
   }
   .library {
-    padding: 8px 20px 24px;
-  }
-  .library-heading h1 {
-    font-size: 21px;
-  }
-  .library-tools > .tool-group {
-    flex-wrap: wrap;
-    gap: 10px;
+    padding: 60px 20px 24px;
+    gap: 40px;
   }
   .search-box {
-    width: 100%;
+    flex: 1;
+    width: auto;
   }
-  .sort-select {
-    margin-left: 0;
+  .continue-reading {
+    gap: 20px;
   }
-  .view-toggle {
-    margin-left: auto;
+  .continue-reading-cover {
+    width: 92px;
+  }
+  .continue-reading strong {
+    font-size: 21px;
   }
   .continue-reading-progress .book-progress {
     width: 96px;

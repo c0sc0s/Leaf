@@ -1,3 +1,4 @@
+import { rememberPreference } from '../../lib/preferences';
 import { useCallback, useEffect, useState } from 'react';
 import { applyGlassAppearance, readSettings } from '../../lib/appearance';
 export { parseSettings } from '../../lib/appearance';
@@ -20,7 +21,7 @@ export function useSettings() {
     window.desktop?.setTheme(settings.theme);
   }, [settings.theme, dark]);
   useEffect(() => {
-    localStorage.setItem('folio-settings', JSON.stringify(settings));
+    rememberPreference('folio-settings', JSON.stringify(settings));
   }, [settings]);
   useEffect(() => {
     applyGlassAppearance(settings);
