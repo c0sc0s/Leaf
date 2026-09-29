@@ -56,8 +56,11 @@ function ToggleGroupItem({
   children,
   variant = 'default',
   size = 'default',
+  'data-state': _tooltipState,
   ...props
-}: React.ComponentProps<typeof ToggleGroupPrimitive.Item> & VariantProps<typeof toggleVariants>) {
+}: React.ComponentProps<typeof ToggleGroupPrimitive.Item> &
+  VariantProps<typeof toggleVariants> & { 'data-state'?: string }) {
+  // Tooltip composition must not replace the toggle's on/off state used by its styles.
   const context = React.useContext(ToggleGroupContext);
 
   return (

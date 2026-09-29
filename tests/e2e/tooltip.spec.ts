@@ -40,6 +40,8 @@ test('anchors all PDF and Markdown sidebar tooltips to their tabs', async ({ pag
   await expect(bookmarks).toBeFocused();
   await expect(bookmarks).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('tooltip')).toHaveText('文档书签');
+  await expect(bookmarks).toHaveAttribute('data-state', 'active');
+  await expect(outline).toHaveAttribute('data-state', 'inactive');
 
   await page.getByLabel('返回书架', { exact: true }).click();
   await page.getByLabel('选择 PDF 或 Markdown 文件', { exact: true }).setInputFiles({
@@ -48,6 +50,7 @@ test('anchors all PDF and Markdown sidebar tooltips to their tabs', async ({ pag
     buffer: Buffer.from('# Tooltip 示例\n\n正文'),
   });
   await page.getByRole('button', { name: '阅读 Tooltip 示例', exact: true }).click();
+  await expect(page.locator('.reader-stage')).not.toHaveClass(/pending/, { timeout: 30000 });
   for (const label of ['章节列表', '文档目录', '文档书签']) {
     await expectAnchoredTooltip(page, label);
   }
@@ -58,6 +61,8 @@ test('does not flash tooltips on a brief hover after another tooltip closes', as
   await expect(page.locator('.book-card')).toHaveCount(8);
   await page.getByLabel('网格视图', { exact: true }).hover();
   await expect(page.getByRole('tooltip')).toHaveText('网格视图');
+  await expect(page.getByLabel('网格视图', { exact: true })).toHaveAttribute('data-state', 'on');
+  await expect(page.getByLabel('列表视图', { exact: true })).toHaveAttribute('data-state', 'off');
   await page.mouse.move(700, 400, { steps: 5 });
   await expect(page.getByRole('tooltip')).toHaveCount(0);
   await page.getByLabel('列表视图', { exact: true }).hover();

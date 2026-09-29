@@ -48,7 +48,12 @@ function TabsList({
   );
 }
 
-function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPrimitive.Trigger>) {
+// Tooltip triggers inject their own data-state; tab styling must retain the selection state.
+function TabsTrigger({
+  className,
+  'data-state': _tooltipState,
+  ...props
+}: React.ComponentProps<typeof TabsPrimitive.Trigger> & { 'data-state'?: string }) {
   return (
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
