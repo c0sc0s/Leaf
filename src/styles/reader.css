@@ -276,6 +276,21 @@
   border-radius: var(--radius-lg);
   color: var(--muted-foreground);
 }
+.sidebar-scroll.outline-tree {
+  padding: 8px 8px 16px;
+}
+.outline-tree .outline-item {
+  align-items: flex-start;
+  gap: 2px;
+  padding-block: 6px;
+}
+.outline-tree .outline-item.depth-0 {
+  color: var(--foreground);
+  font-weight: 550;
+}
+.outline-tree .outline-item:focus-visible {
+  outline: 2px solid var(--ring);
+}
 .outline-toggle {
   display: grid;
   place-items: center;
@@ -776,21 +791,6 @@
 .outline-item {
   height: auto;
   white-space: normal;
-}
-.sidebar-scroll.outline-tree {
-  padding: 8px 8px 16px;
-}
-.outline-tree .outline-item {
-  align-items: flex-start;
-  gap: 2px;
-  padding-block: 6px;
-}
-.outline-tree .outline-item.depth-0 {
-  color: var(--foreground);
-  font-weight: 550;
-}
-.outline-tree .outline-item:focus-visible {
-  outline: 2px solid var(--ring);
 }
 .search-result {
   height: auto;
