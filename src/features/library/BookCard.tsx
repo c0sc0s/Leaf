@@ -39,7 +39,7 @@ export function BookCard({
         aria-label={`阅读 ${b.title}`}
       >
         <div className="book-cover">
-          <img src={b.cover} alt={`${b.title} 封面`} loading="lazy" />
+          {b.cover && <img src={b.cover} alt={`${b.title} 封面`} loading="lazy" />}
           <span className="cover-open">
             <BookOpen size={18} />
             开始阅读

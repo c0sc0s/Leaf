@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { applyGlassAppearance, readSettings } from '../../lib/appearance';
+export { parseSettings } from '../../lib/appearance';
 
 export function useSettings() {
   const [settings, setSettings] = useState(readSettings);
@@ -27,5 +28,9 @@ export function useSettings() {
   useEffect(() => {
     window.desktop?.setFrostedGlass?.(settings.frostedGlass);
   }, [settings.frostedGlass]);
-  return { settings, setSettings, dark };
+  const toggleTheme = useCallback(
+    () => setSettings((current) => ({ ...current, theme: dark ? 'light' : 'dark' })),
+    [dark],
+  );
+  return { settings, setSettings, dark, toggleTheme };
 }

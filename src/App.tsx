@@ -1,134 +1,74 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { AnimatePresence, m } from 'motion/react';
 import { NotFound } from '@/components/Mascot';
 import { WindowControls } from '@/components/WindowControls';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  BookOpen,
-  Heart,
-  Clock3,
-  NotebookPen,
-  Sun,
-  Moon,
-  Settings2,
-  Upload,
-  X,
-  LockKeyhole,
-} from '@/components/icons';
+import { Upload, X } from '@/components/icons';
+import { useAppRoute } from '@/lib/useAppRoute';
 import type { BookMetadata } from './types';
+import { browserFolder } from './lib/markdown';
 import { fade, pop, rise } from './lib/motion';
-import { useAppRoute } from './lib/useAppRoute';
-import { browserFolder, droppedSources } from './lib/markdown';
+import { Exiting, Spinner } from './components/UI';
+import { usePasswordPrompt } from './components/PasswordDialog';
+import { useToast } from './components/useToast';
 import { Library, type LibraryView } from './features/library/Library';
+import { LibrarySidebar } from './features/library/LibrarySidebar';
+import { DeleteBookDialog } from './features/library/DeleteBookDialog';
 import { useLibrary } from './features/library/useLibrary';
 import { useBookImport } from './features/library/useBookImport';
-import { BookReader } from './features/reader/BookReader';
-import { Exiting, IconButton, Modal, Spinner } from './components/UI';
+import { useFileDrop } from './features/import/useFileDrop';
+import { AboutDialog } from './features/about/AboutDialog';
 import { SettingsModal } from './features/settings/SettingsModal';
 import { useSettings } from './features/settings/useSettings';
-import { AboutDialog } from './app/AboutDialog';
-import { useNotifications } from './app/useNotifications';
-import { usePasswordPrompt } from './app/usePasswordPrompt';
+import { BookReader } from './features/reader/BookReader';
+
+const platformClass =
+  window.desktop?.platform === 'darwin'
+    ? 'native-mac'
+    : window.desktop?.platform === 'win32'
+      ? 'native-win'
+      : '';
 
 export default function App() {
   const route = useAppRoute();
-  const { toast, notify, clearToast } = useNotifications();
-  const { settings, setSettings, dark } = useSettings();
-  const { password, passwordValue, setPasswordValue, askPassword, finishPassword } =
-    usePasswordPrompt();
-  const {
-    books,
-    active,
-    loading,
-    opening,
-    counts,
-    openBook,
-    closeReader,
-    updateBook,
-    addBook,
-    removeBook,
-  } = useLibrary(notify);
+  const toast = useToast();
+  const { notify } = toast;
+  const { settings, setSettings, dark, toggleTheme } = useSettings();
+  const library = useLibrary(notify);
+  const password = usePasswordPrompt();
   const [view, setView] = useState<LibraryView>('all');
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [about, setAbout] = useState(false);
-  const [dragging, setDragging] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [deleting, setDeleting] = useState<BookMetadata | null>(null);
-  const dragDepth = useRef(0);
-  const internalDrag = useRef(false);
-  const onImported = useCallback(() => setView('all'), []);
-  const {
-    busy: importBusy,
-    fileInput,
-    folderInput,
-    importFiles,
-    openImport,
-    openFolderImport,
-  } = useBookImport({ addBook, onImported, askPassword, notify });
-  const busy = importBusy || opening;
+  const showAllBooks = useCallback(() => setView('all'), []);
+  const imports = useBookImport({
+    addBook: library.addBook,
+    askPassword: password.ask,
+    notify,
+    onImported: showAllBooks,
+  });
+  const { dragging, dropProps } = useFileDrop(imports.importFiles, notify);
+  const { active, closeReader } = library;
+  const busy = imports.busy || library.opening;
   const openSettings = useCallback(() => setSettingsOpen(true), []);
-  async function deleteBook() {
-    if (deleting && (await removeBook(deleting.id))) setDeleting(null);
-  }
-  const nav = (next: LibraryView) => {
+  const navigate = (next: LibraryView) => {
     if (route.notFound) route.home();
     closeReader();
     setView(next);
   };
+  const confirmDelete = async (book: BookMetadata) => {
+    if (await library.removeBook(book.id)) setDeleting(null);
+  };
+
   return (
-    <div
-      className="app-shell"
-      onDragStart={(event) => {
-        internalDrag.current = !event.defaultPrevented;
-      }}
-      onDragEndCapture={() => {
-        internalDrag.current = false;
-        dragDepth.current = 0;
-        setDragging(false);
-      }}
-      onDragEnter={(e) => {
-        e.preventDefault();
-        if (!internalDrag.current && e.dataTransfer.types.includes('Files')) {
-          dragDepth.current++;
-          setDragging(true);
-        }
-      }}
-      onDragOver={(e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect =
-          !internalDrag.current && e.dataTransfer.types.includes('Files') ? 'copy' : 'none';
-      }}
-      onDragLeave={(e) => {
-        e.preventDefault();
-        if (internalDrag.current || !e.dataTransfer.types.includes('Files')) return;
-        dragDepth.current--;
-        if (dragDepth.current <= 0) {
-          dragDepth.current = 0;
-          setDragging(false);
-        }
-      }}
-      onDrop={(e) => {
-        e.preventDefault();
-        const externalFiles = !internalDrag.current && e.dataTransfer.types.includes('Files');
-        internalDrag.current = false;
-        dragDepth.current = 0;
-        setDragging(false);
-        if (!externalFiles) return;
-        void droppedSources(e.dataTransfer)
-          .then(importFiles)
-          .catch((error) => notify('无法导入：' + String(error)));
-      }}
-    >
+    <div className="app-shell" {...dropProps}>
       {(!active || route.notFound) && (
-        <div
-          className={`titlebar ${window.desktop?.platform === 'darwin' ? 'native-mac' : window.desktop?.platform === 'win32' ? 'native-win' : ''}`}
-        >
+        <div className={`titlebar ${platformClass}`}>
           <Button
             variant="ghost"
             className="app-brand"
             aria-label="Leaf 我的书架"
-            onClick={() => nav('all')}
+            onClick={() => navigate('all')}
           >
             <img src={`${import.meta.env.BASE_URL}icon.png`} alt="" width="24" height="24" />
             <span>Leaf</span>
@@ -138,7 +78,7 @@ export default function App() {
       <div className="app-body">
         {route.notFound ? (
           <NotFound
-            onHome={() => nav('all')}
+            onHome={() => navigate('all')}
             onBack={route.canReturn ? () => history.back() : undefined}
           />
         ) : active ? (
@@ -148,74 +88,37 @@ export default function App() {
             settings={settings}
             dark={dark}
             onClose={closeReader}
-            onUpdate={updateBook}
+            onUpdate={library.updateBook}
             onSettings={openSettings}
             notify={notify}
-            askPassword={askPassword}
+            askPassword={password.ask}
           />
         ) : (
           <>
-            <aside className="library-sidebar">
-              <div className="sidebar-section-label">书库</div>
-              <div className="sidebar-navigation" role="navigation" aria-label="书库导航">
-                {(
-                  [
-                    ['all', '我的书架', BookOpen],
-                    ['recent', '最近阅读', Clock3],
-                    ['favorites', '收藏', Heart],
-                    ['notes', '阅读笔记', NotebookPen],
-                  ] as const
-                ).map(([v, label, Icon]) => (
-                  <Button
-                    variant="ghost"
-                    className={view === v ? 'selected' : ''}
-                    aria-current={view === v ? 'page' : undefined}
-                    key={v}
-                    onClick={() => setView(v)}
-                  >
-                    <Icon size={17} />
-                    <span>{label}</span>
-                    <Badge variant="secondary" className="ml-auto text-[11px]">
-                      {v === 'all'
-                        ? books.length
-                        : v === 'favorites'
-                          ? books.filter((b) => b.favorite).length
-                          : v === 'notes'
-                            ? Object.values(counts).reduce((n, c) => n + c, 0)
-                            : books.filter((b) => b.openedAt > 0).length}
-                    </Badge>
-                  </Button>
-                ))}
-              </div>
-              <div className="sidebar-footer">
-                <Button variant="ghost" className="about-link" onClick={() => setAbout(true)}>
-                  关于 Leaf
-                </Button>
-                <IconButton
-                  label={dark ? '切换浅色模式' : '切换深色模式'}
-                  onClick={() => setSettings((s) => ({ ...s, theme: dark ? 'light' : 'dark' }))}
-                >
-                  {dark ? <Sun size={16} /> : <Moon size={16} />}
-                </IconButton>
-                <IconButton label="设置" onClick={openSettings}>
-                  <Settings2 size={16} />
-                </IconButton>
-              </div>
-            </aside>
+            <LibrarySidebar
+              view={view}
+              books={library.books}
+              noteCounts={library.counts}
+              dark={dark}
+              onView={setView}
+              onToggleTheme={toggleTheme}
+              onSettings={openSettings}
+              onAbout={() => setAboutOpen(true)}
+            />
             <main className="library-main">
-              {loading ? (
+              {library.loading ? (
                 <Spinner text="正在整理你的书架…" />
               ) : (
                 <Library
-                  books={books}
+                  books={library.books}
                   view={view}
-                  noteCounts={counts}
-                  onImport={openImport}
-                  onImportFolder={openFolderImport}
-                  onOpen={openBook}
-                  onUpdate={updateBook}
+                  noteCounts={library.counts}
+                  onImport={imports.openImport}
+                  onImportFolder={imports.openFolderImport}
+                  onOpen={library.openBook}
+                  onUpdate={library.updateBook}
                   onDelete={setDeleting}
-                  onBrowse={() => setView('all')}
+                  onBrowse={showAllBooks}
                 />
               )}
             </main>
@@ -228,16 +131,16 @@ export default function App() {
         type="file"
         accept=".pdf,.md,.markdown,application/pdf,text/markdown"
         multiple
-        ref={fileInput}
-        onChange={(e) => {
-          if (e.target.files)
-            void importFiles(
-              [...e.target.files].map((file) => ({
+        ref={imports.fileInput}
+        onChange={(event) => {
+          if (event.target.files)
+            void imports.importFiles(
+              [...event.target.files].map((file) => ({
                 name: file.name,
                 files: [{ name: file.name, blob: file }],
               })),
             );
-          e.target.value = '';
+          event.target.value = '';
         }}
       />
       <input
@@ -246,10 +149,11 @@ export default function App() {
         type="file"
         multiple
         {...{ webkitdirectory: '', directory: '' }}
-        ref={folderInput}
-        onChange={(e) => {
-          if (e.target.files?.length) void importFiles([browserFolder([...e.target.files])]);
-          e.target.value = '';
+        ref={imports.folderInput}
+        onChange={(event) => {
+          if (event.target.files?.length)
+            void imports.importFiles([browserFolder([...event.target.files])]);
+          event.target.value = '';
         }}
       />
       {settingsOpen && (
@@ -259,52 +163,15 @@ export default function App() {
           onClose={() => setSettingsOpen(false)}
         />
       )}
-      {about && <AboutDialog onClose={() => setAbout(false)} />}
+      {aboutOpen && <AboutDialog onClose={() => setAboutOpen(false)} />}
       {deleting && (
-        <Modal title="移除这本书？" onClose={() => setDeleting(null)}>
-          <p>将从本机书库移除「{deleting.title}」及其批注。你导入前的原始文件不受影响。</p>
-          <div className="modal-actions">
-            <Button variant="outline" onClick={() => setDeleting(null)}>
-              保留
-            </Button>
-            <Button variant="destructive" onClick={() => void deleteBook()}>
-              移除书籍和批注
-            </Button>
-          </div>
-        </Modal>
+        <DeleteBookDialog
+          book={deleting}
+          onConfirm={() => void confirmDelete(deleting)}
+          onClose={() => setDeleting(null)}
+        />
       )}
-      {password !== null && (
-        <Modal title="打开受保护的 PDF" onClose={() => finishPassword(null)}>
-          <p className="muted">
-            <LockKeyhole size={16} /> {password}，请输入打开密码。
-          </p>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              finishPassword(passwordValue);
-            }}
-          >
-            <Input
-              autoFocus
-              className="password-input"
-              type="password"
-              aria-label="PDF 密码"
-              value={passwordValue}
-              onChange={(e) => setPasswordValue(e.target.value)}
-              placeholder="文件打开密码"
-            />
-            <p className="small muted">密码仅在本次打开时使用，不会写入书库。</p>
-            <div className="modal-actions">
-              <Button variant="outline" type="button" onClick={() => finishPassword(null)}>
-                取消
-              </Button>
-              <Button variant="default" type="submit">
-                打开 PDF
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
+      {password.dialog}
       <AnimatePresence>
         {busy && (
           <Exiting key="busy">
@@ -324,11 +191,11 @@ export default function App() {
             </m.div>
           </Exiting>
         )}
-        {toast && (
+        {toast.message && (
           <Exiting key="toast">
             <m.div className="toast" role="status" layout {...rise}>
-              <span>{toast}</span>
-              <Button variant="ghost" aria-label="关闭通知" onClick={clearToast}>
+              <span>{toast.message}</span>
+              <Button variant="ghost" aria-label="关闭通知" onClick={toast.dismiss}>
                 <X size={14} />
               </Button>
             </m.div>

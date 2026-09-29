@@ -5,17 +5,12 @@ import type { MarkColor, MarkKind } from '../../types';
 import { fade } from '../../lib/motion';
 import { IconButton } from '../../components/UI';
 import { Palette } from './AnnotationTools';
+import { markColorNames } from '../../lib/marks';
 
 const kinds = [
   ['highlight', '高光', Highlighter],
   ['underline', '划线', Underline],
 ] as const;
-const colorNames: Record<MarkColor, string> = {
-  amber: '黄色',
-  green: '绿色',
-  blue: '蓝色',
-  pink: '粉色',
-};
 
 export function NoteStyle({
   kind,
@@ -50,7 +45,7 @@ export function NoteStyle({
             <div role="group" aria-label="批注颜色">
               <Palette
                 color={color}
-                label={(value) => colorNames[value]}
+                label={(value) => markColorNames[value]}
                 onChange={(value) => onChange({ color: value })}
               />
             </div>

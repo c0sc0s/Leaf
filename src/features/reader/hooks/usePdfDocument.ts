@@ -4,16 +4,20 @@ import type { Book, PageContent } from '../../../types';
 import { extractPage, loadPDF } from '../../../lib/pdf';
 import { resolveDestination } from '../../../lib/destination';
 import type { OutlineItem } from '../../../lib/outline';
+import { reportError } from '../../../lib/report';
 
 type NativeOutline = Awaited<ReturnType<PDFDocumentProxy['getOutline']>>;
 
 async function readOutline(pdf: PDFDocumentProxy): Promise<OutlineItem[]> {
-  const native = await pdf.getOutline().catch(() => null);
+  const native = await pdf.getOutline();
   if (!native) return [];
   const items: OutlineItem[] = [];
   async function walk(entries: NativeOutline, depth: number) {
     for (const entry of entries) {
-      const location = await resolveDestination(pdf, entry.dest).catch(() => null);
+      const location = await resolveDestination(pdf, entry.dest).catch((error) => {
+        reportError(`目录项「${entry.title}」的目标无法解析`, error);
+        return null;
+      });
       items.push({
         title: entry.title,
         page: location?.page ?? 1,
@@ -63,8 +67,11 @@ export function usePdfDocument(book: Book, askPassword: () => Promise<string | n
           .then((labels) => {
             if (!disposed) setPageLabels(labels);
           })
-          .catch(() => {});
-        const items = await readOutline(p);
+          .catch((error) => reportError('页码标签无法读取', error));
+        const items = await readOutline(p).catch((error) => {
+          reportError('文档目录无法读取', error);
+          return [];
+        });
         if (!disposed) {
           setOutline(items);
           setOutlineReady(true);

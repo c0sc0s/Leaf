@@ -43,6 +43,7 @@ test('searches code in an imported folder without losing the reader', async ({ p
     await expect(page.locator('.markdown-search-result')).toHaveCount(2);
     await expect(page.locator('.markdown-content code mark')).toHaveText('const');
     await input.fill('const inline');
+    await expect(page.locator('.markdown-search-result')).toHaveCount(1);
     await page.locator('.markdown-search-result').click();
     await expect(page.locator('.markdown-content h1')).toHaveText('Nested chapter');
     await expect(page.locator('.markdown-content code mark')).toHaveText('const inline');

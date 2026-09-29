@@ -2,16 +2,17 @@
 
 `App.tsx` 负责组合书架、阅读器、设置和弹窗。业务状态与异步操作放在各自模块中，避免导入、存储、主题和阅读器生命周期继续集中到 App。
 
-| 模块                                    | 职责                                                                  |
-| --------------------------------------- | --------------------------------------------------------------------- |
-| `features/library/useLibrary.ts`        | 书架元数据、按需打开正文、收藏/进度更新、删除和笔记计数               |
-| `features/library/useBookImport.ts`     | 浏览器文件选择、原生文件/文件夹选择、拖放与系统文件打开事件的导入队列 |
-| `features/library/importBook.ts`        | 格式/大小检查、PDF 密码与 PDF/Markdown 格式转换                       |
-| `features/library/initializeLibrary.ts` | 首次示例书初始化，共享正在执行的初始化任务                            |
-| `features/settings/useSettings.ts`      | 设置保存、系统主题监听与原生窗口外观同步                              |
-| `app/`                                  | 通知、密码请求队列和关于弹窗                                          |
-| `features/reader/BookReader.tsx`        | 按格式延迟加载 PDF 或 Markdown 阅读器及其公共参数                     |
-| `features/reader/hooks/`                | 阅读位置保存、快捷键、文档加载和搜索等阅读器行为                      |
+| 模块                                                                         | 职责                                                                  |
+| ---------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `features/library/useLibrary.ts`                                             | 书架元数据、按需打开正文、收藏/进度更新、删除和笔记计数               |
+| `features/library/useBookImport.ts`                                          | 浏览器文件选择、原生文件/文件夹选择、拖放与系统文件打开事件的导入队列 |
+| `features/library/importBook.ts`                                             | 格式/大小检查、PDF 密码与 PDF/Markdown 格式转换                       |
+| `features/library/initializeLibrary.ts`                                      | 首次示例书初始化，共享正在执行的初始化任务                            |
+| `features/settings/useSettings.ts`                                           | 设置保存、系统主题监听与原生窗口外观同步                              |
+| `components/PasswordDialog.tsx`、`components/useToast.ts`、`features/about/` | 密码请求队列、通知和关于弹窗                                          |
+| `features/import/useFileDrop.ts`                                             | 文件与 Markdown 文件夹的拖放入口                                      |
+| `features/reader/BookReader.tsx`                                             | 按格式延迟加载 PDF 或 Markdown 阅读器及其公共参数                     |
+| `features/reader/hooks/`                                                     | 阅读位置保存、快捷键、文档加载和搜索等阅读器行为                      |
 
 ## 书架与正文分离
 
@@ -31,6 +32,8 @@ IndexedDB `folio-library` 的第 5 版使用以下存储：
 ## 阅读器与计算服务
 
 PDF 与 Markdown 共用 `useReadingPersistence` 和 `useReaderShortcuts`。阅读位置在滚动停止后保存，并定期及退出时补存；状态未变时跳过重复写入。进度延迟更新，模态弹窗与目录树保留各自的键盘操作。
+
+PDF 阅读器通过 `useReaderNavigation`、`useBookmarks`、`useExports`、`usePinchZoom` 和 `useMarkColor` 组合导航、书签、导出、缩放和批注颜色。页面排布计算集中在 `viewport/geometry.ts`，批注颜色集中在 `lib/marks.ts`。可选文档能力读取失败时通过 `lib/report.ts` 记录上下文。
 
 Markdown 的解析、标题提取、代码高亮和搜索通过 `MarkdownDocument` 服务完成；PDF 搜索通过 `PDFSearchIndex` 服务完成。React 调用有固定输入/返回类型的文档方法，Worker 创建、请求协议和销毁集中在服务实现中。`lib/workerClient.ts` 负责请求编号、取消、过期响应和异常传播。
 
@@ -65,3 +68,5 @@ Leaf 首次启动沿用已存在的 Folio 用户目录。IndexedDB 与 localStor
 单元测试覆盖索引偏移、缓存限额、取消、Worker 关闭、导入队列、Markdown 装饰与标准批注导出。端到端测试覆盖混合尺寸 PDF、长文档画布数量、定位/续读、目录/搜索/书签、选字、笔记和撤销、主题、键盘、Markdown 安全渲染和原生导入。数据库测试验证真实旧文档迁移和只写元数据。`npm run test:production` 构建当前代码后，通过 Electron 的 `file://` 加载验证阅读器、计算 Worker 与原生打开/保存。
 
 安装包通过 `THIRD_PARTY_NOTICES.md` 和 `licenses/` 分发依赖许可。正式发布另需完成安装包、签名及两平台验收。
+
+公共样式按功能分在 `src/styles/`（base、overlays、library、reader、notes），Markdown 阅读和设置面板各自保留功能样式。阅读器、PDF.js 与 PDF 导出实现按需加载。

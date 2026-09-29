@@ -3,7 +3,7 @@ import { Button } from './ui/button';
 import { cn } from '../lib/utils';
 import './mascot.css';
 
-export const mascotScenes = {
+const mascotScenes = {
   reading: 'reading',
   welcome: 'welcome-sleeping',
   library: 'empty-library',

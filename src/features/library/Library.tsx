@@ -100,7 +100,11 @@ export function Library({
       </header>
       {view === 'all' && recent && (
         <Button variant="ghost" className="continue-reading" onClick={() => onOpen(recent)}>
-          <img src={recent.cover} alt="" />
+          {recent.cover ? (
+            <img src={recent.cover} alt="" />
+          ) : (
+            <span className="continue-reading-cover" />
+          )}
           <div className="continue-reading-text">
             <span className="eyebrow">继续阅读</span>
             <strong>{recent.title}</strong>

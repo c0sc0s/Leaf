@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { createContext, memo, useContext, useEffect, useRef, useState } from 'react';
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
 import { revealIn } from '../../../lib/reveal';
+import { isCancelledRender, reportError } from '../../../lib/report';
 
 const THUMBNAIL_WIDTH = 140;
 type Watch = (element: Element, onChange: (visible: boolean) => void) => () => void;
@@ -63,7 +64,7 @@ export function ThumbnailList({
   );
 }
 
-export const Thumbnail = memo(function Thumbnail({
+const Thumbnail = memo(function Thumbnail({
   pdf,
   number,
   active,
@@ -114,7 +115,9 @@ export const Thumbnail = memo(function Thumbnail({
         task = p.render({ canvas: target, viewport });
         return task.promise;
       })
-      .catch(() => {});
+      .catch((error) => {
+        if (!isCancelledRender(error)) reportError(`第 ${number} 页缩略图渲染失败`, error);
+      });
     return () => {
       canceled = true;
       task?.cancel();

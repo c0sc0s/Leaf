@@ -50,7 +50,7 @@ function linesOf(raw: RawToken[]) {
   for (const line of lines) line.tokens.sort((a, b) => a.x - b.x);
   return lines;
 }
-export function semanticMap(tree: Structure | null) {
+function semanticMap(tree: Structure | null) {
   const roles = new Map<string, string>();
   function visit(node: Structure, parent = 'P') {
     const role =

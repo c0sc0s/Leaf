@@ -1,5 +1,5 @@
-import { Modal } from '../components/UI';
-import { BookOpen, FolderOpen, NotebookPen, Sun, Command } from '../components/icons';
+import { BookOpen, Command, FolderOpen, NotebookPen, Sun } from '@/components/icons';
+import { Modal } from '../../components/UI';
 
 export function AboutDialog({ onClose }: { onClose: () => void }) {
   return (

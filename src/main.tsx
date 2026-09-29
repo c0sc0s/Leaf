@@ -7,7 +7,11 @@ import { LazyMotion, MotionConfig, domMax } from 'motion/react';
 import { transition } from './lib/motion';
 import { applyGlassAppearance, readSettings } from './lib/appearance';
 import './theme.css';
-import './styles.css';
+import './styles/base.css';
+import './styles/overlays.css';
+import './styles/library.css';
+import './styles/reader.css';
+import './styles/notes.css';
 applyGlassAppearance(readSettings());
 document.documentElement.dataset.platform = window.desktop?.platform ?? 'web';
 ReactDOM.createRoot(document.getElementById('root')!).render(

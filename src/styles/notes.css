@@ -1,0 +1,242 @@
+/* The panel floats over the page, so it lets the page show through instead of covering it. */
+.notes-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 18;
+  background: color-mix(in oklch, var(--sidebar) 72%, transparent);
+  backdrop-filter: blur(24px) saturate(1.6);
+  border-left: 1px solid color-mix(in oklch, var(--foreground) 8%, transparent);
+  box-shadow: -12px 0 32px #00000014;
+  display: flex;
+  flex-direction: column;
+}
+.notes-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 10px 10px 18px;
+  min-height: 52px;
+}
+.notes-heading h3 {
+  font-weight: 600;
+  font-size: 13px;
+}
+.notes-heading h3 span {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted-foreground);
+  margin-left: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.notes-list {
+  padding: 0 12px 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+.note-card {
+  background: color-mix(in oklch, var(--card) 70%, transparent);
+  border: 1px solid color-mix(in oklch, var(--foreground) 8%, transparent);
+  border-radius: 12px;
+  box-shadow: none;
+  margin-bottom: 8px;
+  padding: 12px 14px 8px;
+  transition:
+    border-color var(--duration-fast),
+    box-shadow var(--duration) var(--ease-out);
+  gap: 0;
+}
+.note-card:hover {
+  border-color: color-mix(in oklch, var(--foreground) 14%, transparent);
+}
+.note-card.active {
+  border-color: var(--sidebar-primary);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--sidebar-primary) 18%, transparent);
+}
+.note-card.current-page {
+  border-color: color-mix(in oklch, var(--sidebar-primary) 45%, transparent);
+}
+.note-card-top {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: -4px -6px 0 0;
+}
+.note-page {
+  height: 24px;
+  margin-right: auto;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+.note-page:hover {
+  background: transparent;
+  color: var(--foreground);
+}
+.note-card-top .icon-button {
+  width: 24px;
+  height: 24px;
+  color: var(--muted-foreground);
+  opacity: 0;
+}
+.note-card:hover .note-card-top .icon-button {
+  opacity: 1;
+}
+.note-card-top .icon-button:focus-visible {
+  opacity: 1;
+}
+.note-card-top .icon-button:hover {
+  color: var(--destructive);
+}
+.note-card blockquote {
+  margin: 6px 0 4px;
+  border-left: 2px solid;
+  padding-left: 10px;
+  font:
+    13px/1.65 Georgia,
+    'PingFang SC',
+    serif;
+  color: var(--foreground);
+  max-height: 180px;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
+/* The note reads as part of the card until it is focused. */
+.note-card textarea {
+  width: 100%;
+  field-sizing: content;
+  resize: none;
+  min-height: 28px;
+  max-height: 250px;
+  padding: 4px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.note-card textarea:focus-visible {
+  box-shadow: none;
+}
+.note-card:focus-within {
+  border-color: var(--sidebar-primary);
+}
+.note-date {
+  text-align: right;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  margin-top: 9px;
+}
+.selection-toolbar {
+  position: fixed;
+  z-index: 80;
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 6px 9px;
+  border-radius: 9px;
+  box-shadow: 0 6px 28px #0002;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.selection-toolbar .icon-button {
+  width: 30px;
+  height: 30px;
+}
+.mark-colors {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 4px;
+}
+.mark-colors button {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: #3c3c2d;
+}
+.mark-colors .selected {
+  outline: 1.5px solid var(--foreground);
+  outline-offset: 2px;
+}
+.note-format {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  margin: 6px -6px 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+.note-format .note-date {
+  margin: 0 6px 0 auto;
+}
+.palette-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  padding: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow);
+  transform-origin: top left;
+  animation: pop-in var(--duration-fast) var(--ease-out);
+}
+.note-format .icon-button {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  color: var(--muted-foreground);
+}
+.note-format .icon-button.active {
+  background: color-mix(in oklch, var(--foreground) 8%, transparent);
+  color: var(--foreground);
+}
+.note-style-options {
+  display: flex;
+  align-items: center;
+  margin-left: 4px;
+  padding-left: 6px;
+  border-left: 1px solid var(--border);
+}
+.note-kinds {
+  display: flex;
+  gap: 2px;
+  padding-right: 8px;
+  margin-right: 8px;
+  border-right: 1px solid var(--border);
+}
+/* Options unfold left to right; `backwards` fill hands transform back to the press feedback afterwards. */
+.note-style-options :is(.note-kinds, .mark-colors) > * {
+  animation: slide-in-x var(--duration) var(--ease-out) backwards;
+}
+.note-kinds > :nth-child(2) {
+  animation-delay: 30ms;
+}
+.note-style-options .mark-colors > :nth-child(1) {
+  animation-delay: 70ms;
+}
+.note-style-options .mark-colors > :nth-child(2) {
+  animation-delay: 100ms;
+}
+.note-style-options .mark-colors > :nth-child(3) {
+  animation-delay: 130ms;
+}
+.note-style-options .mark-colors > :nth-child(4) {
+  animation-delay: 160ms;
+}
+.note-format .mark-colors {
+  gap: 8px;
+  padding: 0;
+}
+.note-format .mark-colors button {
+  width: 14px;
+  height: 14px;
+}
