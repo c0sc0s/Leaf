@@ -28,7 +28,7 @@ test('keeps controls readable in both themes and at the minimum desktop size', a
   await page.getByLabel('切换深色模式', { exact: true }).click();
   await expect(page.locator('.book-title').first()).toHaveCSS('color', 'oklch(0.985 0 0)');
   await page.setViewportSize({ width: 900, height: 640 });
-  await expect(page.getByRole('button', { name: '导入 PDF', exact: true })).toBeInViewport();
+  await expect(page.getByRole('button', { name: '导入文件', exact: true })).toBeInViewport();
   await expect(page.getByLabel('搜索书库', { exact: true })).toBeInViewport();
   expect(
     await page.locator('.library-main').evaluate((el) => el.scrollWidth <= el.clientWidth),
@@ -36,8 +36,17 @@ test('keeps controls readable in both themes and at the minimum desktop size', a
   await page.getByLabel('列表视图', { exact: true }).click();
   await expect(page.locator('.book-list .book-card')).toHaveCount(8);
   await page.getByLabel('切换浅色模式', { exact: true }).click();
-  await expect(page.locator('.book-title').first()).toHaveCSS(
-    'color',
-    'oklch(0.141 0.005 285.823)',
-  );
+  await expect(page.locator('.book-title').first()).toHaveCSS('color', 'rgb(38, 49, 44)');
+  await page.getByRole('button', { name: '设置', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: '阅读偏好' });
+  await expect(dialog.getByRole('button', { name: '关闭', exact: true })).toBeInViewport();
+  await expect(dialog.getByText('偏好自动保存在本机')).toBeInViewport();
+  expect(await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+  const colors = dialog.getByLabel('原版颜色', { exact: true });
+  await colors.scrollIntoViewIfNeeded();
+  await expect(colors).toBeInViewport();
+  await expect(dialog.getByRole('button', { name: '关闭', exact: true })).toBeInViewport();
+  await expect(dialog.getByText('偏好自动保存在本机')).toBeInViewport();
+  await dialog.getByRole('button', { name: '关闭', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
 });

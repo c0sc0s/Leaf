@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { Book, PageContent } from '../../../types';
 import { extractPage, loadPDF } from '../../../lib/pdf';
-import { storage } from '../../../lib/db';
 import { resolveDestination } from '../../../lib/destination';
 import type { OutlineItem } from '../../../lib/outline';
 import { reportError } from '../../../lib/report';
@@ -43,9 +42,8 @@ export function usePdfDocument(book: Book, askPassword: () => Promise<string | n
     let current: PDFDocumentProxy | undefined;
     let task: ReturnType<typeof loadPDF> | undefined;
     let disposed = false;
-    void storage
-      .file(book.id)
-      .then((file) => file.arrayBuffer())
+    void book.blob
+      .arrayBuffer()
       .then((data) => {
         if (disposed) return;
         task = loadPDF(data, (update) => {
@@ -87,11 +85,15 @@ export function usePdfDocument(book: Book, askPassword: () => Promise<string | n
       cache.current.clear();
       void (current?.loadingTask.destroy() || task?.destroy());
     };
-  }, [book.id, askPassword]);
+  }, [book.id, book.blob, askPassword]);
   const getContent = useCallback(
     (n: number) => {
       if (!pdf) return Promise.reject(new Error('PDF 尚未加载'));
       let value = cache.current.get(n);
+      if (value) {
+        cache.current.delete(n);
+        cache.current.set(n, value);
+      }
       if (!value) {
         value = extractPage(pdf, n);
         cache.current.set(n, value);
@@ -99,7 +101,10 @@ export function usePdfDocument(book: Book, askPassword: () => Promise<string | n
           const oldest = cache.current.keys().next().value;
           if (oldest !== undefined && oldest !== n) cache.current.delete(oldest);
         }
-        value.catch(() => cache.current.delete(n));
+        const pending = value;
+        value.catch(() => {
+          if (cache.current.get(n) === pending) cache.current.delete(n);
+        });
       }
       return value;
     },

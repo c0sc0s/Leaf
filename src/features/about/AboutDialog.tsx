@@ -7,7 +7,7 @@ export function AboutDialog({ onClose }: { onClose: () => void }) {
       <div className="about-logo">
         Leaf<span>1.4</span>
       </div>
-      <p>本地 PDF 阅读器，支持原版阅读、连续滚动和文字批注。</p>
+      <p>本地 PDF 与 Markdown 阅读器，支持原版阅读、章节导航和阅读进度。</p>
       <div className="about-features">
         <span>
           <FolderOpen size={17} />
@@ -28,7 +28,7 @@ export function AboutDialog({ onClose }: { onClose: () => void }) {
       </div>
       <div className="shortcut-list">
         <div>
-          <span>导入 PDF</span>
+          <span>导入文件</span>
           <kbd>
             <Command size={12} /> / Ctrl + O
           </kbd>

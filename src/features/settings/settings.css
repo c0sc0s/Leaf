@@ -1,0 +1,304 @@
+.leaf-dialog.settings-dialog {
+  display: flex;
+  flex-direction: column;
+  width: 560px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100dvh - 48px);
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  border-radius: 20px;
+  color: var(--foreground);
+  background: var(--popover);
+  box-shadow: 0 24px 80px #00000026;
+}
+.settings-dialog .modal-heading {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 22px 26px 12px;
+}
+.settings-dialog .modal-heading h2 {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.settings-dialog .modal-heading .icon-button {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  color: var(--muted-foreground);
+}
+.settings-dialog .modal-heading .icon-button:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+.preferences-body {
+  min-height: 0;
+  padding: 0 26px 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.settings-dialog .leaf-settings-intro {
+  gap: 10px;
+  margin: 0 0 20px;
+}
+.settings-dialog .leaf-settings-intro .leaf-mascot {
+  --mascot-size: 48px;
+}
+.settings-dialog .leaf-settings-intro p {
+  font-size: 12px;
+  line-height: 1.6;
+}
+.preferences-section + .preferences-section {
+  margin-top: 24px;
+}
+.preferences-section h3 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 550;
+  color: var(--muted-foreground);
+}
+.settings-dialog .preferences-themes {
+  display: flex;
+  width: 100%;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--foreground) 3%, transparent);
+}
+.settings-dialog .preferences-themes button {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  gap: 8px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  background: transparent;
+  transition:
+    background var(--duration-fast),
+    color var(--duration-fast);
+}
+.settings-dialog .preferences-themes button:hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 4%, transparent);
+}
+.settings-dialog .preferences-themes button.selected {
+  color: var(--sidebar-primary);
+  background: var(--sidebar-accent);
+  box-shadow: 0 1px 3px #0000000d;
+}
+.preferences-glass,
+.preferences-reading {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--foreground) 2%, transparent);
+}
+.preferences-glass {
+  padding: 16px 18px;
+}
+.preferences-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.preferences-toggle-row > div {
+  min-width: 0;
+}
+.preferences-toggle-row label,
+.preferences-row label {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.preferences-toggle-row label {
+  cursor: pointer;
+}
+.preferences-section p {
+  margin: 5px 0 0;
+  font-size: 11px;
+  line-height: 1.65;
+  color: var(--muted-foreground);
+}
+.settings-dialog .preferences-switch {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 24px;
+  padding: 3px;
+  border: 0;
+  border-radius: 999px;
+  justify-content: flex-start;
+  background: color-mix(in srgb, var(--foreground) 20%, transparent);
+}
+.settings-dialog .preferences-switch[aria-checked='true'] {
+  background: var(--primary);
+}
+.preferences-switch > span {
+  display: block;
+  flex: 0 0 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px #00000026;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+.preferences-switch[aria-checked='true'] > span {
+  transform: translateX(16px);
+}
+.preferences-transparency {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  transition: opacity var(--duration-fast);
+}
+.preferences-transparency[data-disabled='true'] {
+  opacity: 0.45;
+}
+.preferences-transparency > label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+}
+.preferences-transparency output {
+  min-width: 44px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--sidebar-accent);
+  color: var(--sidebar-primary);
+  font-size: 12px;
+  font-weight: 550;
+  line-height: 1.5;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.preferences-transparency input[type='range'] {
+  display: block;
+  appearance: none;
+  width: 100%;
+  height: 22px;
+  margin: 9px 0 3px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.preferences-transparency input[type='range']::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--sidebar-primary) var(--range-progress),
+    var(--border) var(--range-progress)
+  );
+}
+.preferences-transparency input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border: 3px solid var(--popover);
+  border-radius: 50%;
+  background: var(--sidebar-primary);
+  box-shadow:
+    0 0 0 1px var(--sidebar-primary),
+    0 1px 4px #00000026;
+}
+.preferences-transparency input[type='range']:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 5px;
+}
+.preferences-transparency input[type='range']:disabled {
+  cursor: default;
+}
+.preferences-range-labels {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted-foreground);
+  font-size: 10px;
+}
+.preferences-transparency p {
+  margin-top: 10px;
+}
+.preferences-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px 18px;
+}
+.preferences-row + .preferences-row {
+  border-top: 1px solid var(--border);
+}
+.preferences-row-copy {
+  min-width: 0;
+}
+.settings-dialog .preferences-row [data-slot='native-select-wrapper'] {
+  flex: 0 0 168px;
+  width: 168px;
+}
+.settings-dialog .preferences-row select {
+  height: 36px;
+  padding-left: 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--popover);
+  color: var(--foreground);
+  font-size: 12px;
+}
+.preferences-footer {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 6px;
+  padding: 14px 26px;
+  border-top: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.preferences-footer svg {
+  color: var(--sidebar-primary);
+}
+@media (max-width: 520px) {
+  .settings-dialog .modal-heading {
+    padding: 18px 20px 10px;
+  }
+  .preferences-body {
+    padding: 0 20px 20px;
+  }
+  .preferences-glass,
+  .preferences-row {
+    padding: 14px;
+  }
+  .preferences-row {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .settings-dialog .preferences-row [data-slot='native-select-wrapper'] {
+    flex: none;
+    width: 100%;
+  }
+  .settings-dialog .preferences-themes button {
+    gap: 5px;
+    padding: 0 5px;
+    font-size: 12px;
+  }
+  .preferences-footer {
+    padding: 12px 20px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .preferences-switch > span {
+    transition: none;
+  }
+}

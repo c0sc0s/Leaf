@@ -1,3 +1,12 @@
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4,
+  p {
+    margin: 0;
+  }
+}
 :root {
   --library-sidebar-width: 224px;
   font-synthesis: none;
@@ -25,9 +34,39 @@ body {
   background: var(--background);
   font-size: 13px;
 }
-button,
-input,
-select,
+button {
+  font: inherit;
+  -webkit-app-region: no-drag;
+  transition:
+    background var(--duration-fast),
+    color var(--duration-fast),
+    border-color var(--duration-fast),
+    box-shadow var(--duration-fast),
+    opacity var(--duration-fast),
+    transform var(--duration-fast) var(--ease-out);
+}
+input {
+  font: inherit;
+  -webkit-app-region: no-drag;
+  transition:
+    background var(--duration-fast),
+    color var(--duration-fast),
+    border-color var(--duration-fast),
+    box-shadow var(--duration-fast),
+    opacity var(--duration-fast),
+    transform var(--duration-fast) var(--ease-out);
+}
+select {
+  font: inherit;
+  -webkit-app-region: no-drag;
+  transition:
+    background var(--duration-fast),
+    color var(--duration-fast),
+    border-color var(--duration-fast),
+    box-shadow var(--duration-fast),
+    opacity var(--duration-fast),
+    transform var(--duration-fast) var(--ease-out);
+}
 textarea {
   font: inherit;
   -webkit-app-region: no-drag;
@@ -41,13 +80,6 @@ textarea {
 }
 svg {
   flex-shrink: 0;
-}
-h1,
-h2,
-h3,
-h4,
-p {
-  margin: 0;
 }
 ::selection {
   background: var(--selection);
@@ -85,16 +117,26 @@ p {
 }
 /* On macOS the window draws a blurred material behind the page: chrome tints it lightly, content a little more, pages stay opaque. */
 :root.vibrant {
-  --chrome: color-mix(in oklch, var(--sidebar) 25%, transparent);
-  --surface: color-mix(in oklch, var(--background) 55%, transparent);
+  --surface-opacity: calc(100% - var(--glass-transparency, 13%));
+  --chrome-opacity: max(0%, calc(var(--surface-opacity) - 10%));
+  --chrome: color-mix(in srgb, var(--sidebar) var(--chrome-opacity), transparent);
+  --surface: color-mix(in srgb, var(--background) var(--surface-opacity), transparent);
 }
 :root.vibrant.dark {
-  --surface: color-mix(in oklch, #151515 70%, transparent);
+  --chrome-opacity: max(0%, calc(var(--surface-opacity) - 4%));
 }
 :root.vibrant body {
   background: transparent;
 }
-:root.vibrant :is(.titlebar, .reader-header, .library-sidebar, .reader-sidebar, .reader-status) {
+:root.vibrant
+  :is(
+    .titlebar,
+    .reader-header,
+    .library-sidebar,
+    .reader-sidebar,
+    .reader-status,
+    .window-controls
+  ) {
   background: var(--chrome);
 }
 :root.vibrant .app-shell:has(.library-sidebar) .titlebar {
@@ -107,8 +149,11 @@ p {
 :root.vibrant .library-main {
   background: var(--surface);
 }
+:root.vibrant .app-shell:has(.library-sidebar) .window-controls {
+  background: var(--surface);
+}
 :root.vibrant .reading-canvas {
-  background: color-mix(in oklch, var(--canvas) 55%, transparent);
+  background: color-mix(in srgb, var(--canvas) var(--surface-opacity), transparent);
 }
 .app-shell:has(.library-sidebar) .titlebar::after {
   content: '';
@@ -121,14 +166,17 @@ p {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0;
   font-size: 14px;
   font-weight: 650;
   letter-spacing: -0.02em;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
 }
 .app-brand img {
   display: block;
   border-radius: var(--radius-lg);
+  flex-shrink: 0;
 }
 .app-body {
   display: flex;

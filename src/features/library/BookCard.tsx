@@ -3,7 +3,7 @@ import { BookOpen, Heart, Highlighter, MoreHorizontal, Trash2 } from '@/componen
 import type { Ref } from 'react';
 import { m, useIsPresent } from 'motion/react';
 import * as Menu from '@/components/ui/dropdown-menu';
-import type { Book } from '../../types';
+import type { BookMetadata } from '../../types';
 import { rise, staggered } from '../../lib/motion';
 import { IconButton } from '../../components/UI';
 export function BookCard({
@@ -16,12 +16,12 @@ export function BookCard({
   onDelete,
 }: {
   ref?: Ref<HTMLElement>;
-  book: Book;
+  book: BookMetadata;
   index: number;
   noteCount: number;
-  onOpen: (b: Book) => void;
-  onUpdate: (b: Book) => void;
-  onDelete: (b: Book) => void;
+  onOpen: (b: BookMetadata) => void;
+  onUpdate: (b: BookMetadata) => void;
+  onDelete: (b: BookMetadata) => void;
 }) {
   return (
     <m.article
@@ -52,7 +52,9 @@ export function BookCard({
         </Button>
         <span className="book-author">{b.author}</span>
         <div className="book-meta">
-          <span>{b.pages} 页</span>
+          <span>
+            {b.pages} {b.format === 'markdown' ? '章 · Markdown' : '页'}
+          </span>
           {b.sample && <span>示例文档</span>}
           {noteCount > 0 && (
             <span className="mark-count">
@@ -89,7 +91,7 @@ export function BookCard({
     </m.article>
   );
 }
-export function ReadingProgress({ book }: { book: Book }) {
+export function ReadingProgress({ book }: { book: BookMetadata }) {
   return (
     <div className="book-progress">
       <i style={{ width: `${(book.page / book.pages) * 100}%` }} />

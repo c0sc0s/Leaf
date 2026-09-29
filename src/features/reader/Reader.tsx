@@ -25,7 +25,6 @@ import { usePdfDocument } from './hooks/usePdfDocument';
 import { useDocumentSearch, type SearchResult } from './hooks/useDocumentSearch';
 import { useReaderShortcuts } from './hooks/useReaderShortcuts';
 import { useReaderNavigation } from './hooks/useReaderNavigation';
-import { useReadingProgress } from './hooks/useReadingProgress';
 import { useBookmarks } from './hooks/useBookmarks';
 import { useExports } from './hooks/useExports';
 import { usePinchZoom } from './hooks/usePinchZoom';
@@ -62,9 +61,8 @@ export function Reader({
     askPassword,
   );
   const search = useDocumentSearch(pdf, getContent, scheduler, notify);
-  const position = useReaderNavigation(book, viewer, notify);
+  const position = useReaderNavigation(book, viewer, notify, !!pdf, onUpdate);
   const { page, jump, zoom, layout, navigate } = position;
-  useReadingProgress(book, page, !!pdf, onUpdate);
   const { bookmarks, bookmarked, toggleBookmark, locationOf } = useBookmarks(
     book,
     page,

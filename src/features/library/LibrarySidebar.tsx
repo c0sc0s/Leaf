@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { BookOpen, Clock3, Heart, Moon, NotebookPen, Settings2, Sun } from '@/components/icons';
-import type { Book } from '../../types';
+import type { BookMetadata } from '../../types';
 import { IconButton } from '../../components/UI';
 import type { LibraryView } from './Library';
 
@@ -12,7 +12,7 @@ const views = [
   ['notes', '阅读笔记', NotebookPen],
 ] as const;
 
-function countFor(view: LibraryView, books: Book[], noteCounts: Record<string, number>) {
+function countFor(view: LibraryView, books: BookMetadata[], noteCounts: Record<string, number>) {
   switch (view) {
     case 'all':
       return books.length;
@@ -36,7 +36,7 @@ export function LibrarySidebar({
   onAbout,
 }: {
   view: LibraryView;
-  books: Book[];
+  books: BookMetadata[];
   noteCounts: Record<string, number>;
   dark: boolean;
   onView: (view: LibraryView) => void;

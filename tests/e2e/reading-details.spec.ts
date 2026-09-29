@@ -44,7 +44,7 @@ async function openBook(page: Page) {
   pdf.catalog.set(PDFName.of('Outlines'), root);
   await page.goto('/');
   await expect(page.locator('.book-card')).toHaveCount(8);
-  await page.getByLabel('选择 PDF 文件', { exact: true }).setInputFiles({
+  await page.getByLabel('选择 PDF 或 Markdown 文件', { exact: true }).setInputFiles({
     name: 'details.pdf',
     mimeType: 'application/pdf',
     buffer: Buffer.from(await pdf.save()),

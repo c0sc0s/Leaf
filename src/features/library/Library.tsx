@@ -2,10 +2,10 @@ import { EmptyState, type EmptyScene } from '@/components/Mascot';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
-import { Search, Plus, ArrowUpRight, Grid2X2, List, X } from '@/components/icons';
+import { Search, Plus, FolderOpen, ArrowUpRight, Grid2X2, List, X } from '@/components/icons';
 import { useMemo, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
-import type { Book } from '../../types';
+import type { BookMetadata } from '../../types';
 import { Tip } from '../../components/UI';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { BookCard, ReadingProgress } from './BookCard';
@@ -21,18 +21,20 @@ export function Library({
   view,
   noteCounts,
   onImport,
+  onImportFolder,
   onOpen,
   onUpdate,
   onDelete,
   onBrowse,
 }: {
-  books: Book[];
+  books: BookMetadata[];
   view: LibraryView;
   noteCounts: Record<string, number>;
   onImport: () => void;
-  onOpen: (b: Book) => void;
-  onUpdate: (b: Book) => void;
-  onDelete: (b: Book) => void;
+  onImportFolder: () => void;
+  onOpen: (b: BookMetadata) => void;
+  onUpdate: (b: BookMetadata) => void;
+  onDelete: (b: BookMetadata) => void;
   onBrowse: () => void;
 }) {
   const [query, setQuery] = useState('');
@@ -74,7 +76,7 @@ export function Library({
     emptyScene === 'search'
       ? { label: '清空搜索', onClick: () => setQuery('') }
       : emptyScene === 'library'
-        ? { label: '导入 PDF', onClick: onImport }
+        ? { label: '导入文件', onClick: onImport }
         : emptyScene === 'recent' || emptyScene === 'favorites'
           ? { label: '浏览书架', onClick: onBrowse }
           : undefined;
@@ -85,10 +87,16 @@ export function Library({
           <h1>{viewNames[view]}</h1>
           <p>{view === 'notes' ? '查看和管理你的阅读批注' : `${filtered.length} 本书籍`}</p>
         </div>
-        <Button variant="default" onClick={onImport}>
-          <Plus size={17} />
-          导入 PDF
-        </Button>
+        <div className="tool-group">
+          <Button variant="outline" onClick={onImportFolder}>
+            <FolderOpen size={17} />
+            导入文件夹
+          </Button>
+          <Button variant="default" onClick={onImport}>
+            <Plus size={17} />
+            导入文件
+          </Button>
+        </div>
       </header>
       {view === 'all' && recent && (
         <Button variant="ghost" className="continue-reading" onClick={() => onOpen(recent)}>
@@ -102,7 +110,7 @@ export function Library({
             <strong>{recent.title}</strong>
             <div className="continue-reading-progress">
               <span>
-                第 {recent.page} / {recent.pages} 页
+                第 {recent.page} / {recent.pages} {recent.format === 'markdown' ? '章' : '页'}
               </span>
               <ReadingProgress book={recent} />
             </div>

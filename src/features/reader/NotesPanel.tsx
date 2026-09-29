@@ -22,6 +22,7 @@ export const NotesPanel = memo(function NotesPanel({
   onRemove,
   onNavigate,
   onClose,
+  unit = '页',
 }: {
   marks: Annotation[];
   page: number;
@@ -31,6 +32,7 @@ export const NotesPanel = memo(function NotesPanel({
   onRemove: (mark: Annotation) => void;
   onNavigate: (page: number, location?: ReadingLocation) => void;
   onClose: () => void;
+  unit?: '页' | '章';
 }) {
   const sorted = useMemo(
     () =>
@@ -82,14 +84,14 @@ export const NotesPanel = memo(function NotesPanel({
                   })
                 }
               >
-                第 {mark.page} 页
+                第 {mark.page} {unit}
               </Button>
               <IconButton label="删除这条批注" onClick={() => onRemove(mark)}>
                 <Trash2 size={13} />
               </IconButton>
             </div>
             <blockquote style={{ borderColor: markColors[mark.color] }}>{mark.quote}</blockquote>
-            <NoteEditor mark={mark} save={onNote} />
+            <NoteEditor mark={mark} save={onNote} unit={unit} />
             <div className="note-format">
               <NoteStyle
                 kind={mark.kind}

@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import type { Book } from '../../types';
+import type { BookMetadata } from '../../types';
 import { Modal } from '../../components/UI';
 
 export function DeleteBookDialog({
@@ -7,7 +7,7 @@ export function DeleteBookDialog({
   onConfirm,
   onClose,
 }: {
-  book: Book;
+  book: BookMetadata;
   onConfirm: () => void;
   onClose: () => void;
 }) {

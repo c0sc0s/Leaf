@@ -82,7 +82,9 @@
   color: var(--muted-foreground);
   opacity: 0;
 }
-.note-card:hover .note-card-top .icon-button,
+.note-card:hover .note-card-top .icon-button {
+  opacity: 1;
+}
 .note-card-top .icon-button:focus-visible {
   opacity: 1;
 }

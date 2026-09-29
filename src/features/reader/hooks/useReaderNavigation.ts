@@ -1,14 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useCallback, useMemo, useRef, useState, type RefObject } from 'react';
 import type { Book, ReadingLayout, ReadingLocation, ReadingState } from '../../../types';
-import { initialReadingState, saveReadingState } from '../../../lib/position';
+import { initialReadingState } from '../../../lib/position';
 import { pageStep } from '../../../lib/layout';
-import { reportError } from '../../../lib/report';
+import { useReadingPersistence } from './useReadingPersistence';
 import type { PDFViewportHandle } from '../viewport/PDFViewport';
 import { createLocationStore } from './locationStore';
 import { stepZoom } from '../zoom';
 
 const HISTORY_LIMIT = 50;
-const POSITION_SAVE_DELAY = 180;
 
 /**
  * Owns where the reader is: page, precise location, zoom and layout, the back-history of
@@ -18,6 +17,8 @@ export function useReaderNavigation(
   book: Book,
   viewer: RefObject<PDFViewportHandle | null>,
   notify: (message: string) => void,
+  opened: boolean,
+  onUpdate: (book: Book) => void,
 ) {
   const saved = useMemo(() => initialReadingState(book), [book.id]);
   const [locationStore] = useState(() => createLocationStore(saved));
@@ -34,32 +35,21 @@ export function useReaderNavigation(
   const layoutRef = useRef(layout);
   layoutRef.current = layout;
   const locationRef = useRef<ReadingLocation>(saved);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const reportedSaveFailure = useRef(false);
-
-  const persist = useCallback(() => {
-    try {
-      saveReadingState(book.id, {
-        ...locationRef.current,
-        zoom: zoomRef.current,
-        layout: layoutRef.current,
-      });
-    } catch (error) {
-      reportError('阅读位置保存失败', error);
-      if (!reportedSaveFailure.current) {
-        reportedSaveFailure.current = true;
-        notify('阅读位置未能保存，请检查本机存储空间。');
-      }
-    }
-  }, [book.id, notify]);
-  useEffect(() => {
-    window.addEventListener('pagehide', persist);
-    return () => {
-      clearTimeout(saveTimer.current);
-      persist();
-      window.removeEventListener('pagehide', persist);
-    };
-  }, [persist]);
+  const bookRef = useRef(book);
+  bookRef.current = book;
+  const schedulePersistence = useReadingPersistence({
+    bookId: book.id,
+    page,
+    enabled: opened,
+    capture: () => ({
+      ...locationRef.current,
+      page: pageRef.current,
+      zoom: zoomRef.current,
+      layout: layoutRef.current,
+    }),
+    onProgress: (page, openedAt) => onUpdate({ ...bookRef.current, page, openedAt }),
+    notify,
+  });
 
   const captureCurrent = useCallback((): ReadingState => {
     const location = viewer.current?.capture();
@@ -77,10 +67,9 @@ export function useReaderNavigation(
         pageRef.current = location.page;
         setPage(location.page);
       }
-      clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(persist, POSITION_SAVE_DELAY);
+      schedulePersistence();
     },
-    [persist, locationStore],
+    [schedulePersistence, locationStore],
   );
   const navigate = useCallback(
     (n: number, location?: ReadingLocation, rememberCurrent = true) => {

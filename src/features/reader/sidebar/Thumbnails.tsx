@@ -107,6 +107,11 @@ const Thumbnail = memo(function Thumbnail({
         target.height = Math.ceil(viewport.height);
         // Keep the box when the bitmap is released so the list does not jump.
         target.style.height = `${viewport.height}px`;
+        // The initial reveal used a placeholder height; repeat after the selected page has its real size.
+        if (root.current?.getAttribute('aria-current') === 'page') {
+          const scroller = root.current.closest<HTMLElement>('.sidebar-scroll');
+          if (scroller) revealIn(scroller, root.current);
+        }
         task = p.render({ canvas: target, viewport });
         return task.promise;
       })

@@ -1,10 +1,15 @@
 import { useRef, useState, type DragEvent } from 'react';
+import type { ImportSource } from '../../types';
+import { droppedSources } from '../../lib/markdown';
 
 /**
  * Tracks files dragged over a drop zone. Enter/leave fire for every child element,
  * so a depth counter decides when the drag has really left.
  */
-export function useFileDrop(onDrop: (files: File[]) => void) {
+export function useFileDrop(
+  onDrop: (sources: ImportSource[]) => Promise<void>,
+  notify: (message: string) => void,
+) {
   const [dragging, setDragging] = useState(false);
   const depth = useRef(0);
   const reset = () => {
@@ -30,7 +35,9 @@ export function useFileDrop(onDrop: (files: File[]) => void) {
     onDrop: (event: DragEvent) => {
       event.preventDefault();
       reset();
-      onDrop([...event.dataTransfer.files]);
+      void droppedSources(event.dataTransfer)
+        .then(onDrop)
+        .catch((error) => notify('无法导入：' + String(error)));
     },
   };
   return { dragging, dropProps };

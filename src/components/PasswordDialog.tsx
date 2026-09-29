@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LockKeyhole } from '@/components/icons';
@@ -10,21 +10,28 @@ import { Modal } from './UI';
  */
 export function usePasswordPrompt() {
   const [open, setOpen] = useState(false);
-  const resolver = useRef<((value: string | null) => void) | null>(null);
+  const pending = useRef<Array<(value: string | null) => void>>([]);
+  const [prompt, setPrompt] = useState(0);
   const ask = useCallback(
     () =>
       new Promise<string | null>((resolve) => {
-        resolver.current = resolve;
+        pending.current.push(resolve);
         setOpen(true);
       }),
     [],
   );
   const finish = useCallback((value: string | null) => {
-    setOpen(false);
-    resolver.current?.(value);
-    resolver.current = null;
+    pending.current.shift()?.(value);
+    setOpen(pending.current.length > 0);
+    setPrompt((current) => current + 1);
   }, []);
-  return { ask, dialog: open ? <PasswordDialog onSubmit={finish} /> : null };
+  useEffect(
+    () => () => {
+      for (const resolve of pending.current.splice(0)) resolve(null);
+    },
+    [],
+  );
+  return { ask, dialog: open ? <PasswordDialog key={prompt} onSubmit={finish} /> : null };
 }
 
 function PasswordDialog({ onSubmit }: { onSubmit: (password: string | null) => void }) {

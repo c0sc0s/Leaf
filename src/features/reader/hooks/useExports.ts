@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react';
 import type { Annotation, Book } from '../../../types';
-import { storage } from '../../../lib/db';
 
 /** Exporting pulls in pdf-lib, so the module loads only when an export is requested. */
 export function useExports(
@@ -13,7 +12,7 @@ export function useExports(
     setExporting(true);
     try {
       const { exportAnnotated, saveFile } = await import('../../../lib/export');
-      const data = await exportAnnotated(await storage.file(book.id), await flushMarks());
+      const data = await exportAnnotated(book.blob, await flushMarks());
       if (await saveFile(book.filename.replace(/\.pdf$/i, '') + '-批注.pdf', data))
         notify('批注 PDF 已导出');
     } catch (error) {
@@ -21,7 +20,7 @@ export function useExports(
     } finally {
       setExporting(false);
     }
-  }, [book.id, book.filename, flushMarks, notify]);
+  }, [book.blob, book.filename, flushMarks, notify]);
   const exportNotes = useCallback(async () => {
     try {
       const { notesMarkdown, saveFile } = await import('../../../lib/export');

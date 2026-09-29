@@ -1,62 +1,72 @@
 # Leaf 技术架构
 
-## 原始页面与文字
+`App.tsx` 负责组合书架、阅读器、设置和弹窗。业务状态与异步操作放在各自模块中，避免导入、存储、主题和阅读器生命周期继续集中到 App。
 
-屏幕阅读需要保持 PDF 的字体、图片、公式与版面，同时提供可选择文字和批注。Electron 在 Windows 与 macOS 使用一致的 Chromium 环境；PDF.js 的 Worker 解析文档，Canvas 绘制页面，TextLayer 承载文字选择。字体、CMap、WASM 与 Worker 均随应用离线分发。
+| 模块                                                                         | 职责                                                                  |
+| ---------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `features/library/useLibrary.ts`                                             | 书架元数据、按需打开正文、收藏/进度更新、删除和笔记计数               |
+| `features/library/useBookImport.ts`                                          | 浏览器文件选择、原生文件/文件夹选择、拖放与系统文件打开事件的导入队列 |
+| `features/library/importBook.ts`                                             | 格式/大小检查、PDF 密码与 PDF/Markdown 格式转换                       |
+| `features/library/initializeLibrary.ts`                                      | 首次示例书初始化，共享正在执行的初始化任务                            |
+| `features/settings/useSettings.ts`                                           | 设置保存、系统主题监听与原生窗口外观同步                              |
+| `components/PasswordDialog.tsx`、`components/useToast.ts`、`features/about/` | 密码请求队列、通知和关于弹窗                                          |
+| `features/import/useFileDrop.ts`                                             | 文件与 Markdown 文件夹的拖放入口                                      |
+| `features/reader/BookReader.tsx`                                             | 按格式延迟加载 PDF 或 Markdown 阅读器及其公共参数                     |
+| `features/reader/hooks/`                                                     | 阅读位置保存、快捷键、文档加载和搜索等阅读器行为                      |
 
-`src/lib/text.ts` 只建立搜索和批注所需的文字索引。文字项保留 PDF 来源坐标、原始项序号与 canonical 偏移，标签与分栏排序维持已有批注的偏移兼容；不生成文章布局。图形始终交由 PDF.js 绘制。
+## 书架与正文分离
 
-## 连续滚动与绘制
+类型分为 `BookMetadata` 和 `BookContent`。书架只持有元数据，打开某本书时读取该书正文，组合为完整的 `Book`。收藏、书签和进度更新保留已加载正文的引用，避免重新加载文档或重启 Worker。
 
-`PDFViewport` 为所有页面保留轻量占位，并只挂载可见页与邻近页的画布和文字层。进入文档优先获取保存位置所在页的尺寸，再准备邻近页。未知页用已知页比例估计高度；得到真实尺寸后恢复当前文字锚点，避免滚动位置被前面页面的高度变化推走。
+IndexedDB `folio-library` 的第 5 版使用以下存储：
 
-`PDFPage` 在离屏 Canvas 和 TextLayer 完成后一起替换 DOM。缩放重绘期间保留原画面并按新尺寸缩放；页间没有每次触发的全局进度条。离开预加载范围的画布释放，文字提取缓存最多 30 页。滚动依据可视区域顶部更新当前页码，箭头、目录和搜索共用定位逻辑。
+- `books`：标题、封面、页数、收藏、进度和书签。
+- `bookContents`：PDF Blob，或 Markdown 原始 Blob、章节和本地图片。
+- `annotations`：批注；按 `bookId` 建索引，书架通过索引计数，无需读取所有批注正文与矩形。
+- `ocr`：已有 OCR 缓存。
 
-PDF.js 解析在 Worker，绘制与 DOM 仍在 Renderer。全文搜索逐页执行，在用户滚动和输入后留出操作时间；关闭阅读器取消搜索并销毁 PDF Worker。没有后台整本版面分析。
+升级在同一个事务中将旧书籍记录拆分；失败时整个升级回滚。导入也在同一事务中保存元数据与正文。进度等操作只更新 `books`。删除同时清理正文、批注、OCR 和本地阅读位置；迟到的进度更新不会重新创建已删除书籍。
 
-## 阅读位置
+导入任务按队列执行。连续系统文件打开事件不会因为正在导入而丢失，一本书失败也不会阻断后续书籍。重复检测通过书籍 ID 点查询完成。
 
-位置包含来源页、文字偏移、文字在视口中的 Y 坐标、页内比例与水平滚动比例。缩放、切换布局、开关侧栏、跳转返回与续读优先恢复文字锚点，没有文字时恢复页内比例。每本书的缩放和连续/单页/双页布局独立保存；跳转历史保留最近 50 个位置。目录和页内引用使用 PDF destination 坐标，搜索使用文字偏移，书签保存添加时的具体位置。
+## 阅读器与计算服务
 
-右侧笔记采用覆盖面板，避免打开详情时缩小页面；点击正文中的批注会打开面板并定位到对应卡片，点击正文空白处收起。左右面板宽度可拖动调整并分别保存。内嵌页码标签用于区分文件页码和印刷页码。
+PDF 与 Markdown 共用 `useReadingPersistence` 和 `useReaderShortcuts`。阅读位置在滚动停止后保存，并定期及退出时补存；状态未变时跳过重复写入。进度延迟更新，模态弹窗与目录树保留各自的键盘操作。
 
-## 批注
+PDF 阅读器通过 `useReaderNavigation`、`useBookmarks`、`useExports`、`usePinchZoom` 和 `useMarkColor` 组合导航、书签、导出、缩放和批注颜色。页面排布计算集中在 `viewport/geometry.ts`，批注颜色集中在 `lib/marks.ts`。可选文档能力读取失败时通过 `lib/report.ts` 记录上下文。
 
-TextLayer 中被选中文字的 DOM Range 转换为实际 PDF 坐标。多个来源页的选区分成多个来源锚点，在同一个 IndexedDB 事务保存；一次选择只占一项撤销历史。复制使用浏览器实际选中文字，不用索引文本替代。
+Markdown 的解析、标题提取、代码高亮和搜索通过 `MarkdownDocument` 服务完成；PDF 搜索通过 `PDFSearchIndex` 服务完成。React 调用有固定输入/返回类型的文档方法，Worker 创建、请求协议和销毁集中在服务实现中。`lib/workerClient.ts` 负责请求编号、取消、过期响应和异常传播。
 
-同一批注的 SVG 矩形先以不透明色绘制到一个组，最后对整个组应用透明度，因此矩形相交或重复不会造成中间颜色加深。此处理也适用于已有的重复矩形。浅色模式使用 multiply，深色使用 screen；绘图与文字层分开。
+格式特有的定位、选择和渲染留在对应阅读器中。PDF 导出按需启动独立 Worker，完成后传回结果缓冲区并终止。缓存限额、实测结果及验证方式见 [performance.md](performance.md)。
 
-已有批注通过 PDF 坐标命中检测唤起就地菜单。颜色偏好保存在本机；连续高亮明确启用，Esc 退出。选区边缘滚动采用受限速度，并避免浏览器原生拖选滚动重复叠加。
+后续增加计算实现时，优先替换服务内部算法，并用真实大文档的测量决定是否引入 WASM 或 GPU；界面与存储无需跟随计算实现改变。
 
-`useAnnotations` 串行化写入，事务成功后才更新显示和撤销栈。新增、删除、笔记编辑均可撤销/重做；连续笔记输入按 2.5 秒窗口合并，最多保留 100 个会话操作。`NoteEditor` 在停止输入 250ms 后保存，离开输入框或卸载时提交待保存文本。导出等待写入队列完成。
+## PDF 渲染与定位
 
-pdf-lib 导出标准 Highlight / Underline，包含 QuadPoints、颜色和 Unicode 笔记，原文件保持不变。加密 PDF 不能由 pdf-lib 编辑，但可导出 Markdown 笔记。
+PDF.js 的 Worker 解析文档，Canvas 保持原始字体、图片、公式和版面，TextLayer 提供选择与批注。字体、CMap、WASM 与 Worker 均随应用离线分发。`lib/text.ts` 建立搜索和批注的 canonical 文字索引，保留来源坐标、原始文字项序号与已有批注的偏移兼容性。
 
-## 数据与桌面边界
+`PDFViewport` 为全部页面保留轻量占位，只挂载可见页和邻近页。优先获取保存位置所在页的尺寸，未知页暂用已知比例估算；真实尺寸到达后恢复文字锚点，避免前方页面高度变化推走阅读位置。离开预加载范围的画布释放，几何文字缓存最多保留 30 页。`PDFPage` 在离屏 Canvas 和 TextLayer 都完成后一起替换 DOM，缩放重绘期间保留原画面。
 
-IndexedDB 第 5 版分开保存书籍元数据（`books`）与 PDF 文件（`files`），另有批注和兼容保留的旧 OCR 数据。更新进度、收藏、书签只写元数据，不会重写整份 PDF；打开书架也不读取文件本身。`src/lib/db.ts` 按版本逐步迁移：第 4 版删除不再使用的 documents 缓存仓库，第 5 版把旧书籍记录中的 PDF 移入 `files` 并清除已废弃的分类字段；书籍、书签、原有批注及笔记保留。旧阅读状态中的模式字段不再使用，其页码、文字位置和缩放仍可读取。
+PDF 阅读位置包含来源页、文字偏移、文字在视口中的 Y 坐标、页内比例和水平滚动比例。缩放、布局切换、侧栏变化、返回和续读优先恢复文字锚点，没有文字时恢复比例。每本书独立保存缩放与连续/单页/双页布局，跳转历史保留最近 50 个位置。目录使用 PDF destination 坐标，搜索使用文字偏移，书签保存添加时的具体位置。右侧笔记采用覆盖面板；进度条拖动期间预览缩略图，松手后导航。
 
-主进程只开放用户选择 PDF、读取所选文件、导出文件和同步窗口外观主题操作。macOS 窗口使用系统毛玻璃材质，界面外框半透明、正文页面保持不透明。Renderer 启用 sandbox、contextIsolation，关闭 Node.js 集成，禁止外部导航与新窗口。CSP 仅允许本机脚本、Worker 和 WASM。书籍以文件 SHA-256 去重，保存 Blob 副本，移动源文件不影响阅读。
+## 批注与导出
 
-## 代码组织
+PDF 选区的 DOM Range 转换为实际 PDF 坐标，跨页选择拆成来源锚点，在同一个事务保存并占一项撤销历史。复制使用浏览器实际选中文字。同一批注的 SVG 矩形先绘制到一组，再对整组应用透明度，避免重复或重叠的矩形使颜色加深；浅色使用 multiply，深色使用 screen。
 
-- `src/App.tsx` 只负责组装：书架与阅读器的切换、弹窗和全局提示。
-- `src/features/` 按功能划分，每个目录自带组件与状态 hook：
-  - `library/`：书架、侧栏、书籍卡片；`useLibrary` 负责书籍列表与 IndexedDB 同步和首次示例导入。
-  - `import/`：`useImport` 负责导入流程（校验、密码重试、去重、入库）与各个入口（菜单、快捷键、系统打开文件）；`useFileDrop` 负责拖放。
-  - `reader/`：阅读器。`Reader` 组合各 hook；`useReaderNavigation` 负责页码、缩放、布局、跳转历史与阅读位置保存，`useReadingProgress`、`useBookmarks`、`useExports` 等各管一件事；`viewport/geometry.ts` 是可单测的页面排布计算。
-  - `settings/`：偏好的读取校验、持久化与主题应用。
-- `src/lib/` 放与界面无关的领域逻辑：存储、PDF 解析、文字索引、批注颜色、导出。
-- 样式按功能分在 `src/styles/`（base、overlays、library、reader、notes），同一选择器只在一处定义。
+`useAnnotations` 串行执行写入，事务成功后更新显示和撤销栈。新增、删除和笔记编辑均可撤销/重做；连续笔记输入按 2.5 秒窗口合并，保留最多 100 个会话操作。`NoteEditor` 停止输入 250 ms 后保存，离开或卸载时提交待保存文本。导出等待写入队列完成。
 
-阅读器、PDF.js 与 pdf-lib 按需加载：打开书架只加载主包，打开书时加载阅读器和 PDF.js，导出批注时才加载 pdf-lib。可选能力（目录、页码标签、页内链接、缩略图）读取失败时通过 `src/lib/report.ts` 记录上下文，不中断阅读；只有被主动取消的渲染会被忽略。
+PDF 导出使用标准 Highlight / Underline，包含 QuadPoints、颜色和 Unicode 笔记，保留原 PDF。pdf-lib 无法编辑的加密 PDF 仍可导出 Markdown 笔记。Markdown 批注使用章节和文字偏移定位，装饰缓存树的副本，避免修改缓存原树。
+
+## 桌面边界与兼容
+
+Renderer 启用 sandbox 和 contextIsolation，关闭 Node.js 集成，禁止外部导航与新窗口。主进程提供原生文档选择、所选文件读取、导出保存、窗口外观/控制和受限外链接口。CSP 限定本机脚本、Worker 和 WASM。书籍按内容 SHA-256 去重并保存副本，移动原文件不影响离线阅读。
+
+Leaf 首次启动沿用已存在的 Folio 用户目录。IndexedDB 与 localStorage 的既有 `folio-*` 存储键保留，避免应用更名导致数据丢失。旧阅读状态仍能读取页码、文字位置和缩放；数据库升级移除不用的 `documents` 缓存。全新安装使用 Leaf 用户目录，测试通过 `LEAF_USER_DATA` 隔离书库。
 
 ## 验证
 
-单元测试检查文字索引兼容性与标准批注导出。浏览器测试覆盖连续滚动、混合页尺寸、长文档画布数量、文字锚点、续读、目录/搜索/书签、选字、笔记保存与撤销、高光颜色合成、主题、键盘和导出。macOS 打包测试检查沙箱、离线 PDF、原生打开/保存 IPC 和页面渲染。Windows 安装与系统行为需要 Windows 实机或 CI 验证。
+单元测试覆盖索引偏移、缓存限额、取消、Worker 关闭、导入队列、Markdown 装饰与标准批注导出。端到端测试覆盖混合尺寸 PDF、长文档画布数量、定位/续读、目录/搜索/书签、选字、笔记和撤销、主题、键盘、Markdown 安全渲染和原生导入。数据库测试验证真实旧文档迁移和只写元数据。`npm run test:production` 构建当前代码后，通过 Electron 的 `file://` 加载验证阅读器、计算 Worker 与原生打开/保存。
 
-安装包保留 Electron、React、PDF.js、pdf-lib、idb、Radix UI、Hugeicons、Motion 等依赖的第三方许可，清单见 `THIRD_PARTY_NOTICES.md`，许可文本由 `scripts/assets.mjs` 生成到 `licenses/`。正式发布需签名、公证与两平台验收。
+安装包通过 `THIRD_PARTY_NOTICES.md` 和 `licenses/` 分发依赖许可。正式发布另需完成安装包、签名及两平台验收。
 
-## 本地数据兼容
-
-Leaf 首次启动时会沿用已存在的 Folio 用户目录，保留书库、批注和阅读位置。IndexedDB 与 localStorage 的既有 `folio-*` 存储键保持不变，避免更名导致数据丢失。全新安装使用 Leaf 用户目录；测试可通过 `LEAF_USER_DATA` 指定独立目录。
+公共样式按功能分在 `src/styles/`（base、overlays、library、reader、notes），Markdown 阅读和设置面板各自保留功能样式。阅读器、PDF.js 与 PDF 导出实现按需加载。

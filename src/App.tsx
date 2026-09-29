@@ -1,10 +1,12 @@
-import { lazy, Suspense, useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { AnimatePresence, m } from 'motion/react';
 import { NotFound } from '@/components/Mascot';
+import { WindowControls } from '@/components/WindowControls';
 import { Button } from '@/components/ui/button';
 import { Upload, X } from '@/components/icons';
 import { useAppRoute } from '@/lib/useAppRoute';
-import type { Book } from './types';
+import type { BookMetadata } from './types';
+import { browserFolder } from './lib/markdown';
 import { fade, pop, rise } from './lib/motion';
 import { Exiting, Spinner } from './components/UI';
 import { usePasswordPrompt } from './components/PasswordDialog';
@@ -13,14 +15,12 @@ import { Library, type LibraryView } from './features/library/Library';
 import { LibrarySidebar } from './features/library/LibrarySidebar';
 import { DeleteBookDialog } from './features/library/DeleteBookDialog';
 import { useLibrary } from './features/library/useLibrary';
-import { useImport } from './features/import/useImport';
+import { useBookImport } from './features/library/useBookImport';
 import { useFileDrop } from './features/import/useFileDrop';
 import { AboutDialog } from './features/about/AboutDialog';
 import { SettingsModal } from './features/settings/SettingsModal';
 import { useSettings } from './features/settings/useSettings';
-
-// The reader pulls in pdf.js; the library opens without it.
-const Reader = lazy(() => import('./features/reader/Reader').then((m) => ({ default: m.Reader })));
+import { BookReader } from './features/reader/BookReader';
 
 const platformClass =
   window.desktop?.platform === 'darwin'
@@ -37,41 +37,27 @@ export default function App() {
   const library = useLibrary(notify);
   const password = usePasswordPrompt();
   const [view, setView] = useState<LibraryView>('all');
-  const [activeId, setActiveId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [deleting, setDeleting] = useState<Book | null>(null);
+  const [deleting, setDeleting] = useState<BookMetadata | null>(null);
   const showAllBooks = useCallback(() => setView('all'), []);
-  const imports = useImport({
+  const imports = useBookImport({
     addBook: library.addBook,
     askPassword: password.ask,
     notify,
     onImported: showAllBooks,
   });
-  const { dragging, dropProps } = useFileDrop((files) =>
-    imports.importFiles(files.map((file) => ({ name: file.name, blob: file }))),
-  );
-  const active = activeId ? library.books.find((book) => book.id === activeId) : undefined;
-  const { refreshNoteCounts } = library;
-  const closeReader = useCallback(() => {
-    setActiveId(null);
-    refreshNoteCounts();
-  }, [refreshNoteCounts]);
+  const { dragging, dropProps } = useFileDrop(imports.importFiles, notify);
+  const { active, closeReader } = library;
+  const busy = imports.busy || library.opening;
   const openSettings = useCallback(() => setSettingsOpen(true), []);
   const navigate = (next: LibraryView) => {
     if (route.notFound) route.home();
     if (active) closeReader();
     setView(next);
   };
-  const confirmDelete = async (book: Book) => {
-    try {
-      await library.removeBook(book);
-      notify('已从书库移除');
-      setDeleting(null);
-      refreshNoteCounts();
-    } catch (error) {
-      notify(`无法移除这本书：${String(error)}`);
-    }
+  const confirmDelete = async (book: BookMetadata) => {
+    if (await library.removeBook(book.id)) setDeleting(null);
   };
 
   return (
@@ -96,25 +82,23 @@ export default function App() {
             onBack={route.canReturn ? () => history.back() : undefined}
           />
         ) : active ? (
-          <Suspense fallback={<Spinner text="正在打开 PDF…" />}>
-            <Reader
-              key={active.id}
-              book={active}
-              settings={settings}
-              dark={dark}
-              onClose={closeReader}
-              onUpdate={library.updateBook}
-              onSettings={openSettings}
-              notify={notify}
-              askPassword={password.ask}
-            />
-          </Suspense>
+          <BookReader
+            key={active.id}
+            book={active}
+            settings={settings}
+            dark={dark}
+            onClose={closeReader}
+            onUpdate={library.updateBook}
+            onSettings={openSettings}
+            notify={notify}
+            askPassword={password.ask}
+          />
         ) : (
           <>
             <LibrarySidebar
               view={view}
               books={library.books}
-              noteCounts={library.noteCounts}
+              noteCounts={library.counts}
               dark={dark}
               onView={setView}
               onToggleTheme={toggleTheme}
@@ -128,9 +112,10 @@ export default function App() {
                 <Library
                   books={library.books}
                   view={view}
-                  noteCounts={library.noteCounts}
+                  noteCounts={library.counts}
                   onImport={imports.openImport}
-                  onOpen={(book) => setActiveId(book.id)}
+                  onImportFolder={imports.openFolderImport}
+                  onOpen={library.openBook}
                   onUpdate={library.updateBook}
                   onDelete={setDeleting}
                   onBrowse={showAllBooks}
@@ -140,7 +125,37 @@ export default function App() {
           </>
         )}
       </div>
-      <input {...imports.fileInputProps} />
+      <input
+        className="visually-hidden"
+        aria-label="选择 PDF 或 Markdown 文件"
+        type="file"
+        accept=".pdf,.md,.markdown,application/pdf,text/markdown"
+        multiple
+        ref={imports.fileInput}
+        onChange={(event) => {
+          if (event.target.files)
+            void imports.importFiles(
+              [...event.target.files].map((file) => ({
+                name: file.name,
+                files: [{ name: file.name, blob: file }],
+              })),
+            );
+          event.target.value = '';
+        }}
+      />
+      <input
+        className="visually-hidden"
+        aria-label="选择 Markdown 文件夹"
+        type="file"
+        multiple
+        {...{ webkitdirectory: '', directory: '' }}
+        ref={imports.folderInput}
+        onChange={(event) => {
+          if (event.target.files?.length)
+            void imports.importFiles([browserFolder([...event.target.files])]);
+          event.target.value = '';
+        }}
+      />
       {settingsOpen && (
         <SettingsModal
           settings={settings}
@@ -158,10 +173,10 @@ export default function App() {
       )}
       {password.dialog}
       <AnimatePresence>
-        {imports.busy && (
+        {busy && (
           <Exiting key="busy">
             <m.div className="busy-overlay" {...fade}>
-              <Spinner text={imports.busy} />
+              <Spinner text={busy} />
             </m.div>
           </Exiting>
         )}
@@ -171,7 +186,7 @@ export default function App() {
               <div>
                 <Upload size={44} />
                 <h2>把新书放在这里</h2>
-                <p>松开鼠标，将 PDF 收入你的书架</p>
+                <p>松开鼠标，将 PDF、Markdown 文件或文件夹收入书架</p>
               </div>
             </m.div>
           </Exiting>
@@ -187,6 +202,7 @@ export default function App() {
           </Exiting>
         )}
       </AnimatePresence>
+      <WindowControls />
     </div>
   );
 }

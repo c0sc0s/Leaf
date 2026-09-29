@@ -2,7 +2,7 @@
   <img src="public/icon.png" width="112" height="112" alt="Leaf：捧着书的黑猫" />
   <h1>Leaf</h1>
   <p><strong>把注意力，留给正在读的这一页。</strong></p>
-  <p>一款面向 macOS 与 Windows 的本地 PDF 阅读器。</p>
+  <p>一款面向 macOS 与 Windows 的本地 PDF 与 Markdown 阅读器。</p>
   <p>
     <img src="docs/readme/platforms.svg" alt="macOS 与 Windows 桌面应用" height="26" />
     <img src="docs/readme/local.svg" alt="本地保存，离线阅读" height="26" />
@@ -37,7 +37,11 @@ Leaf 把阅读、定位和批注放在一起。打开 PDF，接着上次的位�
 
 ## 一个属于你的书架
 
-拖入文件，或一次导入多份 PDF。用分类、收藏和最近阅读整理书库，通过书名、作者快速查找；封面网格和列表视图随时切换。
+拖入文件，或一次导入多份 PDF / Markdown。用分类、收藏和最近阅读整理书库，通过书名、作者快速查找；封面网格和列表视图随时切换。
+
+点击「导入文件」选择 `.md` / `.markdown` 时，每个文件是一册 Book；点击「导入文件夹」时，整个文件夹是一册 Book，子目录中的 Markdown 文件都会作为章节收入同一本书。文件夹名作为书名，根目录 README 优先，其余章节按相对路径自然排序（例如 2 在 10 之前）。文件夹中的本地图片一并保存，章节间的相对链接可以直接跳转；导入后无需保留原文件夹也能离线阅读。隐藏子目录和 `node_modules` 会跳过。
+
+Markdown 阅读支持标题目录、表格、任务列表、代码块、整本书搜索、章节书签、字号调整、深浅主题和续读位置。单文件导入只保存所选文件；需要本地图片或关联章节时，请导入其所在文件夹。
 
 <p align="center">
   <picture>
@@ -53,6 +57,14 @@ Leaf 把阅读、定位和批注放在一起。打开 PDF，接着上次的位�
 鼠尾草绿搭配简洁的中性色界面，支持浅色、深色和跟随系统。应用界面与 PDF 页面外观可以分别设置；查看照片、图表时，也可以让文档保持原始颜色。
 
 工具按需展开，笔记随手可记。让你把更多时间花在内容上。
+
+## 开发
+
+`npm run desktop` 启动桌面开发环境，`npm run build` 构建生产前端。
+`npm test` 运行单元测试，`npm run test:e2e` 验证浏览器与原生桌面阅读流程。
+`npm run test:production` 构建并验证生产文件加载、搜索及批注导出。
+
+模块划分与本地数据迁移见 [架构说明](docs/architecture.md)，Worker、缓存策略和实测结果见 [性能说明](docs/performance.md)。
 
 ---
 

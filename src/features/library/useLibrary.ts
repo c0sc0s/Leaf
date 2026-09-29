@@ -1,84 +1,116 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { Book } from '../../types';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { Book, BookMetadata } from '../../types';
 import { storage } from '../../lib/db';
+import { bookMetadata } from '../../lib/bookData';
+import { initializeLibrary } from './initializeLibrary';
 
-const INITIALIZED_KEY = 'folio-initialized';
-
-async function installSamples() {
-  const [{ importPDF }, manifest] = await Promise.all([
-    import('../../lib/pdf'),
-    fetch('./samples/manifest.json').then((r) => r.json() as Promise<{ slug: string }[]>),
-  ]);
-  const samples: Book[] = [];
-  for (const entry of manifest) {
-    const response = await fetch(`./samples/${entry.slug}.pdf`);
-    if (!response.ok) throw new Error(`示例文件加载失败：${entry.slug}`);
-    const file = await response.blob();
-    const book = {
-      ...(await importPDF(file, entry.slug + '.pdf')),
-      sample: true,
-      addedAt: Date.now() - samples.length * 1000,
-    };
-    await storage.addBook(book, file);
-    samples.push(book);
-  }
-  localStorage.setItem(INITIALIZED_KEY, '1');
-  return samples;
-}
-
-// Shared across StrictMode's double mount so samples are installed once.
-let initialLoad: Promise<Book[]> | undefined;
-function loadLibrary() {
-  if (!initialLoad) {
-    initialLoad = storage
-      .books()
-      .then((books) =>
-        books.length || localStorage.getItem(INITIALIZED_KEY) ? books : installSamples(),
-      );
-    // A failed load may be retried on the next mount.
-    initialLoad.catch(() => (initialLoad = undefined));
-  }
-  return initialLoad;
-}
-
-/** Owns the book list and note counts, keeping React state and IndexedDB in step. */
 export function useLibrary(notify: (message: string) => void) {
-  const [books, setBooks] = useState<Book[]>([]);
+  const [books, setBooks] = useState<BookMetadata[]>([]);
+  const [active, setActive] = useState<Book | null>(null);
   const [loading, setLoading] = useState(true);
-  const [noteCounts, setNoteCounts] = useState<Record<string, number>>({});
-  const refreshNoteCounts = useCallback(() => {
+  const [opening, setOpening] = useState<string | null>(null);
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const openRevision = useRef(0);
+
+  const refreshCounts = useCallback(() => {
     void storage
-      .annotations()
-      .then((marks) => {
-        const next: Record<string, number> = {};
-        for (const mark of marks) next[mark.bookId] = (next[mark.bookId] ?? 0) + 1;
-        setNoteCounts(next);
-      })
-      .catch((error) => notify(`无法读取笔记：${String(error)}`));
+      .annotationCounts()
+      .then(setCounts)
+      .catch(() => notify('无法读取笔记'));
   }, [notify]);
+
   useEffect(() => {
-    void loadLibrary()
-      .then(setBooks)
-      .catch((error) => notify(`书库加载失败：${String(error)}`))
-      .finally(() => setLoading(false));
-    refreshNoteCounts();
-  }, [notify, refreshNoteCounts]);
-  const updateBook = useCallback(
-    (book: Book) => {
-      setBooks((previous) => previous.map((b) => (b.id === book.id ? book : b)));
-      void storage
-        .putBook(book)
-        .catch((error) => notify(`保存失败，请检查本机存储空间：${String(error)}`));
+    let disposed = false;
+    void initializeLibrary()
+      .then((loaded) => {
+        if (!disposed)
+          setBooks((current) => {
+            const combined = new Map(loaded.map((book) => [book.id, book]));
+            for (const book of current) combined.set(book.id, book);
+            return [...combined.values()];
+          });
+      })
+      .catch((error) => {
+        if (!disposed) notify('书库加载失败：' + String(error));
+      })
+      .finally(() => {
+        if (!disposed) setLoading(false);
+      });
+    refreshCounts();
+    return () => {
+      disposed = true;
+      openRevision.current++;
+    };
+  }, [notify, refreshCounts]);
+
+  const openBook = useCallback(
+    async (metadata: BookMetadata) => {
+      const revision = ++openRevision.current;
+      setOpening(`正在打开 ${metadata.title}…`);
+      try {
+        const book = await storage.book(metadata.id);
+        if (revision !== openRevision.current) return;
+        if (!book) throw new Error('这本书已从书库移除');
+        setActive(book);
+      } catch (error) {
+        if (revision === openRevision.current) notify('无法打开书籍：' + String(error));
+      } finally {
+        if (revision === openRevision.current) setOpening(null);
+      }
     },
     [notify],
   );
-  const addBook = useCallback(async (book: Book, file: Blob) => {
-    await storage.addBook(book, file);
-    setBooks((previous) => [book, ...previous]);
+
+  const closeReader = useCallback(() => {
+    openRevision.current++;
+    setOpening(null);
+    setActive(null);
+    refreshCounts();
+  }, [refreshCounts]);
+
+  const updateBook = useCallback(
+    (book: BookMetadata) => {
+      const metadata = bookMetadata(book);
+      setBooks((current) => current.map((entry) => (entry.id === book.id ? metadata : entry)));
+      // Retain the loaded content and its identity while only metadata changes.
+      setActive((current) => (current?.id === book.id ? { ...current, ...metadata } : current));
+      void storage.updateBook(metadata).catch(() => notify('保存失败，请检查本机存储空间'));
+    },
+    [notify],
+  );
+
+  const addBook = useCallback(async (book: Book) => {
+    await storage.putBook(book);
+    const metadata = bookMetadata(book);
+    setBooks((current) => [metadata, ...current.filter((entry) => entry.id !== book.id)]);
   }, []);
-  const removeBook = useCallback(async (book: Book) => {
-    await storage.deleteBook(book.id);
-    setBooks((previous) => previous.filter((b) => b.id !== book.id));
-  }, []);
-  return { books, loading, noteCounts, refreshNoteCounts, updateBook, addBook, removeBook };
+
+  const removeBook = useCallback(
+    async (id: string) => {
+      try {
+        await storage.deleteBook(id);
+        setBooks((current) => current.filter((entry) => entry.id !== id));
+        refreshCounts();
+        notify('已从书库移除');
+        return true;
+      } catch {
+        notify('无法移除这本书');
+        return false;
+      }
+    },
+    [notify, refreshCounts],
+  );
+
+  return {
+    books,
+    active,
+    loading,
+    opening,
+    counts,
+    openBook,
+    closeReader,
+    updateBook,
+    addBook,
+    removeBook,
+  };
 }

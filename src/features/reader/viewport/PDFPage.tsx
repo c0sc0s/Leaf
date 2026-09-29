@@ -88,12 +88,26 @@ export function PDFPage({
         await text.render();
         if (disposed) return;
         const original = [...content.tokens].sort((a, b) => a.originalIndex - b.originalIndex);
+        const positions = new Map<string, { indices: number[]; next: number }>();
+        original.forEach((token, index) => {
+          let entry = positions.get(token.text);
+          if (!entry) {
+            entry = { indices: [], next: 0 };
+            positions.set(token.text, entry);
+          }
+          entry.indices.push(index);
+        });
         let cursor = 0;
         for (const span of text.textDivs) {
-          const token = original.slice(cursor).find((t) => t.text === span.textContent);
-          if (token) {
-            span.dataset.start = String(token.start);
-            cursor = original.indexOf(token) + 1;
+          const entry = positions.get(span.textContent || '');
+          if (!entry) continue;
+          while (entry.next < entry.indices.length && entry.indices[entry.next] < cursor)
+            entry.next++;
+          const index = entry.indices[entry.next];
+          if (index !== undefined) {
+            span.dataset.start = String(original[index].start);
+            cursor = index + 1;
+            entry.next++;
           }
         }
         setFrame({ content, viewport, canvas, layer });

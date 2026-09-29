@@ -46,65 +46,6 @@
 .modal-heading + .muted {
   font-size: 11px;
 }
-.settings-section {
-  padding: 20px 0;
-  border-bottom: 1px solid var(--border);
-}
-.settings-section > label {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-  margin-bottom: 12px;
-}
-.settings-section label span {
-  color: var(--muted-foreground);
-  font-size: 12px;
-}
-.theme-options {
-  display: flex;
-  gap: 10px;
-}
-.theme-options button {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  flex-direction: column;
-  gap: 10px;
-  padding: 18px 6px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  font-size: 12px;
-  position: relative;
-  color: var(--muted-foreground);
-}
-.theme-options button.selected {
-  color: var(--sidebar-primary);
-  background: var(--sidebar-accent);
-  border-color: var(--sidebar-primary);
-}
-.theme-options button > svg:last-child:not(:first-child) {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-}
-.settings-section .small {
-  margin-top: 10px;
-}
-.settings-section input[type='range'] {
-  width: 100%;
-  accent-color: var(--sidebar-primary);
-  height: 5px;
-  margin: 8px 0;
-}
-.settings-footer {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding-top: 19px;
-  font-size: 12px;
-  color: var(--muted-foreground);
-}
 .about-logo {
   font:
     70px Georgia,
@@ -237,17 +178,4 @@
   z-index: 121;
   max-height: 90dvh;
   overflow-y: auto;
-}
-.settings-section [data-slot='native-select-wrapper'] {
-  width: 100%;
-}
-.theme-options [data-slot='button'] {
-  height: auto;
-}
-.theme-options[data-slot='toggle-group'] {
-  width: 100%;
-}
-.theme-options [data-slot='toggle-group-item'] {
-  height: auto;
-  min-height: 78px;
 }
