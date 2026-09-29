@@ -9,7 +9,10 @@ for (const initialKind of ['underline', 'highlight'] as const) {
     await page.getByLabel('页码', { exact: true }).fill('2');
     await page.getByLabel('页码', { exact: true }).press('Enter');
     const text = page.locator('.textLayer [data-start]').filter({ hasText: 'We move' });
+    await expect(page.locator('.pdf-paper[data-page="2"]')).toHaveAttribute('aria-busy', 'false');
     await expect(text).toBeVisible();
+    // Let navigation and scrolling settle before creating the selection toolbar.
+    await text.click({ trial: true });
     await text.evaluate((element) => {
       const range = document.createRange();
       range.setStart(element.firstChild!, 0);
