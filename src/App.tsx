@@ -53,7 +53,7 @@ export default function App() {
   const openSettings = useCallback(() => setSettingsOpen(true), []);
   const navigate = (next: LibraryView) => {
     if (route.notFound) route.home();
-    if (active) closeReader();
+    closeReader();
     setView(next);
   };
   const confirmDelete = async (book: BookMetadata) => {

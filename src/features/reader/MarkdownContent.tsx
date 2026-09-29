@@ -32,6 +32,7 @@ export const MarkdownContent = memo(function MarkdownContent({
       a: ({ href, children }) => (
         <a
           href={href}
+          draggable={false}
           onClick={(event) => {
             event.preventDefault();
             if (href) onLink(href);
@@ -48,7 +49,14 @@ export const MarkdownContent = memo(function MarkdownContent({
             ? src
             : undefined;
         return source ? (
-          <img src={source} alt={alt || ''} title={title} onLoad={onImageLoad} />
+          <img
+            src={source}
+            alt={alt || ''}
+            title={title}
+            draggable={false}
+            onDragStart={(event) => event.preventDefault()}
+            onLoad={onImageLoad}
+          />
         ) : (
           <span className="markdown-missing-image">[图片：{alt || src}]</span>
         );
