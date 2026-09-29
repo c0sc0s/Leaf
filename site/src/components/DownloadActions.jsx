@@ -1,4 +1,5 @@
 import { downloads, getDownloadPlatform } from '../website.js';
+import MacInstallationHelp from './MacInstallationHelp.jsx';
 
 function PlatformIcon({ platform }) {
   return (
@@ -25,17 +26,20 @@ export default function DownloadActions() {
     : downloads;
 
   return (
-    <div className="download-actions">
-      {visibleDownloads.map(({ platform, href }, index) => (
-        <a
-          className={`button ${index === 0 ? 'button-primary' : 'button-outline'}`}
-          href={href}
-          key={platform}
-        >
-          <PlatformIcon platform={platform} />
-          下载 {platform} 版
-        </a>
-      ))}
-    </div>
+    <>
+      <div className="download-actions">
+        {visibleDownloads.map(({ platform, href }, index) => (
+          <a
+            className={`button ${index === 0 ? 'button-primary' : 'button-outline'}`}
+            href={href}
+            key={platform}
+          >
+            <PlatformIcon platform={platform} />
+            下载 {platform} 版
+          </a>
+        ))}
+      </div>
+      {visibleDownloads.some(({ platform }) => platform === 'macOS') && <MacInstallationHelp />}
+    </>
   );
 }

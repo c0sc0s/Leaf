@@ -4,6 +4,10 @@ import path from 'node:path';
 import os from 'node:os';
 import { PDFDocument, PDFName } from 'pdf-lib';
 const root = process.cwd();
+const samples = path.join(root, 'tests/fixtures/samples');
+const sampleFiles = JSON.parse(await readFile(path.join(samples, 'manifest.json'), 'utf8')).map(
+  ({ slug }) => path.join(samples, `${slug}.pdf`),
+);
 const userData = await mkdtemp(path.join(os.tmpdir(), 'leaf-desktop-test-'));
 const executable =
   process.env.LEAF_EXECUTABLE ||
@@ -30,6 +34,14 @@ try {
   const page = await app.firstWindow();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
+  const importMenu = page.locator('.import-trigger');
+  await expect(importMenu).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('.book-card')).toHaveCount(0);
+  await app.evaluate(({ dialog }, filePaths) => {
+    dialog.showOpenDialog = async () => ({ canceled: false, filePaths });
+  }, sampleFiles);
+  await importMenu.click();
+  await page.getByRole('menuitem', { name: /^导入文件(?!夹)/ }).click();
   await expect(page.locator('.book-card')).toHaveCount(8, { timeout: 30000 });
   const prefs = await app.evaluate(({ BrowserWindow }) => {
     const p = BrowserWindow.getAllWindows()[0].webContents.getLastWebPreferences();
@@ -98,7 +110,7 @@ try {
     ({ dialog }, file) => {
       dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] });
     },
-    path.join(root, 'public/samples/quiet-spaces.pdf'),
+    path.join(samples, 'quiet-spaces.pdf'),
   );
   await page.getByRole('button', { name: '导入文件', exact: true }).click();
   await page.getByRole('menuitem', { name: /^导入文件(?!夹)/ }).click();

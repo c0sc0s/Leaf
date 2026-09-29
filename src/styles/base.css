@@ -131,15 +131,7 @@ svg {
 :root.vibrant body {
   background: transparent;
 }
-:root.vibrant
-  :is(
-    .titlebar,
-    .reader-header,
-    .library-sidebar,
-    .reader-sidebar,
-    .reader-status,
-    .window-controls
-  ) {
+:root.vibrant :is(.titlebar, .reader-header, .reader-sidebar, .reader-status, .window-controls) {
   background: var(--chrome);
 }
 :root.vibrant .app-shell:has(.library-sidebar) :is(.titlebar, .window-controls) {

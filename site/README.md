@@ -4,6 +4,8 @@
 
 macOS 和 Windows 访问者只看到对应系统的下载按钮，按钮带平台图标。其他系统或无法识别的平台显示两个下载选项。
 
+显示 macOS 下载按钮时，下方提供可展开的安装提示，说明如何处理「Apple 无法验证」警告，支持一键复制移除 Leaf 下载隔离标记的终端命令，并显示复制结果。
+
 下载按钮下方提供 GitHub 仓库和哔哩哔哩首页入口，均在新标签页打开。
 
 品牌标题使用 Caveat 手写字体，正文与按钮使用 Public Sans，中文使用系统字体。字体随官网本地打包，授权文本保存在 `fonts/`。插画禁止原生拖动与选择。
@@ -46,6 +48,7 @@ npm run preview
 - `src/main.jsx`：React 挂载入口。
 - `src/App.jsx`：页面组合。
 - `src/components/DownloadActions.jsx`：平台下载按钮。
+- `src/components/MacInstallationHelp.jsx`：macOS 安装提示与命令复制。
 - `src/components/SocialLinks.jsx`：GitHub 和哔哩哔哩入口。
 - `src/sections/Hero.jsx`：首屏文案和插画。
 - `src/website.js`：平台下载地址与相关链接。

@@ -40,7 +40,9 @@ img {
   max-width: 100%;
   height: auto;
 }
-a:focus-visible {
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 6px;
   border-radius: 3px;
@@ -115,6 +117,61 @@ h1 {
 .button-outline:hover {
   background: #e9e5da;
   transform: translateY(-2px);
+}
+.mac-installation-help {
+  margin-top: 16px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #64655d;
+}
+.mac-installation-help summary {
+  width: fit-content;
+  cursor: pointer;
+}
+.mac-installation-help summary:hover {
+  color: var(--ink);
+}
+.mac-installation-content {
+  margin-top: 12px;
+}
+.installation-command {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-block: 12px;
+  padding: 12px;
+  border: 1px solid #d6d5ca;
+  border-radius: 6px;
+  background: #eae7de;
+  color: var(--ink);
+}
+.installation-command code {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+.installation-command button {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid #d6d5ca;
+  border-radius: 4px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.installation-command button:hover {
+  background: #fffdf8;
+}
+.installation-hint,
+.installation-copy-status {
+  font-size: 12px;
+}
+.installation-copy-status {
+  min-height: 1.7em;
+  margin-top: 6px;
 }
 .social-links {
   display: flex;

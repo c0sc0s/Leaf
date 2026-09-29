@@ -128,7 +128,8 @@ const chapters = [
     ],
   ],
 ];
-await mkdir('public/samples', { recursive: true });
+const output = 'tests/fixtures/samples';
+await mkdir(output, { recursive: true });
 for (const spec of specimens) {
   const pdf = await PDFDocument.create();
   pdf.setTitle(spec.title);
@@ -239,7 +240,7 @@ for (const spec of specimens) {
       color: rgb(0.5, 0.5, 0.5),
     });
   }
-  await writeFile(`public/samples/${spec.slug}.pdf`, await pdf.save());
+  await writeFile(`${output}/${spec.slug}.pdf`, await pdf.save());
 }
-await writeFile('public/samples/manifest.json', JSON.stringify(specimens, null, 2));
+await writeFile(`${output}/manifest.json`, JSON.stringify(specimens, null, 2));
 console.log('Created 8 original, selectable sample PDFs.');

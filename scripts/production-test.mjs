@@ -34,15 +34,17 @@ try {
   const workers = [];
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('worker', (worker) => workers.push(worker.url()));
-  await expect(page.locator('.book-card')).toHaveCount(8, { timeout: 30000 });
+  const importMenu = page.locator('.import-trigger');
+  await expect(importMenu).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('.book-card')).toHaveCount(0);
   const choose = async (file) =>
     app.evaluate(({ dialog }, file) => {
       dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] });
     }, file);
   await choose(markdownFile);
-  await page.getByRole('button', { name: '导入文件', exact: true }).click();
+  await importMenu.click();
   await page.getByRole('menuitem', { name: /^导入文件(?!夹)/ }).click();
-  await expect(page.locator('.book-card')).toHaveCount(9);
+  await expect(page.locator('.book-card')).toHaveCount(1);
   await page.getByRole('button', { name: '阅读 Production Markdown', exact: true }).click();
   await expect(page.locator('.markdown-content h1')).toHaveText('Production Markdown');
   await expect(page.locator('.markdown-content p')).toHaveText('A & B ©. A unique needle.');
@@ -52,9 +54,9 @@ try {
   await expect(page.locator('.markdown-search-result')).toHaveCount(1);
   await page.getByLabel('返回书架', { exact: true }).click();
   await choose(pdfFile);
-  await page.getByRole('button', { name: '导入文件', exact: true }).click();
+  await importMenu.click();
   await page.getByRole('menuitem', { name: /^导入文件(?!夹)/ }).click();
-  await expect(page.locator('.book-card')).toHaveCount(10);
+  await expect(page.locator('.book-card')).toHaveCount(2);
   await page.getByRole('button', { name: '阅读 Production PDF', exact: true }).click();
   await expect(page.locator('.pdf-paper[data-page="1"]')).toHaveAttribute('aria-busy', 'false');
   await page.getByLabel('搜索 PDF', { exact: true }).click();

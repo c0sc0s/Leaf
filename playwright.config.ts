@@ -18,6 +18,8 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev',
     url: 'http://127.0.0.1:5173',
-    reuseExistingServer: !process.env.CI,
+    env: { VITE_LEAF_SEED_SAMPLES: '1' },
+    // A plain `npm run dev` server does not seed the sample library the specs rely on.
+    reuseExistingServer: false,
   },
 });
