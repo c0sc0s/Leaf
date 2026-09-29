@@ -15,6 +15,9 @@ export default defineConfig({
       ),
     },
   },
+  // Worker imports are outside the HTML graph. Discover them before the first
+  // document opens so pre-bundling cannot reload the page in the middle of reading.
+  optimizeDeps: { entries: ['index.html', 'src/**/*.worker.ts'] },
   base: './',
   server: { host: '127.0.0.1', strictPort: true },
   build: { chunkSizeWarningLimit: 1500 },
