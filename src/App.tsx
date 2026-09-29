@@ -56,6 +56,7 @@ export default function App() {
   const [dragging, setDragging] = useState(false);
   const [deleting, setDeleting] = useState<BookMetadata | null>(null);
   const dragDepth = useRef(0);
+  const internalDrag = useRef(false);
   const onImported = useCallback(() => setView('all'), []);
   const {
     busy: importBusy,
@@ -78,19 +79,29 @@ export default function App() {
   return (
     <div
       className="app-shell"
+      onDragStart={(event) => {
+        internalDrag.current = !event.defaultPrevented;
+      }}
+      onDragEndCapture={() => {
+        internalDrag.current = false;
+        dragDepth.current = 0;
+        setDragging(false);
+      }}
       onDragEnter={(e) => {
         e.preventDefault();
-        if (e.dataTransfer.types.includes('Files')) {
+        if (!internalDrag.current && e.dataTransfer.types.includes('Files')) {
           dragDepth.current++;
           setDragging(true);
         }
       }}
       onDragOver={(e) => {
         e.preventDefault();
-        e.dataTransfer.dropEffect = 'copy';
+        e.dataTransfer.dropEffect =
+          !internalDrag.current && e.dataTransfer.types.includes('Files') ? 'copy' : 'none';
       }}
       onDragLeave={(e) => {
         e.preventDefault();
+        if (internalDrag.current || !e.dataTransfer.types.includes('Files')) return;
         dragDepth.current--;
         if (dragDepth.current <= 0) {
           dragDepth.current = 0;
@@ -99,8 +110,11 @@ export default function App() {
       }}
       onDrop={(e) => {
         e.preventDefault();
+        const externalFiles = !internalDrag.current && e.dataTransfer.types.includes('Files');
+        internalDrag.current = false;
         dragDepth.current = 0;
         setDragging(false);
+        if (!externalFiles) return;
         void droppedSources(e.dataTransfer)
           .then(importFiles)
           .catch((error) => notify('无法导入：' + String(error)));
