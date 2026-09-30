@@ -1,11 +1,11 @@
 import { execFileSync } from 'node:child_process';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createRequire } from 'node:module';
 import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-const { openLibrary } = createRequire(import.meta.url)('../electron/storage/library.cjs');
+import { openLibrary } from '../electron/storage/library.ts';
+import type { ContentReference } from '../electron/storage/content.ts';
 const directories: string[] = [];
 const libraries: ReturnType<typeof openLibrary>[] = [];
 function directory() {
@@ -58,7 +58,7 @@ function upload(library: ReturnType<typeof openLibrary>, text = 'pdf bytes') {
   const bytes = Buffer.from(text);
   const token = library.request('beginBlob', { size: bytes.length, type: 'application/pdf' });
   library.request('appendBlob', { token, offset: 0, data: bytes.toString('base64') });
-  return library.request('finishBlob', token);
+  return library.request('finishBlob', token) as ContentReference;
 }
 function put(library: ReturnType<typeof openLibrary>, id = 'book') {
   const blob = upload(library);
@@ -125,12 +125,12 @@ describe('SQLite library', () => {
     library.request('putBook', { metadata: metadata(), content: { blob } });
     library.request('putAnnotations', [mark()]);
     library.request('setPreference', { key: 'folio-position:book', value: '{"page":2}' });
-    const read = library.request('book', 'book');
+    const read = library.request('book', 'book') as { lease: string };
     library.request('deleteBook', 'book');
     library.collect();
     expect(
       Buffer.from(
-        library.request('readBlob', { token: read.lease, hash: blob.hash, offset: 0 }),
+        library.request('readBlob', { token: read.lease, hash: blob.hash, offset: 0 }) as string,
         'base64',
       ).toString(),
     ).toBe('pdf bytes');
@@ -177,6 +177,86 @@ describe('SQLite library', () => {
     db.exec("UPDATE schema_migrations SET checksum='changed'");
     db.close();
     expect(() => openLibrary(root)).toThrow(/迁移记录/);
+  });
+  it('persists ask threads in order, rejects gaps in input and cascades book deletion', () => {
+    const root = directory();
+    let library = open(root);
+    put(library);
+    const thread = {
+      id: 'thread',
+      bookId: 'book',
+      page: 2,
+      start: 5,
+      end: 9,
+      quote: 'text',
+      createdAt: 3,
+    };
+    library.request('putAskThread', thread);
+    library.request('putAskThread', thread);
+    library.request('putAskMessage', {
+      threadId: 'thread',
+      ordinal: 0,
+      role: 'user',
+      content: 'why?',
+      createdAt: 4,
+    });
+    library.request('putAskMessage', {
+      threadId: 'thread',
+      ordinal: 1,
+      role: 'assistant',
+      content: 'because [p.2]',
+      model: 'deepseek-chat',
+      createdAt: 5,
+    });
+    expect(() =>
+      library.request('putAskMessage', {
+        threadId: 'thread',
+        ordinal: 1,
+        role: 'user',
+        content: 'duplicate ordinal',
+        createdAt: 6,
+      }),
+    ).toThrow();
+    expect(() =>
+      library.request('putAskMessage', {
+        threadId: 'thread',
+        ordinal: 2,
+        role: 'system',
+        content: 'x',
+        createdAt: 6,
+      }),
+    ).toThrow('Invalid ask message');
+    expect(() =>
+      library.request('putAskThread', { ...thread, id: 'x', bookId: 'missing' }),
+    ).toThrow();
+    close(library);
+    library = open(root);
+    expect(library.request('askThreads', 'book')).toEqual([
+      {
+        ...thread,
+        messages: [
+          { role: 'user', content: 'why?', createdAt: 4 },
+          { role: 'assistant', content: 'because [p.2]', model: 'deepseek-chat', createdAt: 5 },
+        ],
+      },
+    ]);
+    library.request('deleteBook', 'book');
+    const db = new DatabaseSync(path.join(root, 'library.sqlite'));
+    expect(db.prepare('SELECT count(*) AS count FROM ask_messages').get()).toEqual({ count: 0 });
+    db.close();
+  });
+  it('upgrades a version 1 library to add ask tables after backing it up', () => {
+    const root = directory();
+    close(open(root));
+    const db = new DatabaseSync(path.join(root, 'library.sqlite'));
+    db.exec(`DROP TABLE ask_messages; DROP TABLE ask_threads;
+      DELETE FROM schema_migrations WHERE version > 1; PRAGMA user_version = 1;`);
+    db.close();
+    const library = open(root);
+    expect(library.request('askThreads', 'book')).toEqual([]);
+    expect(readdirSync(path.join(root, 'backups')).some((name) => name.startsWith('schema-'))).toBe(
+      true,
+    );
   });
   it('creates a consistent backup including content and rejects corrupt content', () => {
     const root = directory();

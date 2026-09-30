@@ -1,12 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createRequire } from 'node:module';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-const { placeWindow, readWindowState, writeWindowState } = createRequire(import.meta.url)(
-  '../electron/windowState.cjs',
-);
+import { placeWindow, readWindowState, writeWindowState } from '../electron/windowState.ts';
 
 afterEach(() => vi.restoreAllMocks());
 

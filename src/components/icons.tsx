@@ -1,6 +1,9 @@
 import { HugeiconsIcon } from '@hugeicons/react';
 import type { ComponentProps } from 'react';
 import {
+  AiChat02Icon as AiChatGlyph,
+  ArrowUp02Icon as ArrowUpGlyph,
+  StopIcon as StopGlyph,
   ArrowLeftIcon as ArrowLeftGlyph,
   ArrowUpRightIcon as ArrowUpRightGlyph,
   BookOpenIcon as BookOpenGlyph,
@@ -58,6 +61,9 @@ function icon(glyph: Glyph, name: string) {
   return Icon;
 }
 
+export const AiChat = icon(AiChatGlyph, 'AiChat');
+export const ArrowUp = icon(ArrowUpGlyph, 'ArrowUp');
+export const Stop = icon(StopGlyph, 'Stop');
 export const ArrowLeft = icon(ArrowLeftGlyph, 'ArrowLeft');
 export const ArrowUpRight = icon(ArrowUpRightGlyph, 'ArrowUpRight');
 export const BookOpen = icon(BookOpenGlyph, 'BookOpen');

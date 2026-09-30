@@ -16,7 +16,7 @@ test('changes native glass live and retains the toggle and transparency after re
   const profile = await mkdtemp(path.join(tmpdir(), 'leaf-glass-settings-'));
   const launch = () =>
     _electron.launch({
-      args: ['electron/main.cjs', '--dev'],
+      args: ['.', '--dev'],
       env: { ...process.env, LEAF_USER_DATA: profile },
     });
   let app = await launch();

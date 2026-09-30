@@ -10,3 +10,4 @@ public/vendor/
 
 .leaf-data/
 output/
+dist-electron/

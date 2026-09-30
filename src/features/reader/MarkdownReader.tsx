@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Exiting, IconButton } from '@/components/UI';
 import { BookmarkToggle } from './BookmarkToggle';
 import {
+  AiChat,
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
@@ -42,6 +43,9 @@ import { BookmarkList } from './sidebar/BookmarkList';
 import { SelectionTools, MarkTools } from './AnnotationTools';
 import { NotesPanel } from './NotesPanel';
 import { useMarkdownAnnotations } from './useMarkdownAnnotations';
+import { createMarkdownSource } from '../../ai/document';
+import { AskPanel } from '../ai/AskPanel';
+import { useAsk } from '../ai/useAsk';
 const imageTypes: Record<string, string> = {
   png: 'image/png',
   jpg: 'image/jpeg',
@@ -77,6 +81,12 @@ export function MarkdownReader({
   const scroller = useRef<HTMLDivElement>(null);
   const article = useRef<HTMLElement>(null);
   const annotation = useMarkdownAnnotations(book.id, page, article, notify);
+  const askSource = useMemo(
+    () => createMarkdownSource({ title: book.title, author: book.author }, chapters),
+    [chapters, book.title, book.author],
+  );
+  const ask = useAsk(book.id, askSource);
+  const [askOpen, setAskOpen] = useState(false);
   const pendingAnnotation = useRef<number | null>(null);
   const selectedMark =
     annotation.active &&
@@ -142,7 +152,10 @@ export function MarkdownReader({
     }
   }, []);
   useEffect(() => {
-    if (annotation.right) setFocus(false);
+    if (annotation.right) {
+      setFocus(false);
+      setAskOpen(false);
+    }
   }, [annotation.right]);
 
   useEffect(() => {
@@ -340,6 +353,16 @@ export function MarkdownReader({
             >
               <NotebookPen size={17} />
             </IconButton>
+            <IconButton
+              label="AI 问答"
+              active={askOpen}
+              onClick={() => {
+                if (!askOpen) annotation.setRight(false);
+                setAskOpen(!askOpen);
+              }}
+            >
+              <AiChat size={17} />
+            </IconButton>
             <IconButton label="阅读偏好" onClick={onSettings}>
               <Settings2 size={17} />
             </IconButton>
@@ -476,6 +499,27 @@ export function MarkdownReader({
             onClose={() => annotation.setRight(false)}
           />
         )}
+        {askOpen && !focus && (
+          <AskPanel
+            unit="chapter"
+            threads={ask.threads}
+            active={ask.active}
+            run={ask.run}
+            failure={ask.failure}
+            ready={ask.ready}
+            onSelect={ask.select}
+            onAsk={(question) => void ask.ask(question)}
+            onRetry={ask.retry}
+            onStop={ask.stop}
+            onRemove={(id) => void ask.remove(id)}
+            onNavigate={(next, offset) => {
+              pendingAnnotation.current = offset ?? null;
+              navigate(next);
+            }}
+            onSettings={onSettings}
+            onClose={() => setAskOpen(false)}
+          />
+        )}
       </div>
       <footer className="reader-status markdown-status">
         <span>Markdown</span>
@@ -510,6 +554,21 @@ export function MarkdownReader({
                 void annotation.annotate(kind, note);
               }}
               onClose={annotation.dismiss}
+              onAsk={() => {
+                const target = annotation.selection!;
+                const [anchor] = target.anchors;
+                ask.start({
+                  page: anchor.page,
+                  start: anchor.start,
+                  end: anchor.end,
+                  quote: target.quote,
+                });
+                annotation.dismiss();
+                window.getSelection()?.removeAllRanges();
+                annotation.setRight(false);
+                setFocus(false);
+                setAskOpen(true);
+              }}
               onCopy={() =>
                 void navigator.clipboard
                   .writeText(annotation.selection!.quote)

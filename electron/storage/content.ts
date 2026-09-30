@@ -1,12 +1,30 @@
-const fs = require('node:fs');
-const path = require('node:path');
-const { createHash, randomUUID } = require('node:crypto');
+import fs from 'node:fs';
+import path from 'node:path';
+import { createHash, randomUUID, type Hash } from 'node:crypto';
+import type { DatabaseSync } from 'node:sqlite';
 
-const chunkSize = 1024 * 1024;
+export const chunkSize = 1024 * 1024;
 const maxBytes = 512 * 1024 * 1024;
 const validHash = /^[a-f0-9]{64}$/;
 
-const hashFile = (filename) => {
+/** A stored content object as the renderer refers to it; `token` pins an upload or read. */
+export interface ContentReference {
+  hash: string;
+  size: number;
+  type: string;
+  token?: string;
+}
+
+interface Upload {
+  descriptor: number | undefined;
+  filename: string;
+  size: number;
+  type: string;
+  written: number;
+  hash: Hash;
+}
+
+export const hashFile = (filename: string) => {
   const hash = createHash('sha256');
   const descriptor = fs.openSync(filename, 'r');
   try {
@@ -20,22 +38,25 @@ const hashFile = (filename) => {
   }
 };
 
-function createContentStore(root, db) {
+export type ContentStore = ReturnType<typeof createContentStore>;
+
+export function createContentStore(root: string, db: DatabaseSync) {
   const directory = path.join(root, 'content');
   const staging = path.join(root, 'staging');
   fs.mkdirSync(directory, { recursive: true });
   fs.mkdirSync(staging, { recursive: true });
-  const uploads = new Map();
-  const file = (hash) => {
+  const uploads = new Map<string, Upload>();
+  const file = (hash: unknown) => {
     if (typeof hash !== 'string' || !validHash.test(hash)) throw new Error('Invalid content hash');
     return path.join(directory, hash);
   };
   const pin = db.prepare('INSERT OR IGNORE INTO content_pins VALUES (?, ?)');
-  const release = (owner) => {
+  const release = (owner: string) => {
     db.prepare('DELETE FROM content_pins WHERE owner=?').run(owner);
   };
-  const reference = (hash, type) => {
-    const entry = db.prepare('SELECT size FROM content_objects WHERE hash=?').get(hash);
+  const reference = (hash: string, type: string): ContentReference => {
+    const entry = db.prepare('SELECT size FROM content_objects WHERE hash=?').get(hash) as
+      { size: number } | undefined;
     if (!entry || fs.statSync(file(hash)).size !== entry.size)
       throw new Error('书籍内容缺失或损坏');
     return { hash, size: entry.size, type };
@@ -48,11 +69,20 @@ function createContentStore(root, db) {
       AND NOT EXISTS (SELECT 1 FROM book_contents WHERE hash=c.hash)
       AND NOT EXISTS (SELECT 1 FROM book_assets WHERE hash=c.hash)`,
       )
-      .all();
+      .all() as { hash: string }[];
     for (const { hash } of unused) {
       fs.rmSync(file(hash), { force: true });
       db.prepare('DELETE FROM content_objects WHERE hash=?').run(hash);
     }
+  };
+  const abort = (token: string) => {
+    const upload = uploads.get(token);
+    if (upload) {
+      if (upload.descriptor !== undefined) fs.closeSync(upload.descriptor);
+      fs.rmSync(upload.filename, { force: true });
+      uploads.delete(token);
+    }
+    release(token);
   };
   // All content commands and reference transactions run on the same serial worker.
   // Startup happens before clients reconnect, so process-owned pins can be released.
@@ -74,7 +104,8 @@ function createContentStore(root, db) {
     hashFile,
     collect,
     release,
-    begin({ size, type }) {
+    abort,
+    begin({ size, type }: { size: number; type: string }) {
       if (!Number.isSafeInteger(size) || size < 0 || size > maxBytes || typeof type !== 'string')
         throw new Error('Invalid content upload');
       const token = randomUUID();
@@ -90,10 +121,11 @@ function createContentStore(root, db) {
       });
       return token;
     },
-    append({ token, offset, data }) {
+    append({ token, offset, data }: { token: string; offset: number; data: string }) {
       const upload = uploads.get(token);
       if (
         !upload ||
+        upload.descriptor === undefined ||
         offset !== upload.written ||
         typeof data !== 'string' ||
         data.length > Math.ceil(chunkSize / 3) * 4
@@ -112,9 +144,10 @@ function createContentStore(root, db) {
       upload.hash.update(buffer);
       upload.written += buffer.length;
     },
-    finish(token) {
+    finish(token: string): ContentReference {
       const upload = uploads.get(token);
-      if (!upload || upload.size !== upload.written) throw new Error('Incomplete content upload');
+      if (!upload || upload.descriptor === undefined || upload.size !== upload.written)
+        throw new Error('Incomplete content upload');
       fs.fsyncSync(upload.descriptor);
       fs.closeSync(upload.descriptor);
       upload.descriptor = undefined;
@@ -144,16 +177,7 @@ function createContentStore(root, db) {
       uploads.delete(token);
       return { hash, size: upload.size, type: upload.type, token };
     },
-    abort(token) {
-      const upload = uploads.get(token);
-      if (upload) {
-        if (upload.descriptor !== undefined) fs.closeSync(upload.descriptor);
-        fs.rmSync(upload.filename, { force: true });
-        uploads.delete(token);
-      }
-      release(token);
-    },
-    validateUpload(blob) {
+    validateUpload(blob: ContentReference) {
       reference(blob.hash, blob.type);
       if (
         typeof blob.token !== 'string' ||
@@ -163,12 +187,12 @@ function createContentStore(root, db) {
       )
         throw new Error('Content upload is not owned by this operation');
     },
-    acquire(hashes) {
+    acquire(hashes: string[]) {
       const token = randomUUID();
       for (const hash of hashes) pin.run(token, hash);
       return token;
     },
-    read({ token, hash, offset }) {
+    read({ token, hash, offset }: { token: string; hash: string; offset: number }) {
       if (
         !Number.isSafeInteger(offset) ||
         offset < 0 ||
@@ -185,9 +209,7 @@ function createContentStore(root, db) {
       }
     },
     close() {
-      for (const token of [...uploads.keys()]) this.abort(token);
+      for (const token of uploads.keys()) abort(token);
     },
   };
 }
-
-module.exports = { createContentStore, chunkSize, hashFile };

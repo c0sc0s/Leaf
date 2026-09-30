@@ -11,7 +11,7 @@ test('desktop flushes SQLite on close and reopens the same library', async () =>
   await writeFile(file, '# Persistent book\n\nRemember this passage.');
   const launch = () =>
     electron.launch({
-      args: ['electron/main.cjs', '--dev'],
+      args: ['.', '--dev'],
       env: { ...process.env, LEAF_USER_DATA: profile },
     });
   let app = await launch();

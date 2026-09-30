@@ -28,7 +28,7 @@ it('exports native markup annotations without altering the original', async () =
   const arr = doc.getPage(0).node.lookup(PDFName.of('Annots'), PDFArray);
   expect(arr.size()).toBe(2);
   const first = arr.lookup(0, PDFDict);
-  expect(first.lookup(PDFName.of('Subtype')).toString()).toBe('/Highlight');
+  expect(first.lookup(PDFName.of('Subtype'))!.toString()).toBe('/Highlight');
   expect(
     first
       .lookup(PDFName.of('QuadPoints'), PDFArray)

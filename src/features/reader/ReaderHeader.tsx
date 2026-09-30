@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { memo } from 'react';
 import {
+  AiChat,
   ArrowLeft,
   History,
   Maximize,
@@ -25,6 +26,7 @@ export const ReaderHeader = memo(function ReaderHeader({
   navigationOpen,
   searchOpen,
   notesOpen,
+  askOpen,
   focus,
   bookmarked,
   canReturn,
@@ -40,6 +42,7 @@ export const ReaderHeader = memo(function ReaderHeader({
   onZoomOut,
   onResetZoom,
   onToggleNotes,
+  onToggleAsk,
   onToggleFocus,
   onExportPDF,
   onExportNotes,
@@ -51,6 +54,7 @@ export const ReaderHeader = memo(function ReaderHeader({
   navigationOpen: boolean;
   searchOpen: boolean;
   notesOpen: boolean;
+  askOpen: boolean;
   focus: boolean;
   bookmarked: boolean;
   canReturn: boolean;
@@ -66,6 +70,7 @@ export const ReaderHeader = memo(function ReaderHeader({
   onZoomOut: () => void;
   onResetZoom: () => void;
   onToggleNotes: () => void;
+  onToggleAsk: () => void;
   onToggleFocus: () => void;
   onExportPDF: () => void;
   onExportNotes: () => void;
@@ -126,6 +131,9 @@ export const ReaderHeader = memo(function ReaderHeader({
           <BookmarkToggle bookmarked={bookmarked} onToggle={onToggleBookmark} />
           <IconButton label="阅读笔记" active={notesOpen} onClick={onToggleNotes}>
             <NotebookPen size={18} />
+          </IconButton>
+          <IconButton label="AI 问答" active={askOpen} onClick={onToggleAsk}>
+            <AiChat size={18} />
           </IconButton>
           <Menu.DropdownMenu>
             <Menu.DropdownMenuTrigger asChild>

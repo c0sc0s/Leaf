@@ -1,19 +1,40 @@
-const { contextBridge, ipcRenderer } = require('electron');
-contextBridge.exposeInMainWorld('desktop', {
+// Sandboxed preloads must be CommonJS and may only require `electron`.
+import type { ChatEvent, DesktopAPI, DesktopFile, WindowState } from './contract.ts';
+
+const { contextBridge, ipcRenderer } = require('electron') as typeof import('electron');
+
+const desktop: DesktopAPI = {
   storage: {
     request: (operation, input) => ipcRenderer.invoke('storage:request', operation, input),
     onBeforeClose: (callback) => {
-      const listener = async (_event, id) => {
+      const listener = async (_event: unknown, id: string) => {
         try {
           await callback();
           ipcRenderer.send('storage:flushed', id);
         } catch (error) {
-          ipcRenderer.send('storage:flushed', id, String(error?.message || error));
+          ipcRenderer.send(
+            'storage:flushed',
+            id,
+            String((error as Error | undefined)?.message || error),
+          );
         }
       };
       ipcRenderer.on('storage:flush', listener);
       ipcRenderer.send('storage:ready');
       return () => ipcRenderer.removeListener('storage:flush', listener);
+    },
+  },
+  ai: {
+    config: () => ipcRenderer.invoke('ai:config'),
+    configure: (input) => ipcRenderer.invoke('ai:configure', input),
+    chat: (request, onEvent) => {
+      const { port1, port2 } = new MessageChannel();
+      port1.onmessage = ({ data }: MessageEvent<ChatEvent>) => onEvent(data);
+      ipcRenderer.postMessage('ai:chat', request, [port2]);
+      return () => {
+        port1.postMessage({ type: 'cancel' });
+        port1.close();
+      };
     },
   },
   platform: process.platform,
@@ -30,12 +51,12 @@ contextBridge.exposeInMainWorld('desktop', {
   closeWindow: () => ipcRenderer.send('window:close'),
   getWindowState: () => ipcRenderer.invoke('window:state'),
   onWindowState: (callback) => {
-    const listener = (_event, state) => callback(state);
+    const listener = (_event: unknown, state: WindowState) => callback(state);
     ipcRenderer.on('window:state', listener);
     return () => ipcRenderer.removeListener('window:state', listener);
   },
   onOpenFile: (callback) => {
-    const open = (_event, file) => callback(file);
+    const open = (_event: unknown, file: DesktopFile) => callback(file);
     const menu = () => window.dispatchEvent(new Event('leaf:open'));
     const folder = () => window.dispatchEvent(new Event('leaf:open-folder'));
     ipcRenderer.on('pdf:open', open);
@@ -47,4 +68,6 @@ contextBridge.exposeInMainWorld('desktop', {
       ipcRenderer.removeListener('menu:open-folder', folder);
     };
   },
-});
+};
+
+contextBridge.exposeInMainWorld('desktop', desktop);

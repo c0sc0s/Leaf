@@ -2,6 +2,7 @@ import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import {
+  AiChat,
   Copy,
   Highlighter,
   Underline,
@@ -47,6 +48,7 @@ export function SelectionTools({
   onColor,
   onAnnotate,
   onCopy,
+  onAsk,
   onClose,
 }: {
   selection: DocumentSelection;
@@ -54,6 +56,7 @@ export function SelectionTools({
   onColor: (color: MarkColor) => void;
   onAnnotate: (kind: MarkKind, note?: boolean) => void;
   onCopy: () => void;
+  onAsk: () => void;
   onClose: () => void;
 }) {
   const [palette, setPalette] = useState(false);
@@ -80,6 +83,9 @@ export function SelectionTools({
       </IconButton>
       <IconButton label="划线标注" onClick={() => onAnnotate('underline')}>
         <Underline size={18} />
+      </IconButton>
+      <IconButton label="问 AI" onClick={onAsk}>
+        <AiChat size={18} />
       </IconButton>
       <IconButton label="关闭标注工具" onClick={onClose}>
         <X size={15} />

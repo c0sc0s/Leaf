@@ -15,7 +15,7 @@ test('renders remote HTTP and HTTPS images while keeping unsafe image URLs block
     document.addEventListener('securitypolicyviolation', (event) => {
       if (event.effectiveDirective === 'img-src')
         void (
-          window as Window & { imagePolicyViolation: (url: string) => Promise<void> }
+          window as unknown as { imagePolicyViolation: (url: string) => Promise<void> }
         ).imagePolicyViolation(event.blockedURI);
     }),
   );

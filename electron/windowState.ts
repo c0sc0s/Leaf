@@ -1,21 +1,30 @@
-const { readFileSync, writeFileSync } = require('node:fs');
+import { readFileSync, writeFileSync } from 'node:fs';
+import type { BrowserWindow, Rectangle } from 'electron';
+
+export interface SavedWindowState extends Rectangle {
+  maximized?: boolean;
+  fullScreen?: boolean;
+}
+
+type Placement = Partial<Rectangle> & { width: number; height: number };
 
 const DEFAULT_SIZE = { width: 1440, height: 960 };
 /** How much of the window must overlap a display for its saved position to be kept. */
 const MIN_VISIBLE = { width: 160, height: 80 };
 
-const isNumber = (value) => typeof value === 'number' && Number.isFinite(value);
+const isNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
 
 /**
  * Reads the window placement saved when the app last closed.
  * @returns The saved state, or null when none exists or the file cannot be understood.
  */
-function readWindowState(file) {
+export function readWindowState(file: string): SavedWindowState | null {
   let text;
   try {
     text = readFileSync(file, 'utf8');
   } catch (error) {
-    if (error.code === 'ENOENT') return null;
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
     throw error;
   }
   try {
@@ -29,7 +38,10 @@ function readWindowState(file) {
 }
 
 /** Saves where the window is and how big it is, as it would be when restored. */
-function writeWindowState(file, window) {
+export function writeWindowState(
+  file: string,
+  window: Pick<BrowserWindow, 'getNormalBounds' | 'isMaximized' | 'isFullScreen'>,
+) {
   const bounds = window.getNormalBounds();
   const state = { ...bounds, maximized: window.isMaximized(), fullScreen: window.isFullScreen() };
   writeFileSync(file, JSON.stringify(state));
@@ -41,7 +53,7 @@ function writeWindowState(file, window) {
  * @param saved The saved state, or null.
  * @param workAreas The usable area of every connected display.
  */
-function placeWindow(saved, workAreas) {
+export function placeWindow(saved: Rectangle | null, workAreas: Rectangle[]): Placement {
   if (!saved) return { ...DEFAULT_SIZE };
   const area = workAreas.find(
     (display) =>
@@ -58,5 +70,3 @@ function placeWindow(saved, workAreas) {
     height: Math.round(Math.min(saved.height, area.height)),
   };
 }
-
-module.exports = { readWindowState, writeWindowState, placeWindow };

@@ -292,3 +292,26 @@
     transition: none;
   }
 }
+.preferences-ai {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 12px;
+}
+.preferences-ai label {
+  font-size: 13px;
+  font-weight: 500;
+}
+.preferences-ai-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.preferences-ai-actions [data-error='true'] {
+  color: var(--destructive);
+}

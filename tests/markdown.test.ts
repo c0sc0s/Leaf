@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createRequire } from 'node:module';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -13,8 +12,7 @@ vi.mock('../src/lib/db', () => ({
 }));
 import { browserFolder, importMarkdown, resolveBookLink } from '../src/lib/markdown';
 const file = (name: string, content: string) => ({ name, blob: new Blob([content]) });
-const require = createRequire(import.meta.url);
-const { readFolder, readDocument } = require('../electron/import.cjs');
+import { readFolder, readDocument } from '../electron/import.ts';
 
 describe('Markdown books', () => {
   it('matches desktop folder filtering in the browser importer', () => {

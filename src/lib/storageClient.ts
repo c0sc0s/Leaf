@@ -74,7 +74,7 @@ export function registerStorageFlusher(callback: () => void | Promise<void>) {
 export async function flushStorage() {
   failure = undefined;
   for (const flush of flushers) await flush();
-  while (pending.size) await Promise.all([...pending]);
+  while (pending.size) await Promise.all(pending);
   if (failure) throw failure;
   if (failedWrites.size) throw failedWrites.values().next().value;
   await storageRequest('flush');

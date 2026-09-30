@@ -6,6 +6,7 @@ import type { Settings } from '../../types';
 import { Modal } from '../../components/UI';
 import { Button } from '@/components/ui/button';
 import type { CSSProperties } from 'react';
+import { AiSettings } from '../ai/AiSettings';
 import './settings.css';
 
 export function SettingsModal({
@@ -151,6 +152,7 @@ export function SettingsModal({
             </div>
           </div>
         </section>
+        <AiSettings />
       </div>
       <div className="preferences-footer">
         <Check size={14} aria-hidden="true" />

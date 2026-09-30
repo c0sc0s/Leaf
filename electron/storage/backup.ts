@@ -1,9 +1,9 @@
-const fs = require('node:fs');
-const path = require('node:path');
-const { DatabaseSync } = require('node:sqlite');
-const { hashFile } = require('./content.cjs');
+import fs from 'node:fs';
+import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import { hashFile } from './content.ts';
 
-function backupLibrary(db, root, destination) {
+export function backupLibrary(db: DatabaseSync, root: string, destination: string) {
   if (fs.existsSync(destination)) throw new Error('备份目标已存在');
   fs.mkdirSync(destination, { recursive: true });
   db.prepare('VACUUM INTO ?').run(path.join(destination, 'library.sqlite'));
@@ -14,7 +14,7 @@ function backupLibrary(db, root, destination) {
     WHERE EXISTS (SELECT 1 FROM book_contents WHERE hash=c.hash)
     OR EXISTS (SELECT 1 FROM book_assets WHERE hash=c.hash)`,
     )
-    .all();
+    .all() as { hash: string; size: number }[];
   for (const entry of entries) {
     if (!/^[a-f0-9]{64}$/.test(entry.hash)) throw new Error('无效内容哈希');
     const target = path.join(destination, 'content', entry.hash);
@@ -28,7 +28,7 @@ function backupLibrary(db, root, destination) {
     snapshot.exec(`DELETE FROM content_objects WHERE hash NOT IN
       (SELECT hash FROM book_contents UNION SELECT hash FROM book_assets);`);
     if (
-      snapshot.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok' ||
+      snapshot.prepare('PRAGMA integrity_check').get()?.integrity_check !== 'ok' ||
       snapshot.prepare('PRAGMA foreign_key_check').all().length
     )
       throw new Error('备份数据库校验失败');
@@ -41,4 +41,3 @@ function backupLibrary(db, root, destination) {
   );
   return destination;
 }
-module.exports = { backupLibrary };

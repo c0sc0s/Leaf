@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-const request = vi.fn(async () => undefined as unknown);
+const request = vi.fn(async (_operation: string, _input?: unknown) => undefined as unknown);
 beforeEach(() => {
   vi.resetModules();
   request.mockReset();

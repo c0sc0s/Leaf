@@ -7,7 +7,7 @@ test('desktop persists resized reader panels without storage errors', async () =
   const root = await mkdtemp(path.join(tmpdir(), 'leaf-panels-'));
   const launch = () =>
     electron.launch({
-      args: ['electron/main.cjs', '--dev'],
+      args: ['.', '--dev'],
       env: { ...process.env, LEAF_USER_DATA: root },
     });
   let app = await launch();

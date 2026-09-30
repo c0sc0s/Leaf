@@ -1,24 +1,31 @@
-const {
+import {
   app,
   BrowserWindow,
   ipcMain,
   dialog,
   Menu,
   nativeTheme,
+  safeStorage,
   screen,
   session,
   shell,
-} = require('electron');
-const { writeFile } = require('node:fs/promises');
-const { isDocument, readDocument, readFolder } = require('./import.cjs');
-const { applyBackdrop } = require('./appearance.cjs');
-const { placeWindow, readWindowState, writeWindowState } = require('./windowState.cjs');
-const path = require('node:path');
-const { release } = require('node:os');
-const { existsSync } = require('node:fs');
-const { pathToFileURL } = require('node:url');
-const { randomUUID } = require('node:crypto');
-const { createStorage } = require('./storage/client.cjs');
+  type IpcMainEvent,
+  type IpcMainInvokeEvent,
+  type MenuItemConstructorOptions,
+} from 'electron';
+import { writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { release } from 'node:os';
+import { existsSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
+import { randomUUID } from 'node:crypto';
+import type { DesktopFile, Theme } from './contract.ts';
+import { isDocument, readDocument, readFolder } from './import.ts';
+import { applyBackdrop } from './appearance.ts';
+import { placeWindow, readWindowState, writeWindowState } from './windowState.ts';
+import { createStorage, type Storage } from './storage/client.ts';
+import { createAiService } from './ai/service.ts';
+
 const development = process.argv.includes('--dev');
 // Automated runs render into a window that is never shown, so tests do not take over the desktop.
 const hiddenWindow = process.env.LEAF_HIDDEN_WINDOW === '1';
@@ -40,19 +47,19 @@ app.setPath(
       ? legacyProfile
       : leafProfile),
 );
-let window;
-let storage;
+let window: BrowserWindow | null = null;
+let storage: Storage | undefined;
 let storageClosed = false;
 let ready = false;
-const pending = [];
+const pending: DesktopFile[] = [];
 const MAX_BYTES = 512 * 1024 * 1024;
-async function queueFile(file) {
+async function queueFile(file: string) {
   try {
     const data = await readDocument(file);
     if (ready && window) window.webContents.send('pdf:open', data);
     else pending.push(data);
   } catch (error) {
-    dialog.showErrorBox('无法打开文件', error.message);
+    dialog.showErrorBox('无法打开文件', (error as Error).message);
   }
 }
 const lock = app.requestSingleInstanceLock();
@@ -70,20 +77,24 @@ else {
     argv.filter(isDocument).forEach((file) => void queueFile(file));
   });
   app.whenReady().then(() => {
-    storage = createStorage(path.join(app.getPath('userData'), 'library'));
-    const icon = path.join(__dirname, development ? '../public/icon.png' : '../dist/icon.png');
+    const library = createStorage(path.join(app.getPath('userData'), 'library'));
+    storage = library;
+    const icon = path.join(
+      import.meta.dirname,
+      development ? '../public/icon.png' : '../dist/icon.png',
+    );
     if (process.platform === 'darwin') {
-      if (hiddenWindow) app.dock.hide();
+      if (hiddenWindow) app.dock?.hide();
       // A packaged app shows its bundled ICNS; only the unbundled dev build needs the
       // Dock-shaped icon, which carries the margin and shadow of Apple's icon grid.
-      else if (development) app.dock.setIcon(path.join(__dirname, '../build/icon.png'));
+      else if (development) app.dock?.setIcon(path.join(import.meta.dirname, '../build/icon.png'));
     }
     session.defaultSession.setPermissionRequestHandler((contents, permission, callback) =>
       callback(permission === 'clipboard-sanitized-write' && contents === window?.webContents),
     );
     const windowStateFile = path.join(app.getPath('userData'), 'window-state.json');
     const savedWindow = readWindowState(windowStateFile);
-    window = new BrowserWindow({
+    const win = new BrowserWindow({
       ...placeWindow(
         savedWindow,
         screen.getAllDisplays().map((display) => display.workArea),
@@ -110,7 +121,7 @@ else {
         : {}),
       webPreferences: {
         additionalArguments: translucent ? ['--leaf-translucent-window'] : [],
-        preload: path.join(__dirname, 'preload.cjs'),
+        preload: path.join(import.meta.dirname, 'preload.cjs'),
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: true,
@@ -119,41 +130,80 @@ else {
         webSecurity: true,
       },
     });
-    const trusted = (event) =>
+    window = win;
+    const trusted = (event: IpcMainEvent | IpcMainInvokeEvent) =>
       event.sender === window?.webContents &&
       event.senderFrame === window?.webContents.mainFrame &&
       (development
         ? event.senderFrame?.url.startsWith('http://127.0.0.1:5173/')
         : event.senderFrame?.url.split('#')[0] ===
-          pathToFileURL(path.join(__dirname, '../dist/index.html')).href);
+          pathToFileURL(path.join(import.meta.dirname, '../dist/index.html')).href);
     ipcMain.handle('storage:request', (event, operation, input) => {
       if (!trusted(event)) throw new Error('Unauthorized storage request');
-      return storage.request(operation, input);
+      return library.request(operation, input);
+    });
+    const ai = createAiService({
+      file: path.join(app.getPath('userData'), 'ai.json'),
+      cipher: {
+        encrypt(text) {
+          if (!safeStorage.isEncryptionAvailable())
+            throw new Error('系统钥匙串不可用，无法保存 API Key');
+          return safeStorage.encryptString(text).toString('base64');
+        },
+        decrypt: (text) => safeStorage.decryptString(Buffer.from(text, 'base64')),
+      },
+      env: process.env,
+    });
+    ipcMain.handle('ai:config', (event) => {
+      if (!trusted(event)) throw new Error('Unauthorized request');
+      return ai.summary();
+    });
+    ipcMain.handle('ai:configure', (event, input) => {
+      if (!trusted(event)) throw new Error('Unauthorized request');
+      return ai.configure(input);
+    });
+    // Each conversation turn owns a MessagePort: events stream back on it, and closing it cancels.
+    ipcMain.on('ai:chat', (event, request) => {
+      const [port] = event.ports;
+      if (!port) return;
+      if (!trusted(event)) {
+        port.close();
+        return;
+      }
+      const controller = new AbortController();
+      port.on('message', ({ data }) => {
+        if (data?.type === 'cancel') controller.abort();
+      });
+      port.on('close', () => controller.abort());
+      port.start();
+      void ai
+        .chat(request, controller.signal, (message) => port.postMessage(message))
+        .finally(() => port.close());
     });
     let canClose = false;
-    let closeRequest;
+    let closeRequest: { id: string; timer: NodeJS.Timeout } | undefined;
     let storageReady = false;
-    window.webContents.on('did-start-loading', () => {
+    win.webContents.on('did-start-loading', () => {
       storageReady = false;
     });
-    window.webContents.on('render-process-gone', () => {
+    win.webContents.on('render-process-gone', () => {
       storageReady = false;
     });
     ipcMain.on('storage:ready', (event) => {
       if (trusted(event)) storageReady = true;
     });
     ipcMain.on('storage:flushed', async (event, id, error) => {
-      if (!trusted(event) || closeRequest?.id !== id) return;
+      if (!trusted(event) || !closeRequest || closeRequest.id !== id) return;
       clearTimeout(closeRequest.timer);
       closeRequest = undefined;
       try {
         if (error) throw new Error(error);
-        await storage.request('flush');
+        await library.request('flush');
         canClose = true;
-        window.close();
+        win.close();
       } catch (error) {
         window?.show();
-        dialog.showErrorBox('书库尚未保存', error.message);
+        dialog.showErrorBox('书库尚未保存', (error as Error).message);
       }
     });
     let revealed = false;
@@ -161,22 +211,22 @@ else {
       if (revealed || hiddenWindow) return;
       revealed = true;
       // Maximising while still hidden lets the window appear at its final size instead of growing.
-      if (savedWindow?.maximized) window.maximize();
-      window.show();
-      if (savedWindow?.fullScreen) window.setFullScreen(true);
+      if (savedWindow?.maximized) win.maximize();
+      win.show();
+      if (savedWindow?.fullScreen) win.setFullScreen(true);
     };
     // Record the placement as the user asks to close; by the deferred close the window is hidden
     // and no longer reports whether it was maximised.
-    window.on('close', () => {
-      if (!canClose && !closeRequest) writeWindowState(windowStateFile, window);
+    win.on('close', () => {
+      if (!canClose && !closeRequest) writeWindowState(windowStateFile, win);
     });
-    window.on('close', (event) => {
+    win.on('close', (event) => {
       if (canClose || !storageReady) return;
       event.preventDefault();
       if (closeRequest) return;
       // Hiding rather than setEnabled(false): on macOS that attaches a sheet which lingers as a
       // second layer while the window closes.
-      window.hide();
+      win.hide();
       const id = randomUUID();
       const timer = setTimeout(() => {
         closeRequest = undefined;
@@ -184,7 +234,7 @@ else {
         dialog.showErrorBox('书库尚未保存', '保存未完成，窗口已保留。请稍后重试。');
       }, 30000);
       closeRequest = { id, timer };
-      window.webContents.send('storage:flush', id);
+      win.webContents.send('storage:flush', id);
     });
     const updateBackdrop = () => {
       if (window)
@@ -203,31 +253,33 @@ else {
       updateBackdrop();
     });
     const windowState = () => ({
-      maximized: window.isMaximized(),
-      fullscreen: window.isFullScreen(),
+      maximized: win.isMaximized(),
+      fullscreen: win.isFullScreen(),
     });
-    const sendWindowState = () => window.webContents.send('window:state', windowState());
-    for (const event of ['maximize', 'unmaximize', 'enter-full-screen', 'leave-full-screen'])
-      window.on(event, sendWindowState);
+    const sendWindowState = () => win.webContents.send('window:state', windowState());
+    win.on('maximize', sendWindowState);
+    win.on('unmaximize', sendWindowState);
+    win.on('enter-full-screen', sendWindowState);
+    win.on('leave-full-screen', sendWindowState);
     ipcMain.handle('window:state', (event) => {
       if (!trusted(event)) throw new Error('Unauthorized request');
       return windowState();
     });
     ipcMain.on('window:minimize', (event) => {
-      if (trusted(event)) window.minimize();
+      if (trusted(event)) win.minimize();
     });
     ipcMain.on('window:toggle-maximize', (event) => {
       if (!trusted(event)) return;
-      if (window.isFullScreen()) window.setFullScreen(false);
-      else if (window.isMaximized()) window.unmaximize();
-      else window.maximize();
+      if (win.isFullScreen()) win.setFullScreen(false);
+      else if (win.isMaximized()) win.unmaximize();
+      else win.maximize();
     });
     ipcMain.on('window:close', (event) => {
-      if (trusted(event)) window.close();
+      if (trusted(event)) win.close();
     });
     ipcMain.handle('pdf:choose', async (event) => {
       if (!trusted(event)) throw new Error('Unauthorized request');
-      const result = await dialog.showOpenDialog(window, {
+      const result = await dialog.showOpenDialog(win, {
         title: '导入 PDF 或 Markdown',
         properties: ['openFile', 'multiSelections'],
         filters: [{ name: '阅读文档', extensions: ['pdf', 'md', 'markdown'] }],
@@ -237,7 +289,7 @@ else {
     });
     ipcMain.handle('folder:choose', async (event) => {
       if (!trusted(event)) throw new Error('Unauthorized request');
-      const result = await dialog.showOpenDialog(window, {
+      const result = await dialog.showOpenDialog(win, {
         title: '导入 Markdown 文件夹',
         properties: ['openDirectory'],
       });
@@ -260,7 +312,7 @@ else {
         throw new Error('Invalid file');
       const extension = path.extname(name).slice(1);
       if (!['pdf', 'md', 'json'].includes(extension)) throw new Error('Unsupported file type');
-      const result = await dialog.showSaveDialog(window, {
+      const result = await dialog.showSaveDialog(win, {
         defaultPath: path.basename(name),
         filters: [{ name: extension.toUpperCase(), extensions: [extension] }],
       });
@@ -271,22 +323,22 @@ else {
     ipcMain.on('theme:set', (event, theme) => {
       if (!trusted(event)) return;
       if (!['light', 'dark', 'system'].includes(theme)) throw new Error(`Unknown theme: ${theme}`);
-      nativeTheme.themeSource = theme;
+      nativeTheme.themeSource = theme as Theme;
       updateBackdrop();
     });
     ipcMain.on('renderer:ready', (event) => {
       if (!trusted(event)) return;
       ready = true;
       revealWindow();
-      pending.splice(0).forEach((data) => window.webContents.send('pdf:open', data));
+      pending.splice(0).forEach((data) => win.webContents.send('pdf:open', data));
     });
-    window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-    window.webContents.on('will-navigate', (event, url) => {
-      const current = window.webContents.getURL();
+    win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    win.webContents.on('will-navigate', (event, url) => {
+      const current = win.webContents.getURL();
       if (url !== current) event.preventDefault();
     });
-    const menu = [
-      ...(process.platform === 'darwin'
+    const appMenu: MenuItemConstructorOptions[] =
+      process.platform === 'darwin'
         ? [
             {
               label: 'Leaf',
@@ -301,18 +353,21 @@ else {
               ],
             },
           ]
-        : []),
+        : [];
+    const devTools: MenuItemConstructorOptions[] = development ? [{ role: 'toggleDevTools' }] : [];
+    const menu: MenuItemConstructorOptions[] = [
+      ...appMenu,
       {
         label: '文件',
         submenu: [
           {
             label: '打开 PDF 或 Markdown…',
             accelerator: 'CmdOrCtrl+O',
-            click: () => window.webContents.send('menu:open'),
+            click: () => win.webContents.send('menu:open'),
           },
           {
             label: '导入 Markdown 文件夹…',
-            click: () => window.webContents.send('menu:open-folder'),
+            click: () => win.webContents.send('menu:open-folder'),
           },
           { type: 'separator' },
           { role: process.platform === 'darwin' ? 'close' : 'quit' },
@@ -332,21 +387,18 @@ else {
       },
       {
         label: '视图',
-        submenu: [
-          { role: 'togglefullscreen' },
-          ...(development ? [{ role: 'toggleDevTools' }] : []),
-        ],
+        submenu: [{ role: 'togglefullscreen' }, ...devTools],
       },
     ];
     Menu.setApplicationMenu(Menu.buildFromTemplate(menu));
-    if (process.platform === 'win32') window.setMenuBarVisibility(false);
-    if (development) window.loadURL('http://127.0.0.1:5173');
-    else window.loadFile(path.join(__dirname, '../dist/index.html'));
+    if (process.platform === 'win32') win.setMenuBarVisibility(false);
+    if (development) win.loadURL('http://127.0.0.1:5173');
+    else win.loadFile(path.join(import.meta.dirname, '../dist/index.html'));
     process.argv
       .slice(1)
       .filter(isDocument)
       .forEach((file) => void queueFile(file));
-    window.on('closed', () => {
+    win.on('closed', () => {
       window = null;
       ready = false;
     });

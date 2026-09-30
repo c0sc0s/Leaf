@@ -4,16 +4,17 @@
   "description": "Leaf — a quiet space for your PDFs and Markdown books",
   "private": true,
   "type": "module",
-  "main": "electron/main.cjs",
+  "main": "dist-electron/main.js",
   "author": "Leaf",
   "license": "MIT",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "desktop": "concurrently -k \"npm:dev\" \"wait-on http://127.0.0.1:5173 && electron . --dev\"",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "desktop": "npm run build:electron && concurrently -k -n vite,tsc,electron \"npm:dev\" \"tsc -p tsconfig.electron.json --watch --preserveWatchOutput\" \"wait-on http://127.0.0.1:5173 && electron . --dev\"",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
-    "test:e2e": "playwright test",
+    "test:e2e": "npm run build:electron && playwright test",
     "samples": "node scripts/samples.mjs",
     "icon": "node scripts/icon.mjs",
     "assets": "node scripts/assets.mjs",
@@ -21,7 +22,11 @@
     "pack": "npm run build && electron-builder --dir --publish never",
     "dist:mac": "npm run build && electron-builder --mac --arm64 -c.mac.identity=- --publish never",
     "dist:win": "npm run build && electron-builder --win --x64 -c.win.signExecutable=false --publish never",
+    "typecheck": "tsc -b",
+    "lint": "oxlint",
     "format": "prettier --write src electron scripts tests *.ts *.json *.html docs README.md",
+    "format:check": "prettier --check src electron scripts tests *.ts *.json *.html docs README.md",
+    "check": "npm run lint && npm run typecheck && npm run format:check && npm test",
     "test:desktop": "node scripts/desktop-test.mjs",
     "test:production": "npm run build && node scripts/production-test.mjs",
     "release": "node scripts/release.mjs",
@@ -37,7 +42,7 @@
     },
     "files": [
       "dist/**/*",
-      "electron/**/*",
+      "dist-electron/**/*",
       "package.json",
       "licenses/**/*",
       "THIRD_PARTY_NOTICES.md"
@@ -100,6 +105,7 @@
     "electron-builder": "^26.15.3",
     "loading-dev": "0.3.5",
     "motion": "^13.4.4",
+    "oxlint": "1.86.0",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.3.289",
     "prettier": "^3.9.9",
@@ -123,6 +129,9 @@
     "wait-on": "^9.1.0"
   },
   "engines": {
-    "node": ">=22.13.0"
+    "node": ">=22.18.0"
+  },
+  "dependencies": {
+    "openai": "7.25.0"
   }
 }

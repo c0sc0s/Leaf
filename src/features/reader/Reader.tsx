@@ -1,6 +1,6 @@
 import { EmptyState } from '@/components/Mascot';
 import { Button } from '@/components/ui/button';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FileText, Highlighter } from '@/components/icons';
 import { AnimatePresence, m } from 'motion/react';
 import type { Annotation, Book, MarkColor, MarkKind, Settings } from '../../types';
@@ -30,6 +30,9 @@ import { useBookmarks } from './hooks/useBookmarks';
 import { useExports } from './hooks/useExports';
 import { usePinchZoom } from './hooks/usePinchZoom';
 import { useMarkColor } from './hooks/useMarkColor';
+import { createPdfSource } from '../../ai/document';
+import { AskPanel } from '../ai/AskPanel';
+import { useAsk } from '../ai/useAsk';
 
 interface Props {
   book: Book;
@@ -72,6 +75,21 @@ export function Reader({
   );
   const { exporting, exportPDF, exportNotes } = useExports(book, annotations.flush, notify);
   const [color, setColor] = useMarkColor();
+  const outlineRef = useRef(outline);
+  outlineRef.current = outline;
+  const askSource = useMemo(
+    () =>
+      pdf &&
+      createPdfSource({
+        book: { title: book.title, author: book.author },
+        pages: pdf.numPages,
+        getContent,
+        outline: () => outlineRef.current,
+      }),
+    [pdf, getContent, book.title, book.author],
+  );
+  const ask = useAsk(book.id, askSource);
+  const [askOpen, setAskOpen] = useState(false);
   usePinchZoom(scroller, position.zoom, position.setZoom);
 
   const [left, setLeft] = useState(false);
@@ -211,12 +229,38 @@ export function Reader({
     setLeft(!searchOpen);
     setTab('search');
   }, [searchOpen]);
-  const toggleNotes = useCallback(() => setRight((value) => !value), []);
+  const toggleNotes = useCallback(() => {
+    setRight((value) => !value);
+    setAskOpen(false);
+  }, []);
+  const toggleAsk = useCallback(() => {
+    setAskOpen((value) => !value);
+    setRight(false);
+  }, []);
+  const closeAsk = useCallback(() => setAskOpen(false), []);
   // A highlight opens its note beside the text; a plain click on the page puts the notes away.
   const clickMark = useCallback((mark: { id: string; x: number; y: number } | null) => {
     setActiveMark(mark);
     setRight(Boolean(mark));
+    if (mark) setAskOpen(false);
   }, []);
+  const askAbout = (target: DocumentSelection) => {
+    const [anchor] = target.anchors;
+    ask.start({ page: anchor.page, start: anchor.start, end: anchor.end, quote: target.quote });
+    setSelection(null);
+    window.getSelection()?.removeAllRanges();
+    setRight(false);
+    setAskOpen(true);
+    setFocus(false);
+  };
+  const navigateToQuote = useCallback(
+    (target: number, offset?: number) =>
+      navigate(
+        target,
+        offset === undefined ? undefined : { page: target, ratio: 0, offset, screenY: 32 },
+      ),
+    [navigate],
+  );
   const closeNotes = useCallback(() => setRight(false), []);
   const toggleFocus = useCallback(() => setFocus((value) => !value), []);
   const styleMark = useCallback(
@@ -235,6 +279,7 @@ export function Reader({
         navigationOpen={navigationOpen}
         searchOpen={searchOpen}
         notesOpen={right}
+        askOpen={askOpen}
         focus={focus}
         bookmarked={bookmarked}
         canReturn={position.canReturn}
@@ -250,6 +295,7 @@ export function Reader({
         onZoomOut={position.zoomOut}
         onResetZoom={position.resetZoom}
         onToggleNotes={toggleNotes}
+        onToggleAsk={toggleAsk}
         onToggleFocus={toggleFocus}
         onExportPDF={() => void exportPDF()}
         onExportNotes={() => void exportNotes()}
@@ -368,6 +414,26 @@ export function Reader({
               />
             </Exiting>
           )}
+          {askOpen && !focus && (
+            <Exiting key="ask">
+              <AskPanel
+                unit="page"
+                threads={ask.threads}
+                active={ask.active}
+                run={ask.run}
+                failure={ask.failure}
+                ready={ask.ready}
+                onSelect={ask.select}
+                onAsk={(question) => void ask.ask(question)}
+                onRetry={ask.retry}
+                onStop={ask.stop}
+                onRemove={(id) => void ask.remove(id)}
+                onNavigate={navigateToQuote}
+                onSettings={onSettings}
+                onClose={closeAsk}
+              />
+            </Exiting>
+          )}
         </AnimatePresence>
       </div>
       <ReaderStatus
@@ -414,6 +480,7 @@ export function Reader({
               color={color}
               onColor={setColor}
               onAnnotate={(kind, note) => void annotate(kind, note)}
+              onAsk={() => askAbout(selection)}
               onClose={() => setSelection(null)}
               onCopy={() => {
                 void navigator.clipboard

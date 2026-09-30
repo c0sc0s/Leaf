@@ -1,8 +1,7 @@
-import { createRequire } from 'node:module';
 import { cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-const { openLibrary } = createRequire(import.meta.url)('../electron/storage/library.cjs');
+import { openLibrary } from '../electron/storage/library.ts';
 const [command, source, target] = process.argv.slice(2);
 if (!['backup', 'restore'].includes(command) || !source || !target)
   throw new Error(

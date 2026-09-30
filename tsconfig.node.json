@@ -1,0 +1,26 @@
+{
+  // Build tooling and tests running under Node: Vite/Vitest/Playwright configs, dev-server
+  // plugins and test files.
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": ["node"],
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      // Playwright specs import app modules inside page.evaluate by their dev-server URL.
+      "/src/*": ["./src/*"]
+    }
+  },
+  "include": ["vite.config.ts", "vitest.config.ts", "playwright.config.ts", "scripts/vite", "tests"]
+}

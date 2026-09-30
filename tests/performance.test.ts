@@ -13,7 +13,7 @@ describe('resident text index', () => {
   it('searches warmed pages without rereading text and retains canonical offsets', () => {
     const index = new SearchIndex();
     expect(index.search(1, 'needle')).toBeNull();
-    expect(index.search(1, 'needle', 'First NEEDLE, then needle.').map((r) => r.offset)).toEqual([
+    expect(index.search(1, 'needle', 'First NEEDLE, then needle.')!.map((r) => r.offset)).toEqual([
       6, 19,
     ]);
     expect(index.search(1, 'then')?.[0]).toMatchObject({ page: 1, offset: 14 });

@@ -1,11 +1,10 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
-import { createRequire } from 'node:module';
 import { defaultSettings, glassOpacity, readSettings } from '../src/lib/appearance';
 
 vi.mock('../src/lib/preferences', () => ({ readPreference: vi.fn() }));
 import { readPreference } from '../src/lib/preferences';
 
-const { applyBackdrop } = createRequire(import.meta.url)('../electron/appearance.cjs');
+import { applyBackdrop } from '../electron/appearance.ts';
 afterEach(() => vi.unstubAllGlobals());
 
 function stored(value: string) {

@@ -24,7 +24,7 @@ await writeFile(pdfFile, await source.save());
 const app = await _electron.launch({
   ...(process.env.LEAF_EXECUTABLE
     ? { executablePath: process.env.LEAF_EXECUTABLE, args: [] }
-    : { args: ['electron/main.cjs'] }),
+    : { args: ['.'] }),
   env: { LEAF_HIDDEN_WINDOW: '1', ...process.env, LEAF_USER_DATA: path.join(directory, 'profile') },
 });
 try {

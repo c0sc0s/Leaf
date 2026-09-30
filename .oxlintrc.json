@@ -1,0 +1,66 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react", "import", "unicorn", "oxc"],
+  "categories": {
+    "correctness": "error"
+  },
+  "env": {
+    "browser": true,
+    "node": true,
+    "es2024": true
+  },
+  "ignorePatterns": ["dist", "dist-electron", "release", "site", "public", "output", "spikes"],
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "warn",
+    // Existing code relies on latest-value refs and effect-synced state; revisit with the React Compiler.
+    "react/refs": "off",
+    "react/set-state-in-effect": "off",
+    "typescript/consistent-type-imports": ["error", { "disallowTypeAnnotations": false }],
+    "import/no-cycle": "error",
+    // Vite's ?url and similar query imports have no statically visible default export.
+    "import/default": "off",
+    "no-unused-vars": [
+      "error",
+      { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_", "ignoreRestSiblings": true }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["src/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["node:*", "electron", "openai"],
+                "message": "The renderer runs sandboxed; reach Node and Electron through window.desktop."
+              },
+              {
+                "group": ["**/electron/**", "!**/electron/contract", "!**/electron/contract.ts"],
+                "message": "The renderer may only import types from electron/contract."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["electron/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/src/**", "@/**"],
+                "message": "The main process must not depend on renderer code; share types via electron/contract.ts."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

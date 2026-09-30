@@ -1,6 +1,13 @@
-const { createHash } = require('node:crypto');
+import { createHash } from 'node:crypto';
+import type { DatabaseSync } from 'node:sqlite';
 
-const migrations = [
+interface MigrationRecord {
+  version: number;
+  checksum: string;
+}
+
+// Checksums cover this exact SQL text: never edit a released migration, append a new one.
+export const migrations = [
   {
     version: 1,
     name: 'library',
@@ -58,25 +65,45 @@ const migrations = [
     CREATE TABLE preferences (key TEXT PRIMARY KEY, value TEXT NOT NULL) STRICT;
   `,
   },
+  {
+    version: 2,
+    name: 'ask',
+    sql: `
+    CREATE TABLE ask_threads (
+      id TEXT PRIMARY KEY, book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+      page INTEGER NOT NULL, start INTEGER NOT NULL, end INTEGER NOT NULL,
+      quote TEXT NOT NULL, created_at REAL NOT NULL
+    ) STRICT;
+    CREATE INDEX ask_threads_book_id ON ask_threads(book_id);
+    CREATE TABLE ask_messages (
+      thread_id TEXT NOT NULL REFERENCES ask_threads(id) ON DELETE CASCADE,
+      ordinal INTEGER NOT NULL, role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
+      content TEXT NOT NULL, model TEXT, created_at REAL NOT NULL,
+      PRIMARY KEY(thread_id, ordinal)
+    ) STRICT;
+  `,
+  },
 ];
 
-function migrateSchema(db, beforeUpgrade) {
+export function migrateSchema(db: DatabaseSync, beforeUpgrade: () => void) {
   const tables = db
     .prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'")
     .all();
   const hasLedger = tables.some((row) => row.name === 'schema_migrations');
   if (tables.length && !hasLedger) throw new Error('无法识别书库结构');
   const applied = hasLedger
-    ? db.prepare('SELECT * FROM schema_migrations ORDER BY version').all()
+    ? (db
+        .prepare('SELECT * FROM schema_migrations ORDER BY version')
+        .all() as unknown as MigrationRecord[])
     : [];
   if (applied.length > migrations.length) throw new Error('请使用更新版本的 Leaf 打开此书库');
-  const checksum = (sql) => createHash('sha256').update(sql).digest('hex');
+  const checksum = (sql: string) => createHash('sha256').update(sql).digest('hex');
   for (const [index, record] of applied.entries()) {
     const migration = migrations[index];
     if (record.version !== migration.version || record.checksum !== checksum(migration.sql))
       throw new Error(`数据库迁移记录不一致：${record.version}`);
   }
-  if (Number(db.prepare('PRAGMA user_version').get().user_version) !== applied.length)
+  if (Number(db.prepare('PRAGMA user_version').get()!.user_version) !== applied.length)
     throw new Error('数据库版本与迁移记录不一致');
   if (applied.length && applied.length < migrations.length) beforeUpgrade();
   for (const migration of migrations.slice(applied.length)) {
@@ -97,9 +124,9 @@ function migrateSchema(db, beforeUpgrade) {
       db.exec('COMMIT');
     } catch (error) {
       db.exec('ROLLBACK');
-      throw new Error(`书库升级 ${migration.version} 失败：${error.message}`, { cause: error });
+      throw new Error(`书库升级 ${migration.version} 失败：${(error as Error).message}`, {
+        cause: error,
+      });
     }
   }
 }
-
-module.exports = { migrateSchema };

@@ -68,7 +68,7 @@ Markdown 阅读支持标题目录、表格、任务列表、代码块、整本�
 官网位于 `site/`，使用 React + Vite。`npm run dev:site` 启动官网开发服务，`npm run build:site` 构建静态文件，`npm run preview:site` 预览生产构建；详见 [官网开发说明](site/README.md)。
 
 `npm run desktop` 启动桌面开发环境，`npm run build` 构建生产前端。
-`npm test` 运行单元测试，`npm run test:e2e` 验证浏览器与原生桌面阅读流程。
+`npm run check` 运行 lint、类型检查、格式检查与单元测试，`npm run test:e2e` 验证浏览器与原生桌面阅读流程；工程结构见 [开发说明](docs/development.md)。
 `npm run test:production` 构建并验证生产文件加载、搜索及批注导出。
 `npm run dist:mac` 打包 macOS 安装包（临时签名、未公证，输出到 `release/`），`npm run test:desktop` 用打好的应用验证原生流程并更新 README 截图。
 `npm run release -- minor` 发布新版本，自动构建并上传 macOS 与 Windows 安装包；详见 [发版说明](docs/release.md)。

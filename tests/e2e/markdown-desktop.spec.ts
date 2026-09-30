@@ -13,7 +13,7 @@ test('desktop imports Markdown files and folders through native dialogs', async 
   await writeFile(path.join(folder, 'README.md'), '# Native folder\n\n[Next](2.md)');
   await writeFile(path.join(folder, '2.md'), '# Native chapter two');
   const app = await electron.launch({
-    args: ['electron/main.cjs', '--dev'],
+    args: ['.', '--dev'],
     env: { ...process.env, LEAF_USER_DATA: path.join(root, 'profile') },
   });
   try {

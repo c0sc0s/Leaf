@@ -15,10 +15,12 @@ test('reuses the PDF text index across searches and clears obsolete searches', a
         super(url, options);
         this.script = String(url);
       }
-      postMessage(message: { payload?: { text?: string } }, options?: StructuredSerializeOptions) {
-        if (this.script.includes('search.worker') && typeof message.payload?.text === 'string')
+      postMessage(message: unknown, options: StructuredSerializeOptions | Transferable[] = {}) {
+        const payload = (message as { payload?: { text?: unknown } }).payload;
+        if (this.script.includes('search.worker') && typeof payload?.text === 'string')
           state.indexed++;
-        super.postMessage(message, options || {});
+        if (Array.isArray(options)) super.postMessage(message, options);
+        else super.postMessage(message, options);
       }
     };
   });
@@ -49,7 +51,7 @@ test('reuses the PDF text index across searches and clears obsolete searches', a
   const indexed = () =>
     page.evaluate(
       () =>
-        (window as Window & { leafSearchMetrics: { indexed: number } }).leafSearchMetrics.indexed,
+        (window as unknown as { leafSearchMetrics: { indexed: number } }).leafSearchMetrics.indexed,
     );
   expect(await indexed()).toBe(61);
   await input.fill('OMEGA');

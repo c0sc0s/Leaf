@@ -1,4 +1,6 @@
-export type Theme = 'light' | 'dark' | 'system';
+import type { DesktopAPI, Theme } from '../electron/contract';
+
+export type { DesktopAPI, DesktopFile, Theme, WindowState } from '../electron/contract';
 export type MarkKind = 'highlight' | 'underline';
 export type MarkColor = 'amber' | 'green' | 'blue' | 'pink';
 export interface ReadingLocation {
@@ -57,10 +59,6 @@ export interface ImportSource {
   files: ImportFile[];
   folder?: boolean;
 }
-export interface DesktopFile {
-  name: string;
-  data: Uint8Array;
-}
 export interface Annotation {
   id: string;
   bookId: string;
@@ -110,31 +108,6 @@ export interface Settings {
   originalColors?: boolean;
   frostedGlass: boolean;
   glassTransparency: number;
-}
-export interface WindowState {
-  maximized: boolean;
-  fullscreen: boolean;
-}
-export interface DesktopAPI {
-  storage: {
-    request: (operation: string, input?: unknown) => Promise<unknown>;
-    onBeforeClose: (callback: () => Promise<void>) => () => void;
-  };
-  openPDF: () => Promise<DesktopFile[] | null>;
-  openFolder: () => Promise<{ name: string; files: DesktopFile[] } | null>;
-  openExternal: (url: string) => Promise<void>;
-  saveFile: (name: string, data: Uint8Array) => Promise<boolean>;
-  onOpenFile: (callback: (file: { name: string; data: Uint8Array }) => void) => () => void;
-  ready: () => void;
-  setTheme: (theme: Settings['theme']) => void;
-  setFrostedGlass: (enabled: boolean) => void;
-  platform: string;
-  translucent: boolean;
-  minimizeWindow: () => void;
-  toggleMaximizeWindow: () => void;
-  closeWindow: () => void;
-  getWindowState: () => Promise<WindowState>;
-  onWindowState: (callback: (state: WindowState) => void) => () => void;
 }
 declare global {
   interface Window {

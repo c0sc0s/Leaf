@@ -1,5 +1,7 @@
 # Leaf 技术架构
 
+应用分为渲染进程（`src/`）与主进程（`electron/`），两侧只通过 preload 暴露的 `window.desktop` 通信，接口类型集中在 `electron/contract.ts`。目录、TypeScript 工程与边界检查见 [开发与打包](development.md)。
+
 `App.tsx` 负责组合书架、阅读器、设置和弹窗。业务状态与异步操作放在各自模块中，避免导入、存储、主题和阅读器生命周期继续集中到 App。
 
 | 模块                                                                         | 职责                                                                  |
@@ -68,7 +70,24 @@ Renderer 启用 sandbox 和 contextIsolation，关闭 Node.js 集成，禁止外
 
 启动时一次性读取当前来源的旧 `folio-library` 和 `folio-*` 偏好，兼容内嵌正文和 v5 分离结构，比较源数据摘要后原子导入。成功提交并确认来源未变后，删除旧数据库及旧偏好键。导入失败或旧库仍被其他窗口占用时阻止进入业务界面并保留可重试状态。应用正常运行不读写 IndexedDB 或 localStorage。
 
-备份及向新目录恢复见 [SQLite 存储设计](design/sqlite-migration.md)。Agent 和向量索引尚未实现，后续通过追加迁移接入。
+备份及向新目录恢复见 [SQLite 存储设计](design/sqlite-migration.md)。
+
+## AI 问答
+
+AI 层分四层，下层不感知上层的具体能力：
+
+| 层           | 位置                                               | 职责                                                                                    |
+| ------------ | -------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| 模型接入     | `electron/ai/`                                     | 用 `openai` SDK 调用 OpenAI 兼容接口，把流式结果统一成 `text`、`done`、`error` 三种事件 |
+| Agent 运行时 | `src/ai/runtime.ts`                                | 模型与工具的调用循环、取消、最大步数；最后一步不提供工具，迫使模型作答                  |
+| 文档上下文   | `src/ai/document.ts`、`context.ts`、`bookTools.ts` | `DocumentSource` 统一 PDF 与 Markdown 的文字、目录和定位；全书搜索、读页、目录三个工具  |
+| 能力         | `src/ai/ask.ts`、`src/features/ai/`                | 问答的提示词、上下文组装、历史裁剪、引用解析与界面                                      |
+
+API Key 只存在主进程，用 `safeStorage` 加密后写入 `userData/ai.json`；渲染进程只能读到地址、模型和是否已配置。每轮对话占用一个 `MessagePort`，关闭即取消请求。浏览器开发模式经 `/__leaf_ai` 复用同一服务，Key 以明文存在 `.leaf-data/`。`LEAF_AI_BASE_URL`、`LEAF_AI_MODEL`、`LEAF_AI_API_KEY` 优先于保存的配置，端到端测试用它指向模拟服务。
+
+问答上下文按稳定程度排列：系统提示词、书籍信息与选区所在章节放在前面，同一组追问保持不变，便于命中服务端的前缀缓存；读者的问题放在最后。章节按目录定位，超出预算时从选区所在页向两侧取页。历史只保留问题和最终回答，超出预算时丢弃最早的轮次。回答中的 `[p.12]`、`[ch.3]` 渲染为跳转按钮。
+
+问答按选区保存在 `ask_threads` 与 `ask_messages`，随书籍级联删除。Markdown 选区的偏移基于渲染后的文字，定位章节原文时改用去除标记后的文字匹配。PDF 公式、图表截图给多模态模型和向量检索尚未实现。
 
 ## 验证
 
