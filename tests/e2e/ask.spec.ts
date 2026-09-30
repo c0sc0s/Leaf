@@ -31,7 +31,7 @@ test.beforeAll(async () => {
         searched
           ? [
               delta({ content: '这里对比了宽字母和窄字母，' }),
-              delta({ content: '说明选区要按实际字宽计算 [p.1]。' }),
+              delta({ content: '说明选区要按实际字宽计算 [ref.1]。' }),
               delta({}, 'stop'),
             ]
           : [
@@ -73,7 +73,7 @@ test('asks about a selection, searches the book, cites the page and keeps the th
     });
   await page.goto('/');
   await expect(page.locator('.book-card')).toHaveCount(8);
-  await page.getByLabel('选择 PDF 或 Markdown 文件', { exact: true }).setInputFiles({
+  await page.getByLabel('选择阅读文件', { exact: true }).setInputFiles({
     name: 'ask.pdf',
     mimeType: 'application/pdf',
     buffer: Buffer.from(await pdf.save()),
@@ -99,11 +99,11 @@ test('asks about a selection, searches the book, cites the page and keeps the th
 
   expect(requests).toHaveLength(2);
   const [first, second] = requests;
-  expect(first.tools).toHaveLength(3);
+  expect(first.tools).toHaveLength(4);
   expect(first.messages[1].content).toContain('<selection>\nWide WWW\n</selection>');
   expect(first.messages[1].content).toContain('读者的问题：为什么要区分宽窄字母？');
   const toolResult = second.messages.find((message) => message.role === 'tool');
-  expect(toolResult?.content).toContain('[p.1]');
+  expect(toolResult?.content).toMatch(/\[ref\.\d+\]/);
 
   await page.reload();
   await page.getByRole('button', { name: '阅读 Ask specimen', exact: true }).click();

@@ -1,8 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { SearchIndex } from '../src/lib/searchIndex';
-import { ReadingScheduler } from '../src/lib/scheduler';
-import { BoundedCache } from '../src/lib/boundedCache';
-import { WorkerClient } from '../src/lib/workerClient';
+import { SearchIndex } from '../plugins/pdf/src/document/searchIndex';
+import { BoundedCache } from '@leaf/shared/async';
+import { browserWorker } from '@leaf/plugin-sdk/workers';
 
 afterEach(() => {
   vi.useRealTimers();
@@ -45,34 +44,9 @@ it('evicts parsed chapters by weight and recent use', () => {
   expect(cache.get('huge')).toBeUndefined();
 });
 
-describe('background scheduler', () => {
-  it('does not add a timer delay for every page in an available time slice', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
-    const scheduler = new ReadingScheduler();
-    for (let page = 0; page < 1000; page++) await scheduler.checkpoint();
-    expect(vi.getTimerCount()).toBe(0);
-    vi.advanceTimersByTime(9);
-    const yielding = scheduler.checkpoint();
-    expect(vi.getTimerCount()).toBe(1);
-    await vi.runAllTimersAsync();
-    await yielding;
-  });
-  it('cancels waiting work immediately while foreground reading is busy', async () => {
-    vi.useFakeTimers();
-    const scheduler = new ReadingScheduler();
-    scheduler.busy();
-    const controller = new AbortController();
-    const pending = scheduler.checkpoint(controller.signal);
-    const rejection = expect(pending).rejects.toMatchObject({ name: 'AbortError' });
-    controller.abort();
-    await rejection;
-    expect(vi.getTimerCount()).toBe(0);
-  });
-});
-
 it('ignores obsolete worker replies and rejects pending requests on shutdown', async () => {
   const worker = { postMessage: vi.fn(), terminate: vi.fn() } as unknown as Worker;
-  const client = new WorkerClient<string>(worker);
+  const client = browserWorker<string>(worker);
   const controller = new AbortController();
   const first = client.run('old', controller.signal);
   const rejected = expect(first).rejects.toMatchObject({ name: 'AbortError' });

@@ -142,7 +142,7 @@
   justify-content: center;
   z-index: 110;
 }
-/* The panel carries the frosting itself; see frostedPanel in lib/motion.ts for why. */
+/* The panel carries the frosting itself so opacity animation does not flatten backdrop blur. */
 .busy-panel {
   min-width: 220px;
   max-width: min(420px, calc(100vw - 48px));

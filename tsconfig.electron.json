@@ -1,23 +1,20 @@
 {
-  // The main process, preload and storage worker. Sources use only erasable TypeScript with
-  // explicit .ts imports, so Node, Vite and Vitest run them as-is; Electron runs dist-electron.
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.electron.tsbuildinfo",
     "target": "ES2023",
     "lib": ["ES2023", "DOM"],
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "types": ["node"],
-    "rootDir": "electron",
-    "outDir": "dist-electron",
-    "rewriteRelativeImportExtensions": true,
     "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "skipLibCheck": true,
     "strict": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true
+    "noUnusedParameters": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true
   },
-  "include": ["electron"]
+  "include": ["electron", "plugins/ai/src/backend", "plugins/ai/src/models"]
 }

@@ -1,0 +1,19 @@
+{
+  "name": "@leaf/contracts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./documents": "./src/documents/index.ts",
+    "./reader": "./src/reader/index.ts",
+    "./annotations": "./src/annotations/index.ts",
+    "./plugins": "./src/plugins/index.ts",
+    "./host": "./src/host/index.ts",
+    "./transport": "./src/transport/index.ts",
+    "./validation": "./src/transport/validation.ts"
+  },
+  "dependencies": {
+    "@leaf/shared": "1.0.0"
+  }
+}

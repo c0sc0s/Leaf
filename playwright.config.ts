@@ -20,6 +20,7 @@ export default defineConfig({
     url: 'http://127.0.0.1:5173',
     env: {
       VITE_LEAF_SEED_SAMPLES: '1',
+      LEAF_TEST_PLUGINS: 'all',
       // ask.spec.ts serves a scripted OpenAI-compatible model here.
       LEAF_AI_BASE_URL: 'http://127.0.0.1:5199/v1',
       LEAF_AI_MODEL: 'mock-model',

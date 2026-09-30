@@ -37,17 +37,17 @@ test('reuses the PDF text index across searches and clears obsolete searches', a
   }
   await page.goto('/');
   await expect(page.locator('.book-card')).toHaveCount(8);
-  await page.getByLabel('选择 PDF 或 Markdown 文件', { exact: true }).setInputFiles({
+  await page.getByLabel('选择阅读文件', { exact: true }).setInputFiles({
     name: 'cache.pdf',
     mimeType: 'application/pdf',
     buffer: Buffer.from(await pdf.save()),
   });
   await page.getByRole('button', { name: '阅读 Search cache specimen', exact: true }).click();
   await expect(page.locator('.pdf-paper[data-page="1"]')).toHaveAttribute('aria-busy', 'false');
-  await page.getByLabel('搜索 PDF', { exact: true }).click();
+  await page.getByLabel('搜索文档', { exact: true }).click();
   const input = page.getByLabel('搜索文档内容', { exact: true });
   await input.fill('ALPHA');
-  await expect(page.locator('.search-status')).toHaveText('61 处结果 · 61 页');
+  await expect(page.locator('.search-status')).toHaveText('61 处匹配');
   const indexed = () =>
     page.evaluate(
       () =>
@@ -55,16 +55,16 @@ test('reuses the PDF text index across searches and clears obsolete searches', a
     );
   expect(await indexed()).toBe(61);
   await input.fill('OMEGA');
-  await expect(page.locator('.search-status')).toHaveText('1 处结果 · 1 页');
+  await expect(page.locator('.search-status')).toHaveText('1 处匹配');
   await expect(page.locator('.search-result')).toContainText('第 61 页');
   expect(await indexed()).toBe(61);
   await input.fill('ALPHA');
-  await expect(page.locator('.search-status')).toContainText('正在检索');
+  await expect(page.locator('.search-status')).toContainText('正在搜索');
   await input.fill('absent');
-  await expect(page.locator('.search-status')).toHaveText('0 处结果 · 0 页');
+  await expect(page.locator('.search-status')).toHaveText('0 处匹配');
   await input.fill('');
   await expect(page.locator('.search-result')).toHaveCount(0);
-  await expect(page.locator('.search-status')).toHaveText('输入关键词，搜索所有页面');
+  await expect(page.locator('.search-status')).toHaveText('输入关键词搜索文档');
   expect(await indexed()).toBe(61);
 });
 
@@ -73,7 +73,7 @@ test('keeps Markdown nodes and code state when toggling panels and selecting tex
 }) => {
   await page.goto('/');
   await expect(page.locator('.book-card')).toHaveCount(8);
-  await page.getByLabel('选择 PDF 或 Markdown 文件', { exact: true }).setInputFiles({
+  await page.getByLabel('选择阅读文件', { exact: true }).setInputFiles({
     name: 'stable.md',
     mimeType: 'text/markdown',
     buffer: Buffer.from(
@@ -84,7 +84,7 @@ test('keeps Markdown nodes and code state when toggling panels and selecting tex
   await expect(page.locator('.markdown-content h1')).toHaveText('Stable content');
   const link = await page.getByRole('link', { name: 'Local heading', exact: true }).elementHandle();
   const code = await page.locator('.markdown-code-block').elementHandle();
-  await page.getByLabel('搜索 Markdown', { exact: true }).click();
+  await page.getByLabel('搜索文档', { exact: true }).click();
   await page.getByLabel('阅读笔记', { exact: true }).click();
   await page.getByLabel('关闭笔记', { exact: true }).click();
   await page
@@ -114,17 +114,17 @@ test('uses the latest chapter while the Markdown worker is still starting', asyn
       await writeFile(path.join(root, name), `# ${title}\n\nBody for ${title}.`);
     await page.goto('/');
     await expect(page.locator('.book-card')).toHaveCount(8);
-    await page.getByLabel('选择 Markdown 文件夹', { exact: true }).setInputFiles(root);
-    await page.route('**/src/features/reader/markdown.worker.ts*', async (route) => {
+    await page.getByLabel('选择文档文件夹', { exact: true }).setInputFiles(root);
+    await page.route('**/markdown.worker-*.js', async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 500));
       await route.continue();
     });
     await page.getByRole('button', { name: `阅读 ${path.basename(root)}`, exact: true }).click();
-    await page.getByLabel('下一章', { exact: true }).click();
-    await page.getByLabel('下一章', { exact: true }).click();
+    await page.getByLabel('下一个位置', { exact: true }).click();
+    await page.getByLabel('下一个位置', { exact: true }).click();
     await expect(page.locator('.markdown-content h1')).toHaveText('Third');
-    await expect(page.locator('.markdown-status')).toContainText('第 3 / 3 章');
-    await page.getByLabel('上一章', { exact: true }).click();
+    await expect(page.getByLabel('位置序号', { exact: true })).toHaveValue('3');
+    await page.getByLabel('上一个位置', { exact: true }).click();
     await expect(page.locator('.markdown-content h1')).toHaveText('Second');
   } finally {
     await rm(root, { recursive: true, force: true });

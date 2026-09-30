@@ -349,7 +349,7 @@
 :is(.outline-item, .thumbnail, .search-result, .sidebar-tabs button):focus-visible {
   outline-offset: -2px;
 }
-.thumbnails {
+.thumbnail-list {
   display: grid;
   grid-template-columns: 1fr;
   gap: 19px;
@@ -365,9 +365,11 @@
   content-visibility: auto;
   contain-intrinsic-size: auto 158px auto 230px;
 }
-.thumbnail canvas {
+.thumbnail img,
+.thumbnail-placeholder {
   display: block;
   width: 140px;
+  max-width: 100%;
   min-height: 150px;
   box-shadow: 0 2px 5px #0002;
   background: white;
@@ -382,7 +384,7 @@
 .thumbnail:hover:not(.selected) {
   background: var(--accent);
 }
-.thumbnail:hover canvas {
+.thumbnail:hover img {
   box-shadow: 0 4px 12px #0000002a;
 }
 .thumbnail.selected {
@@ -452,114 +454,31 @@
 .search-result.selected {
   background: var(--sidebar-accent);
 }
+.reading-surface {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  --canvas: #f0f0f2;
+  --reading-text: #29292e;
+  --reading-bg: #ffffff;
+  --reading-line: #e8e8eb;
+  --reading-muted: #77777f;
+}
+.reading-surface.reader-dark {
+  --canvas: #111113;
+  --reading-text: #dedee3;
+  --reading-bg: #1b1b1e;
+  --reading-line: #303035;
+  --reading-muted: #9999a3;
+}
 .reading-canvas {
   scrollbar-gutter: stable;
   overflow-anchor: none;
   flex: 1;
   min-width: 0;
   overflow: auto;
-  --canvas: #f0f0f2;
   background: var(--canvas);
   position: relative;
-  --reading-text: #29292e;
-  --reading-bg: #ffffff;
-  --reading-line: #e8e8eb;
-  --reading-muted: #77777f;
-}
-.markdown-scroll {
-  --canvas: #f0f0f2;
-  --reading-text: #29292e;
-  --reading-bg: #ffffff;
-  --reading-line: #e8e8eb;
-  --reading-muted: #77777f;
-}
-.reading-canvas.reader-dark {
-  --canvas: #111113;
-  --reading-text: #dedee3;
-  --reading-bg: #1b1b1e;
-  --reading-line: #303035;
-  --reading-muted: #9999a3;
-}
-.markdown-scroll.markdown-dark {
-  --canvas: #111113;
-  --reading-text: #dedee3;
-  --reading-bg: #1b1b1e;
-  --reading-line: #303035;
-  --reading-muted: #9999a3;
-}
-.pdf-stage {
-  min-height: 100%;
-  width: 100%;
-  padding: 16px 20px;
-  position: relative;
-}
-.pdf-paper {
-  flex-shrink: 0;
-  background: white;
-  position: relative;
-  margin: 0 auto;
-  box-shadow: 0 5px 30px #25332516;
-  overflow: hidden;
-}
-.pdf-visual > canvas {
-  display: block;
-}
-.dark-paper {
-  background: #202023;
-}
-.dark-paper canvas {
-  filter: invert(0.88) hue-rotate(180deg);
-}
-.pdf-paper .textLayer {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  overflow: hidden;
-  opacity: 1;
-  line-height: 1;
-  text-align: initial;
-  transform-origin: 0 0;
-  caret-color: CanvasText;
-  --min-font-size: 1;
-  --total-scale-factor: 1;
-  --user-unit: 1;
-  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
-  --min-font-size-inv: calc(1 / var(--min-font-size));
-  letter-spacing: normal;
-  word-spacing: normal;
-  text-size-adjust: none;
-  forced-color-adjust: none;
-}
-.pdf-paper .textLayer :is(span, br) {
-  color: transparent;
-  position: absolute;
-  white-space: pre;
-  cursor: text;
-  transform-origin: 0% 0%;
-}
-.pdf-paper .textLayer span.markedContent {
-  top: 0;
-  height: 0;
-}
-.pdf-paper .textLayer::selection {
-  background: #e5b96c66;
-}
-.pdf-paper .textLayer span::selection {
-  background: #e5b96c66;
-}
-.annotation-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-  mix-blend-mode: multiply;
-}
-.dark-paper .annotation-overlay {
-  mix-blend-mode: screen;
-}
-.search-match {
-  background: #e7bd5f77;
-  border-radius: 2px;
 }
 .reader-status {
   display: grid;
@@ -610,27 +529,6 @@
 .reader-status .toolbar-separator {
   display: none;
 }
-.pdf-paper[aria-busy='true'] .textLayer {
-  pointer-events: none;
-}
-.pdf-visual {
-  display: contents;
-}
-.pdf-paper .textLayer > :not(.markedContent) {
-  z-index: 1;
-  font-size: calc(var(--text-scale-factor) * var(--font-height, 0px));
-  transform: rotate(var(--rotate, 0deg)) scaleX(var(--scale-x, 1)) scale(var(--min-font-size-inv));
-  user-select: text;
-}
-.pdf-paper .textLayer .markedContent span:not(.markedContent) {
-  z-index: 1;
-  font-size: calc(var(--text-scale-factor) * var(--font-height, 0px));
-  transform: rotate(var(--rotate, 0deg)) scaleX(var(--scale-x, 1)) scale(var(--min-font-size-inv));
-  user-select: text;
-}
-.pdf-paper .textLayer .markedContent {
-  display: contents;
-}
 @media (max-width: 1100px) {
   .reader-header {
     --header-inline: 10px;
@@ -645,52 +543,6 @@
     z-index: 15;
     box-shadow: var(--shadow);
   }
-  .pdf-stage {
-    padding-inline: 18px;
-  }
-}
-.pdf-slot {
-  position: relative;
-  margin: 0 auto 16px;
-  flex-shrink: 0;
-  background: #fff;
-  box-shadow: 0 2px 12px #0000000c;
-  overflow: hidden;
-}
-.pdf-slot:last-child {
-  margin-bottom: 0;
-}
-.pdf-slot.dark-paper {
-  background: #202023;
-}
-.pdf-frame {
-  position: relative;
-  transform-origin: top left;
-}
-.page-placeholder {
-  position: absolute;
-  top: 24px;
-  left: 24px;
-  color: var(--reading-muted);
-  font-size: 11px;
-  user-select: none;
-  animation: pulse 1.4s ease-in-out infinite;
-}
-.pdf-stage.layout-paged.layout-spread {
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 16px;
-}
-.pdf-stage.layout-continuous.layout-spread {
-  display: grid;
-  grid-template-columns: repeat(2, max-content);
-  justify-content: center;
-  align-items: start;
-  gap: 16px;
-}
-.pdf-stage.layout-spread .pdf-slot {
-  margin: 0;
 }
 .save-state {
   justify-self: end;
@@ -740,19 +592,6 @@
 .undo-notice button {
   color: var(--sidebar-primary);
 }
-.pdf-link {
-  position: absolute;
-  z-index: 4;
-  background: transparent;
-  border: 0;
-  padding: 0;
-  border-radius: 0;
-  cursor: pointer;
-}
-.pdf-link:hover {
-  outline: 1px solid var(--sidebar-primary);
-  background: var(--selection);
-}
 .printed-page {
   color: var(--muted-foreground);
   white-space: nowrap;
@@ -798,15 +637,7 @@
   height: auto;
   white-space: normal;
 }
-/* The mark being inspected brightens with a short pulse so it is clear which passage the note belongs to. */
-.annotation-overlay .active-mark[data-kind='highlight'] {
-  opacity: 0.62;
-  animation: mark-pulse 900ms var(--ease-out);
-}
-.annotation-overlay .active-mark[data-kind='underline'] line {
-  stroke-width: 3.5;
-}
-/* The reader mounts here, invisible, until its first screen is drawn; see readerReady.ts. */
+/* The first rendered screen determines when the opening overlay is dismissed. */
 .reader-stage {
   display: flex;
   flex: 1;
@@ -817,31 +648,4 @@
   inset: 0;
   opacity: 0;
   pointer-events: none;
-}
-.page-skeleton {
-  width: min(42em, calc(100% - 48px));
-  margin: 48px auto;
-}
-.page-skeleton.paper {
-  width: min(720px, calc(100% - 48px));
-  aspect-ratio: 1 / 1.414;
-  padding: 9% 10%;
-  background: var(--reading-bg);
-  box-shadow: 0 5px 30px #25332516;
-}
-.page-skeleton-lines {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  animation: pulse 1.4s ease-in-out infinite;
-}
-.page-skeleton-lines i {
-  display: block;
-  height: 10px;
-  border-radius: 999px;
-  background: var(--reading-line);
-}
-.page-skeleton-lines i:first-child {
-  height: 18px;
-  margin-bottom: 10px;
 }

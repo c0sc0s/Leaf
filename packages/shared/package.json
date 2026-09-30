@@ -1,0 +1,13 @@
+{
+  "name": "@leaf/shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./types": "./src/types/index.ts",
+    "./async": "./src/async/index.ts",
+    "./events": "./src/events/index.ts",
+    "./lifecycle": "./src/lifecycle/index.ts",
+    "./workers": "./src/workers/workerClient.ts"
+  }
+}

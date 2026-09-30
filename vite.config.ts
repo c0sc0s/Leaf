@@ -3,10 +3,49 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath, URL } from 'node:url';
 import { createRequire } from 'node:module';
-import storage from './scripts/vite/storage.ts';
-import ai from './scripts/vite/ai.ts';
+import { createHash } from 'node:crypto';
+import services from './scripts/vite/services.ts';
+import { importMap, sharedModule, reactModules } from './scripts/runtime.ts';
+const root = fileURLToPath(new URL('.', import.meta.url));
 export default defineConfig({
-  plugins: [react(), tailwindcss(), storage(), ai()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    services(),
+    {
+      name: 'leaf-runtime-map',
+      transformIndexHtml: {
+        order: 'pre',
+        handler: (html, context) => {
+          const map = JSON.stringify({ imports: importMap(root, !!context.server) });
+          const hash = createHash('sha256').update(map).digest('base64');
+          return {
+            html: html.replace(
+              "script-src 'self' 'wasm-unsafe-eval'",
+              `script-src 'self' 'wasm-unsafe-eval' 'sha256-${hash}'`,
+            ),
+            tags: [
+              {
+                tag: 'script',
+                attrs: { type: 'importmap' },
+                children: map,
+                injectTo: 'head-prepend',
+              },
+              ...(!context.server
+                ? [
+                    {
+                      tag: 'link',
+                      attrs: { rel: 'stylesheet', href: './runtime/style.css' },
+                      injectTo: 'head' as const,
+                    },
+                  ]
+                : []),
+            ],
+          };
+        },
+      },
+    },
+  ],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -17,10 +56,12 @@ export default defineConfig({
       ),
     },
   },
-  // Worker imports are outside the HTML graph. Discover them before the first
-  // document opens so pre-bundling cannot reload the page in the middle of reading.
-  optimizeDeps: { entries: ['index.html', 'src/**/*.worker.ts'] },
+  optimizeDeps: { include: reactModules, entries: ['index.html'] },
   base: './',
-  server: { host: '127.0.0.1', strictPort: true },
-  build: { chunkSizeWarningLimit: 1500 },
+  server: {
+    host: '127.0.0.1',
+    strictPort: true,
+    hmr: { protocol: 'ws', host: '127.0.0.1', clientPort: 5173 },
+  },
+  build: { chunkSizeWarningLimit: 1500, rolldownOptions: { external: sharedModule } },
 });

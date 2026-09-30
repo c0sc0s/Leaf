@@ -1,64 +1,84 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { createAiConfig } from '../electron/ai/config.ts';
+import type { BackendHostAPI } from '@leaf/contracts/host';
+import type { JsonValue } from '@leaf/shared/types';
+import { createModelConfig } from '../plugins/ai/src/models/config.ts';
+import { CredentialVault, developmentCipher } from '../electron/platform/credentials.ts';
 
-const directories: string[] = [];
-afterEach(() => {
-  for (const root of directories.splice(0)) rmSync(root, { recursive: true, force: true });
+const roots: string[] = [];
+afterEach(async () => {
+  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
-function file() {
-  const root = mkdtempSync(path.join(tmpdir(), 'leaf-ai-config-'));
-  directories.push(root);
-  return path.join(root, 'ai.json');
+async function config(environment: Record<string, string> = {}) {
+  const root = await mkdtemp(path.join(tmpdir(), 'leaf-model-config-'));
+  roots.push(root);
+  const file = path.join(root, 'credentials.json'),
+    vault = new CredentialVault(file, await developmentCipher(path.join(root, 'key'))),
+    values = new Map<string, JsonValue>();
+  const host: BackendHostAPI = {
+    environment,
+    credentials: {
+      get: (key) => vault.get('leaf.ai', key),
+      set: (key, value) => vault.set('leaf.ai', key, value),
+    },
+    storage: {
+      get: async <T extends JsonValue>(key: string) => (values.get(key) as T) ?? null,
+      set: async (key, value) => {
+        values.set(key, value);
+      },
+      delete: async (key) => {
+        values.delete(key);
+      },
+      list: async () => [],
+    },
+  };
+  return { model: createModelConfig(host), file, values, vault };
 }
-const cipher = {
-  encrypt: (text: string) => `sealed:${text}`,
-  decrypt: (text: string) => text.slice('sealed:'.length),
-};
-
-describe('AI config', () => {
-  it('stores the key encrypted, never exposes it, and keeps it when a save omits it', () => {
-    const target = file();
-    const config = createAiConfig(target, cipher, {});
-    expect(config.read()).toBeNull();
-    expect(config.summary()).toEqual({ baseURL: '', model: '', hasKey: false, managed: false });
-    config.write({ baseURL: 'https://api.deepseek.com/', model: 'deepseek-chat', apiKey: 'sk-1' });
-    expect(readFileSync(target, 'utf8')).not.toContain('"sk-1"');
-    expect(config.summary()).toEqual({
-      baseURL: 'https://api.deepseek.com',
-      model: 'deepseek-chat',
+describe('model configuration', () => {
+  it('stores keys encrypted and separately from settings, preserves an omitted key, and scopes credentials', async () => {
+    const { model, file, values, vault } = await config();
+    expect(await model.read()).toBeNull();
+    await model.write({ baseURL: 'https://example.com/v1/', model: 'reader', apiKey: 'sk-secret' });
+    expect(await readFile(file, 'utf8')).not.toContain('sk-secret');
+    expect(values.get('model.configuration')).toEqual({
+      baseURL: 'https://example.com/v1',
+      model: 'reader',
+    });
+    await model.write({ baseURL: 'https://example.com/v1', model: 'other' });
+    expect(await model.read()).toMatchObject({ model: 'other', apiKey: 'sk-secret' });
+    expect(await model.summary()).toEqual({
+      baseURL: 'https://example.com/v1',
+      model: 'other',
       hasKey: true,
       managed: false,
     });
-    config.write({ baseURL: 'https://api.deepseek.com', model: 'deepseek-reasoner' });
-    expect(config.read()).toEqual({
-      baseURL: 'https://api.deepseek.com',
-      model: 'deepseek-reasoner',
-      apiKey: 'sk-1',
-    });
+    expect(await vault.get('another.plugin', 'model.apiKey')).toBeNull();
   });
-
-  it('rejects invalid settings and a first save without a key', () => {
-    const config = createAiConfig(file(), cipher, {});
-    expect(() => config.write({ baseURL: 'ftp://x', model: 'm', apiKey: 'k' })).toThrow(/https/);
-    expect(() => config.write({ baseURL: 'https://x', model: ' ', apiKey: 'k' })).toThrow();
-    expect(() => config.write({ baseURL: 'https://x', model: 'm' })).toThrow(/API Key/);
+  it('rejects malformed settings and a first save without a key', async () => {
+    const { model } = await config();
+    for (const input of [
+      { baseURL: 'ftp://x', model: 'm', apiKey: 'k' },
+      { baseURL: 'https://user:secret@x', model: 'm', apiKey: 'k' },
+      { baseURL: 'https://x', model: '', apiKey: 'k' },
+      { baseURL: 'https://x', model: 'm' },
+    ])
+      await expect(model.write(input as JsonValue)).rejects.toThrow();
   });
-
-  it('lets environment variables take over and locks the form', () => {
-    const config = createAiConfig(file(), cipher, {
+  it('uses environment configuration without copying the key to storage', async () => {
+    const { model, values } = await config({
       LEAF_AI_API_KEY: 'env-key',
       LEAF_AI_BASE_URL: 'http://127.0.0.1:1/v1',
       LEAF_AI_MODEL: 'mock',
     });
-    expect(config.read()).toEqual({
+    expect(await model.read()).toEqual({
       baseURL: 'http://127.0.0.1:1/v1',
       model: 'mock',
       apiKey: 'env-key',
     });
-    expect(config.summary()).toMatchObject({ hasKey: true, managed: true });
-    expect(() => config.write({ baseURL: 'https://x', model: 'm', apiKey: 'k' })).toThrow();
+    expect(await model.summary()).toMatchObject({ managed: true, hasKey: true });
+    expect(values.size).toBe(0);
+    await expect(model.write({ baseURL: 'https://x', model: 'm', apiKey: 'k' })).rejects.toThrow();
   });
 });

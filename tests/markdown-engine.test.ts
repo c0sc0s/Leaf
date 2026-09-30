@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import type { Root, Element, Text } from 'hast';
-import type { Annotation } from '../src/types';
-import { MarkdownEngine } from '../src/features/reader/markdownEngine';
+import type { RenderedMark } from '../plugins/markdown/src/types';
+import { MarkdownEngine } from '../plugins/markdown/src/document/markdownEngine';
 
 function elements(tree: Root | Element, tag: string): Element[] {
   return tree.children.flatMap((node) =>
@@ -33,19 +33,13 @@ it('reuses parsed syntax without accumulating searches or changing annotation of
   expect(elements(plain, 'code').map(textOf)).toEqual(['const value = 1;\n']);
   const spans = elements(plain, 'span').filter((node) => 'data-md-start' in node.properties);
   const target = spans.find((span) => textOf(span) === 'Chapter')!;
-  const mark: Annotation = {
+  const mark: RenderedMark = {
     id: 'mark',
-    bookId: 'book',
     page: 1,
     start: Number(target.properties['data-md-start']),
     end: Number(target.properties['data-md-end']),
-    quote: 'Chapter',
     kind: 'highlight',
     color: 'amber',
-    note: '',
-    rects: [],
-    createdAt: 0,
-    source: 'text',
   };
   const searched = engine.render(1, 'const value', [mark]);
   expect(elements(searched, 'mark').map(textOf)).toEqual(['const', ' value']);

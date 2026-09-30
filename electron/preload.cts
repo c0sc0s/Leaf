@@ -1,5 +1,11 @@
 // Sandboxed preloads must be CommonJS and may only require `electron`.
-import type { ChatEvent, DesktopAPI, DesktopFile, WindowState } from './contract.ts';
+import type {
+  BackendEvent,
+  BackendRequest,
+  DesktopAPI,
+  DesktopFile,
+  WindowState,
+} from '@leaf/contracts/transport';
 
 const { contextBridge, ipcRenderer } = require('electron') as typeof import('electron');
 
@@ -24,14 +30,24 @@ const desktop: DesktopAPI = {
       return () => ipcRenderer.removeListener('storage:flush', listener);
     },
   },
-  ai: {
-    config: () => ipcRenderer.invoke('ai:config'),
-    configure: (input) => ipcRenderer.invoke('ai:configure', input),
-    chat: (request, onEvent) => {
+  plugins: {
+    list: () => ipcRenderer.invoke('plugins:list'),
+    prepare: (data) => ipcRenderer.invoke('plugins:prepare', data),
+    install: (data) => ipcRenderer.invoke('plugins:install', data),
+    enable: (id, enabled) => ipcRenderer.invoke('plugins:enable', id, enabled),
+    remove: (id) => ipcRenderer.invoke('plugins:remove', id),
+  },
+  backend: {
+    request: (input: BackendRequest) => ipcRenderer.invoke('backend:request', input),
+    cancel: (id) => ipcRenderer.send('backend:cancel', id),
+    stream: (request, onEvent) => {
       const { port1, port2 } = new MessageChannel();
-      port1.onmessage = ({ data }: MessageEvent<ChatEvent>) => onEvent(data);
-      ipcRenderer.postMessage('ai:chat', request, [port2]);
+      port1.onmessage = ({ data }: MessageEvent<BackendEvent>) => onEvent(data);
+      ipcRenderer.postMessage('backend:stream', request, [port2]);
+      let closed = false;
       return () => {
+        if (closed) return;
+        closed = true;
         port1.postMessage({ type: 'cancel' });
         port1.close();
       };
@@ -39,7 +55,7 @@ const desktop: DesktopAPI = {
   },
   platform: process.platform,
   translucent: process.argv.includes('--leaf-translucent-window'),
-  openPDF: () => ipcRenderer.invoke('pdf:choose'),
+  openDocuments: (extensions) => ipcRenderer.invoke('documents:choose', extensions),
   openFolder: () => ipcRenderer.invoke('folder:choose'),
   openExternal: (url) => ipcRenderer.invoke('link:open', url),
   saveFile: (name, data) => ipcRenderer.invoke('file:save', name, data),
@@ -59,11 +75,11 @@ const desktop: DesktopAPI = {
     const open = (_event: unknown, file: DesktopFile) => callback(file);
     const menu = () => window.dispatchEvent(new Event('leaf:open'));
     const folder = () => window.dispatchEvent(new Event('leaf:open-folder'));
-    ipcRenderer.on('pdf:open', open);
+    ipcRenderer.on('document:open', open);
     ipcRenderer.on('menu:open', menu);
     ipcRenderer.on('menu:open-folder', folder);
     return () => {
-      ipcRenderer.removeListener('pdf:open', open);
+      ipcRenderer.removeListener('document:open', open);
       ipcRenderer.removeListener('menu:open', menu);
       ipcRenderer.removeListener('menu:open-folder', folder);
     };

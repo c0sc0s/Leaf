@@ -1,0 +1,16 @@
+{
+  "id": "leaf.markdown",
+  "name": "Markdown 阅读",
+  "description": "Markdown 文件与文件夹阅读、搜索和批注",
+  "entries": {
+    "renderer": "renderer.js"
+  },
+  "contributes": {
+    "documentProviders": ["leaf.markdown.document"],
+    "views": ["leaf.markdown.view"]
+  },
+  "permissions": ["documents"],
+  "version": "1.0.0",
+  "hostApi": "^1.0.0",
+  "dependencies": {}
+}

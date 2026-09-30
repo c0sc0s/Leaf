@@ -9,7 +9,16 @@
     "node": true,
     "es2024": true
   },
-  "ignorePatterns": ["dist", "dist-electron", "release", "site", "public", "output", "spikes"],
+  "ignorePatterns": [
+    "dist",
+    "dist-electron",
+    "dist-plugins",
+    "release",
+    "site",
+    "public",
+    "output",
+    "spikes"
+  ],
   "rules": {
     "react/rules-of-hooks": "error",
     "react/exhaustive-deps": "warn",
@@ -38,8 +47,8 @@
                 "message": "The renderer runs sandboxed; reach Node and Electron through window.desktop."
               },
               {
-                "group": ["**/electron/**", "!**/electron/contract", "!**/electron/contract.ts"],
-                "message": "The renderer may only import types from electron/contract."
+                "group": ["**/electron/**"],
+                "message": "Use @leaf/contracts for public renderer contracts."
               }
             ]
           }
@@ -55,7 +64,7 @@
             "patterns": [
               {
                 "group": ["**/src/**", "@/**"],
-                "message": "The main process must not depend on renderer code; share types via electron/contract.ts."
+                "message": "The main process must not depend on renderer code; share types via @leaf/contracts."
               }
             ]
           }

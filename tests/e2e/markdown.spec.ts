@@ -1,3 +1,4 @@
+import { openReaderSettings } from './readerMenu';
 import { test, expect, type Page } from '@playwright/test';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
@@ -17,7 +18,7 @@ test('imports a Markdown file, renders GFM safely and keeps it as a single book'
   const markdown =
     '# Markdown 示例\n\n**强调**与[章节](#细节)。\n\n> 一段安静的阅读时光。\n\n| A | B |\n| - | - |\n| 1 | 2 |\n\n- [x] 已完成\n\n阅读清单：\n\n- 普通列表\n- 第二项\n\n```js\nconst value = 1;\n```\n\n<script>window.evil = true</script>\n\n[不安全链接](javascript:alert(1))\n\n## 细节\n\n正文内容';
   const payload = { name: 'example.md', mimeType: 'text/markdown', buffer: Buffer.from(markdown) };
-  await page.getByLabel('选择 PDF 或 Markdown 文件', { exact: true }).setInputFiles(payload);
+  await page.getByLabel('选择阅读文件', { exact: true }).setInputFiles(payload);
   await expect(page.locator('.book-card')).toHaveCount(9);
   await page.getByRole('button', { name: '阅读 Markdown 示例', exact: true }).click();
   await expect(page.locator('.markdown-content h1')).toHaveText('Markdown 示例');
@@ -42,10 +43,10 @@ test('imports a Markdown file, renders GFM safely and keeps it as a single book'
   await expect(page.locator('.markdown-content pre')).toContainText('const value = 1;');
   await expect(page.locator('.markdown-content script')).toHaveCount(0);
   await expect(page.locator('.markdown-content a').last()).toHaveAttribute('href', '');
-  await expect(page.getByLabel('下一章', { exact: true })).toBeDisabled();
+  await expect(page.getByLabel('下一个位置', { exact: true })).toBeDisabled();
   await page.getByLabel('添加书签', { exact: true }).click();
   await page.getByLabel('返回书架', { exact: true }).click();
-  await page.getByLabel('选择 PDF 或 Markdown 文件', { exact: true }).setInputFiles(payload);
+  await page.getByLabel('选择阅读文件', { exact: true }).setInputFiles(payload);
   await expect(page.getByRole('status')).toContainText('已在书库中');
   await expect(page.locator('.book-card')).toHaveCount(9);
   await page.reload();
@@ -79,9 +80,10 @@ test('imports a folder as one book with nested chapters, images, links and persi
     );
     await writeFile(path.join(root, 'ignored.txt'), 'not a chapter');
     await library(page);
-    await page.getByLabel('选择 Markdown 文件夹', { exact: true }).setInputFiles(root);
+    await page.getByLabel('选择文档文件夹', { exact: true }).setInputFiles(root);
     await expect(page.locator('.book-card')).toHaveCount(9);
     await page.getByRole('button', { name: `阅读 ${bookName}`, exact: true }).click();
+    await page.getByLabel('文档导航', { exact: true }).click();
     await expect(page.locator('.outline-item.depth-0')).toHaveCount(3);
     await expect(page.locator('.markdown-content h1')).toHaveText('Introduction');
     await expect
@@ -93,7 +95,7 @@ test('imports a folder as one book with nested chapters, images, links and persi
     await expect(page.locator('.reader-sidebar')).not.toContainText('chapters/2.md');
     await page.getByRole('link', { name: 'Go to chapter', exact: true }).click();
     await expect(page.locator('.markdown-content h2')).toBeInViewport();
-    await expect(page.locator('.markdown-status')).toContainText('第 2 / 3 章');
+    await expect(page.getByLabel('位置序号', { exact: true })).toHaveValue('2');
     await page.getByLabel('添加书签', { exact: true }).click();
     const scroll = await page.locator('.markdown-scroll').evaluate((node) => node.scrollTop);
     await page.getByLabel('返回书架', { exact: true }).click();
@@ -104,24 +106,24 @@ test('imports a folder as one book with nested chapters, images, links and persi
     await expect
       .poll(() => page.locator('.markdown-scroll').evaluate((node) => node.scrollTop))
       .toBeGreaterThan(scroll - 5);
-    await page.getByLabel('搜索 Markdown', { exact: true }).click();
-    await page.getByLabel('搜索 Markdown 内容', { exact: true }).fill('unique needle');
-    await page.locator('.markdown-search-result').click();
+    await page.getByLabel('搜索文档', { exact: true }).click();
+    await page.getByLabel('搜索文档内容', { exact: true }).fill('unique needle');
+    await page.locator('.search-result').click();
     await expect(page.locator('.markdown-content mark')).toHaveText('unique needle');
     await expect(page.locator('.markdown-content mark')).toBeInViewport();
-    await page.getByLabel('阅读偏好', { exact: true }).click();
+    await openReaderSettings(page);
     await page.getByRole('radio', { name: '深色', exact: true }).click();
     await page.keyboard.press('Escape');
     await expect(page.locator('.markdown-scroll')).toHaveClass(/markdown-dark/);
     await expect(page.locator('.markdown-content')).toHaveCSS('color', 'rgb(222, 222, 227)');
     await page.screenshot({ path: 'test-results/markdown-typeset-dark.png' });
-    await page.getByLabel('下一章', { exact: true }).click();
+    await page.getByLabel('下一个位置', { exact: true }).click();
     await expect(page.locator('.markdown-content h1')).toHaveText('Last chapter');
     // Imported content remains readable even when the source directory disappears.
     await rm(root, { recursive: true, force: true });
-    await page.getByLabel('上一章', { exact: true }).click();
+    await page.getByLabel('上一个位置', { exact: true }).click();
     await expect(page.locator('.markdown-content h1')).toHaveText('Chapter Two');
-    await page.getByLabel('上一章', { exact: true }).click();
+    await page.getByLabel('上一个位置', { exact: true }).click();
     await expect
       .poll(() =>
         page.locator('.markdown-content img').evaluate((img: HTMLImageElement) => img.naturalWidth),

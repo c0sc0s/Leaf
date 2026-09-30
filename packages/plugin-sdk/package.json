@@ -1,0 +1,23 @@
+{
+  "name": "@leaf/plugin-sdk",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/context/index.ts",
+    "./view": "./src/view/index.ts",
+    "./react": "./src/react/index.tsx",
+    "./backend": "./src/backend/index.ts",
+    "./workers": "./src/workers/index.ts"
+  },
+  "dependencies": {
+    "@leaf/contracts": "1.0.0",
+    "@leaf/shared": "1.0.0",
+    "@leaf/ui": "1.0.0",
+    "motion": "^13.4.4"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}

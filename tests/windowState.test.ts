@@ -3,7 +3,11 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { placeWindow, readWindowState, writeWindowState } from '../electron/windowState.ts';
+import {
+  placeWindow,
+  readWindowState,
+  writeWindowState,
+} from '../electron/platform/windowState.ts';
 
 afterEach(() => vi.restoreAllMocks());
 

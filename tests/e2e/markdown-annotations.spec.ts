@@ -8,7 +8,7 @@ const markdown =
 async function open(page: Page) {
   await page.goto('/');
   await expect(page.locator('.book-card')).toHaveCount(8);
-  await page.getByLabel('选择 PDF 或 Markdown 文件', { exact: true }).setInputFiles({
+  await page.getByLabel('选择阅读文件', { exact: true }).setInputFiles({
     name: 'selection.md',
     mimeType: 'text/markdown',
     buffer: Buffer.from(markdown),
@@ -59,8 +59,15 @@ test('selects formatted Markdown, saves underline and notes, edits style, and re
   await expect
     .poll(() =>
       page.evaluate(async (id) => {
-        const { storage } = await import('/src/lib/db.ts');
-        return (await storage.annotations()).find((entry: { id: string }) => entry.id === id)?.note;
+        const { StorageClient } = await import('/src/platform/transport/storage.ts');
+        const storage = new StorageClient();
+        const documents = await storage.request('library.list', undefined);
+        const saved = (
+          await Promise.all(
+            documents.map((document) => storage.request('annotations.list', document.id)),
+          )
+        ).flat();
+        return saved.find((entry: { id: string }) => entry.id === id)?.note;
       }, id),
     )
     .toBe('Remember this paragraph.');
@@ -121,7 +128,7 @@ test('keeps annotations scoped to chapters and opens notes from focus mode', asy
     await writeFile(path.join(root, '2.md'), '# Second\n\nSame sentence to annotate.');
     await page.goto('/');
     await expect(page.locator('.book-card')).toHaveCount(8);
-    await page.getByLabel('选择 Markdown 文件夹', { exact: true }).setInputFiles(root);
+    await page.getByLabel('选择文档文件夹', { exact: true }).setInputFiles(root);
     await page.getByRole('button', { name: `阅读 ${path.basename(root)}`, exact: true }).click();
     await page.getByLabel('专注阅读（F）', { exact: true }).click();
     await page.locator('.markdown-content p').evaluate((element) => {
@@ -132,18 +139,18 @@ test('keeps annotations scoped to chapters and opens notes from focus mode', asy
       element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
     });
     await page.getByLabel('写笔记', { exact: true }).click();
-    await expect(page.locator('.markdown-reader')).not.toHaveClass(/reader-focus/);
+    await expect(page.locator('.reader')).not.toHaveClass(/reader-focus/);
     const note = page.getByLabel('第 1 章批注笔记', { exact: true });
     await expect(note).toBeFocused();
     await note.fill('Only chapter one.');
-    await page.getByLabel('下一章', { exact: true }).click();
+    await page.getByLabel('下一个位置', { exact: true }).click();
     await expect(page.locator('.markdown-content h1')).toHaveText('Second');
     await expect(page.locator('.markdown-annotation')).toHaveCount(0);
     await expect(page.getByRole('toolbar', { name: '选中文字操作', exact: true })).toHaveCount(0);
-    await page.getByLabel('上一章', { exact: true }).click();
+    await page.getByLabel('上一个位置', { exact: true }).click();
     await expect(page.locator('.markdown-annotation')).toContainText('Same sentence to annotate.');
-    await page.getByLabel('搜索 Markdown', { exact: true }).click();
-    await page.getByLabel('搜索 Markdown 内容', { exact: true }).fill('sentence');
+    await page.getByLabel('搜索文档', { exact: true }).click();
+    await page.getByLabel('搜索文档内容', { exact: true }).fill('sentence');
     await expect(page.locator('.markdown-annotation')).toHaveCount(3);
     await expect(page.locator('.markdown-content mark')).toHaveText('sentence');
     await page.getByLabel('放大', { exact: true }).click();

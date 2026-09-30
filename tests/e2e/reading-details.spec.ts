@@ -44,7 +44,7 @@ async function openBook(page: Page) {
   pdf.catalog.set(PDFName.of('Outlines'), root);
   await page.goto('/');
   await expect(page.locator('.book-card')).toHaveCount(8);
-  await page.getByLabel('选择 PDF 或 Markdown 文件', { exact: true }).setInputFiles({
+  await page.getByLabel('选择阅读文件', { exact: true }).setInputFiles({
     name: 'details.pdf',
     mimeType: 'application/pdf',
     buffer: Buffer.from(await pdf.save()),
@@ -108,21 +108,21 @@ test('distinguishes search matches, navigates internal references and shows prin
   page,
 }) => {
   await openBook(page);
-  await expect(page.locator('.printed-page')).toContainText('i');
+  await expect(page.locator('.location-detail')).toContainText('i');
   await page.getByLabel('跳转文档链接', { exact: true }).click();
-  await expect(page.getByLabel('页码', { exact: true })).toHaveValue('3');
+  await expect(page.getByLabel('位置序号', { exact: true })).toHaveValue('3');
   await page.getByLabel('返回刚才的位置', { exact: true }).click();
-  await expect(page.getByLabel('页码', { exact: true })).toHaveValue('1');
+  await expect(page.getByLabel('位置序号', { exact: true })).toHaveValue('1');
   await page.getByLabel('文档导航', { exact: true }).click();
   await page.getByRole('tab', { name: '文档目录', exact: true }).click();
   await page.locator('.outline-item').filter({ hasText: 'Reference chapter' }).click();
-  await expect(page.getByLabel('页码', { exact: true })).toHaveValue('3');
+  await expect(page.getByLabel('位置序号', { exact: true })).toHaveValue('3');
   await expect(page.locator('.outline-item.selected')).toContainText('Reference chapter');
   await page.keyboard.press('ControlOrMeta+=');
   await expect(page.locator('.zoom-label')).toHaveText('110%');
   await page.keyboard.press('ControlOrMeta+-');
   await expect(page.locator('.zoom-label')).toHaveText('100%');
-  await page.getByLabel('搜索 PDF', { exact: true }).click();
+  await page.getByLabel('搜索文档', { exact: true }).click();
   await page.getByLabel('搜索文档内容', { exact: true }).fill('Common phrase');
   await expect(page.locator('.search-result')).toHaveCount(8);
   await page.locator('.search-result').nth(1).click();
@@ -132,10 +132,10 @@ test('distinguishes search matches, navigates internal references and shows prin
   await expect(
     page.locator('.pdf-paper[data-page="1"] .search-matches rect:not(.current-search-match)'),
   ).toHaveAttribute('opacity', '0.28');
-  await page.getByLabel('页码', { exact: true }).fill('4');
-  await page.getByLabel('页码', { exact: true }).press('Enter');
-  await expect(page.getByLabel('页码', { exact: true })).toHaveValue('4');
-  await expect(page.locator('.printed-page')).toContainText('2');
+  await page.getByLabel('位置序号', { exact: true }).fill('4');
+  await page.getByLabel('位置序号', { exact: true }).press('Enter');
+  await expect(page.getByLabel('位置序号', { exact: true })).toHaveValue('4');
+  await expect(page.locator('.location-detail')).toContainText('2');
 });
 
 test('scrolls at a bounded speed while extending selection near a page edge and stops on release', async ({

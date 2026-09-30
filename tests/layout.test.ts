@@ -1,11 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { parseLayout, sameSpread, spreadStart } from '../src/lib/layout';
+import { parseLayout, sameSpread, spreadStart } from '../plugins/pdf/src/view/layout';
 
 describe('reading layout', () => {
-  it('migrates the single mode string saved by earlier versions', () => {
-    expect(parseLayout('continuous')).toEqual({ continuous: true, spread: false });
-    expect(parseLayout('single')).toEqual({ continuous: false, spread: false });
-    expect(parseLayout('spread')).toEqual({ continuous: false, spread: true });
+  it('validates independent continuous and spread settings', () => {
     expect(parseLayout(undefined)).toEqual({ continuous: true, spread: false });
     expect(parseLayout({ continuous: true, spread: true })).toEqual({
       continuous: true,

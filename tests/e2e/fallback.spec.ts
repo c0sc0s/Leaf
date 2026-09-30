@@ -1,50 +1,37 @@
 import { test, expect } from '@playwright/test';
-
-test('shows render error stacks and recovers through retry and reload', async ({ page }) => {
-  let crash = true;
-  await page.route(
-    /\/(?:src\/features\/reader\/MarkdownReader\.tsx|assets\/MarkdownReader-[^/]+\.js)(?:\?.*)?$/,
-    async (route) => {
-      if (!crash) return route.continue();
-      await route.fulfill({
-        contentType: 'application/javascript',
-        body: `export function MarkdownReader() {
-          throw new Error('Fallback regression: Markdown render failed');
-        }`,
-      });
-    },
-  );
-
+import { plainPackage } from '../fixtures/plugin';
+test('contains a plugin view failure and preserves the library while recovering after reload', async ({
+  page,
+}) => {
   await page.goto('/');
   await expect(page.locator('.book-card')).toHaveCount(8);
-  await page.getByLabel('选择 PDF 或 Markdown 文件', { exact: true }).setInputFiles({
-    name: 'fallback.md',
-    mimeType: 'text/markdown',
-    buffer: Buffer.from('# Fallback book\n\nStill saved after recovery.'),
+  await page.getByRole('button', { name: '设置', exact: true }).click();
+  const chosen = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: '安装插件包', exact: true }).click();
+  await (
+    await chosen
+  ).setFiles({
+    name: 'plain.leaf-plugin',
+    mimeType: 'application/octet-stream',
+    buffer: Buffer.from(plainPackage({ fault: true })),
   });
-  const openBook = page.getByRole('button', { name: '阅读 Fallback book', exact: true });
-  await openBook.click();
-  await expect(page.getByRole('heading', { name: '应用出现错误', exact: true })).toBeVisible();
-  await expect(page.getByRole('alert')).toHaveText(
-    'Error: Fallback regression: Markdown render failed',
-  );
-  const stack = page.getByRole('region', { name: '错误栈', exact: true }).locator('pre');
-  await expect(stack).toContainText('Error: Fallback regression: Markdown render failed');
-  await expect(stack).toContainText('at MarkdownReader');
-  await expect(page.getByRole('region', { name: '组件栈', exact: true })).toContainText(
-    'MarkdownReader',
-  );
-  await page.screenshot({ path: test.info().outputPath('fallback.png') });
-
-  await page.getByRole('button', { name: '重试', exact: true }).click();
-  await expect(page.locator('.error-fallback')).toHaveCount(0);
-  await expect(openBook).toBeVisible();
-  await openBook.click();
-  await expect(page.getByRole('heading', { name: '应用出现错误', exact: true })).toBeVisible();
-  crash = false;
-  await page.getByRole('button', { name: '重新加载', exact: true }).click();
-  await expect(page.locator('.error-fallback')).toHaveCount(0);
-  await openBook.click();
-  await expect(page.locator('.markdown-content h1')).toHaveText('Fallback book');
-  await expect(page.locator('.markdown-content')).toContainText('Still saved after recovery.');
+  await expect(page.locator('[data-plugin-id="test.plain"]')).toContainText('已启用');
+  await page.keyboard.press('Escape');
+  await page.getByLabel('选择阅读文件', { exact: true }).setInputFiles({
+    name: 'recovery.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('Saved original content.'),
+  });
+  await page.getByRole('button', { name: '阅读 recovery.txt', exact: true }).click();
+  await expect(page.locator('.reader-error')).toContainText('Plugin view failed');
+  await page
+    .locator('.reader-error')
+    .getByRole('button', { name: '返回书架', exact: true })
+    .click();
+  await expect(page.locator('.book-card')).toHaveCount(9);
+  await page.addInitScript(() => Object.assign(globalThis, { leafRecovered: true }));
+  await page.reload();
+  await page.getByRole('button', { name: '阅读 recovery.txt', exact: true }).click();
+  await expect(page.locator('[data-plain-content]')).toHaveText('Saved original content.');
+  await expect(page.locator('.reader-error')).toHaveCount(0);
 });

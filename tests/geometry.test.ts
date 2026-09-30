@@ -4,7 +4,7 @@ import {
   fitWidth,
   PAGE_GAP,
   READABLE_PAGE_WIDTH,
-} from '../src/features/reader/viewport/geometry';
+} from '../plugins/pdf/src/view/geometry';
 
 const portrait = { width: 600, height: 800 };
 const continuous = { continuous: true, spread: false };

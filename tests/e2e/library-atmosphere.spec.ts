@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import sharp from 'sharp';
-import { glassOpacity } from '../../src/lib/appearance';
+import { glassOpacity } from '../../src/platform/appearance';
 
 test('shows the cover atmosphere over the sidebar in Windows glass and opaque themes', async ({
   page,

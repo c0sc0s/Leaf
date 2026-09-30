@@ -8,7 +8,7 @@ test('desktop persists resized reader panels without storage errors', async () =
   const launch = () =>
     electron.launch({
       args: ['.', '--dev'],
-      env: { ...process.env, LEAF_USER_DATA: root },
+      env: { ...process.env, LEAF_TEST_PLUGINS: 'all', LEAF_USER_DATA: root },
     });
   let app = await launch();
   try {
@@ -42,15 +42,17 @@ test('desktop persists resized reader panels without storage errors', async () =
     await page.mouse.up();
     await expect(notes).toHaveAttribute('aria-valuenow', String(notesInitial + 40));
     await page.evaluate(async () => {
-      const { flushStorage } = await import('/src/lib/storageClient.ts');
-      await flushStorage();
+      await window.desktop!.storage.request('flush', undefined);
     });
     expect(
       await page.evaluate(() => (window as unknown as { storageErrors: unknown[] }).storageErrors),
     ).toEqual([]);
-    expect(await page.evaluate(() => window.desktop!.storage.request('preferences'))).toMatchObject(
-      { 'leaf-sidebar-width': String(initial + 16), 'leaf-notes-width': String(notesInitial + 40) },
-    );
+    expect(
+      await page.evaluate(() => window.desktop!.storage.request('settings.list', undefined)),
+    ).toMatchObject({
+      'ui.sidebar-width': String(initial + 16),
+      'ui.notes-width': String(notesInitial + 40),
+    });
     await app.close();
     app = await launch();
     page = await app.firstWindow();

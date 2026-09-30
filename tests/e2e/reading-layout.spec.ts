@@ -16,7 +16,7 @@ test('prioritizes the page and provides one search entry and reversible focus mo
   await page.getByLabel('文档导航', { exact: true }).click();
   await expect(page.getByRole('tab', { name: '页面缩略图' })).toBeVisible();
   await expect(page.getByRole('button', { name: /搜索/ })).toHaveCount(1);
-  await page.getByLabel('搜索 PDF', { exact: true }).click();
+  await page.getByLabel('搜索文档', { exact: true }).click();
   await expect(page.getByLabel('搜索文档内容', { exact: true })).toBeFocused();
   await expect(page.getByRole('tablist')).toHaveCount(0);
   await page.getByLabel('专注阅读（F）', { exact: true }).click();
@@ -48,7 +48,7 @@ test('swaps complete pages without blank frames and preserves a reading anchor o
   }
   await page.goto('/');
   await expect(page.locator('.book-card')).toHaveCount(8);
-  await page.getByLabel('选择 PDF 或 Markdown 文件', { exact: true }).setInputFiles({
+  await page.getByLabel('选择阅读文件', { exact: true }).setInputFiles({
     name: 'navigation.pdf',
     mimeType: 'application/pdf',
     buffer: Buffer.from(await pdf.save()),
@@ -65,8 +65,8 @@ test('swaps complete pages without blank frames and preserves a reading anchor o
     observer.observe(el, { childList: true, subtree: true });
   });
   const jump = async (n: string) => {
-    await page.getByLabel('页码', { exact: true }).fill(n);
-    await page.getByLabel('页码', { exact: true }).press('Enter');
+    await page.getByLabel('位置序号', { exact: true }).fill(n);
+    await page.getByLabel('位置序号', { exact: true }).press('Enter');
     paper = page.locator(`.pdf-paper[data-page="${n}"]`);
     await expect(paper).toBeInViewport();
     await expect(paper).toHaveAttribute('aria-busy', 'false');
@@ -91,6 +91,7 @@ test('swaps complete pages without blank frames and preserves a reading anchor o
       el.closest('.reading-canvas')!.getBoundingClientRect().top - el.getBoundingClientRect().top,
   }));
   await page.getByLabel('文档导航', { exact: true }).click();
+  await page.getByRole('tab', { name: '页面缩略图', exact: true }).click();
   await expect(page.locator('.thumbnail.selected')).toBeInViewport();
   await expect(paper).toHaveAttribute('aria-busy', 'false');
   await expect

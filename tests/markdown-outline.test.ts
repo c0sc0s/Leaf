@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { markdownOutline } from '../src/features/reader/markdownOutline';
+import { markdownOutline } from '../plugins/markdown/src/document/markdownOutline';
 
 describe('Markdown outline', () => {
   it('parses actual headings, preserves duplicate anchors and normalizes skipped levels', () => {

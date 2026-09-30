@@ -5,8 +5,8 @@ import { switchReaderToDark } from './readerMenu';
 async function openBook(page: import('@playwright/test').Page) {
   await page.goto('/');
   await page.getByRole('button', { name: '阅读 The Art of Noticing', exact: true }).click();
-  await page.getByLabel('页码', { exact: true }).fill('2');
-  await page.getByLabel('页码', { exact: true }).press('Enter');
+  await page.getByLabel('位置序号', { exact: true }).fill('2');
+  await page.getByLabel('位置序号', { exact: true }).press('Enter');
   await expect(
     page.locator('.textLayer [data-start]').filter({ hasText: 'We move' }),
   ).toBeVisible();
@@ -41,7 +41,7 @@ test('renders PDFs, persists annotations, exports native PDF marks and restores 
   await page.getByLabel('第 2 页批注笔记').first().press('Tab');
   await switchReaderToDark(page);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await expect(page.locator('.reading-canvas')).toHaveClass(/reader-dark/);
+  await expect(page.locator('.reading-surface')).toHaveClass(/reader-dark/);
   await expect(page.locator('.pdf-paper[data-page="2"]')).toHaveClass(/dark-paper/);
   await expect(page.locator('.annotation-overlay line')).toHaveCount(1);
   await page.getByLabel('添加书签', { exact: true }).click();
@@ -55,7 +55,7 @@ test('renders PDFs, persists annotations, exports native PDF marks and restores 
   await page.getByLabel('返回书架', { exact: true }).click();
   await page.reload();
   await page.getByRole('button', { name: '阅读 The Art of Noticing', exact: true }).click();
-  await expect(page.getByLabel('页码', { exact: true })).toHaveValue('2');
+  await expect(page.getByLabel('位置序号', { exact: true })).toHaveValue('2');
   await page.getByLabel('阅读笔记', { exact: true }).last().click();
   await expect(page.locator('.note-card')).toHaveCount(2);
   await expect(page.getByLabel('第 2 页批注笔记').first()).toHaveValue('A lasting thought');
@@ -71,12 +71,12 @@ test('preserves a page chosen while the PDF worker is still loading', async ({ p
     await route.continue();
   });
   await page.getByRole('button', { name: '阅读 The Art of Noticing', exact: true }).click();
-  await page.getByLabel('页码', { exact: true }).fill('2');
-  await page.getByLabel('页码', { exact: true }).press('Enter');
+  await page.getByLabel('位置序号', { exact: true }).fill('2');
+  await page.getByLabel('位置序号', { exact: true }).press('Enter');
   await expect(
     page.locator('.textLayer [data-start]').filter({ hasText: 'We move' }),
   ).toBeVisible();
-  await expect(page.getByLabel('页码', { exact: true })).toHaveValue('2');
+  await expect(page.getByLabel('位置序号', { exact: true })).toHaveValue('2');
 });
 test('imports real files, rejects duplicates, searches all pages and locates search results', async ({
   page,
@@ -90,19 +90,19 @@ test('imports real files, rejects duplicates, searches all pages and locates sea
   pdf.addPage().drawText('Needle exists on the second page.', { font });
   const data = Buffer.from(await pdf.save());
   await page
-    .getByLabel('选择 PDF 或 Markdown 文件', { exact: true })
+    .getByLabel('选择阅读文件', { exact: true })
     .setInputFiles({ name: 'imported.pdf', mimeType: 'application/pdf', buffer: data });
   await expect(page.locator('.book-card')).toHaveCount(9);
   await page
-    .getByLabel('选择 PDF 或 Markdown 文件', { exact: true })
+    .getByLabel('选择阅读文件', { exact: true })
     .setInputFiles({ name: 'again.pdf', mimeType: 'application/pdf', buffer: data });
   await expect(page.getByRole('status')).toContainText('已在书库中');
   await expect(page.locator('.book-card')).toHaveCount(9);
   await page.getByRole('button', { name: '阅读 Imported specimen', exact: true }).click();
-  await page.getByLabel('搜索 PDF', { exact: true }).click();
+  await page.getByLabel('搜索文档', { exact: true }).click();
   await page.getByLabel('搜索文档内容', { exact: true }).fill('Needle');
   await page.locator('.search-result').click();
-  await expect(page.getByLabel('页码', { exact: true })).toHaveValue('2');
+  await expect(page.getByLabel('位置序号', { exact: true })).toHaveValue('2');
   await expect(page.locator('.pdf-paper[data-page="2"] .search-matches rect')).toHaveCount(1);
   await expect(page.locator('.pdf-paper[data-page="2"]')).toBeInViewport();
   await page.getByLabel('返回书架', { exact: true }).click();

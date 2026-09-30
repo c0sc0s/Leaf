@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { streamChat, type ModelSettings } from '../electron/ai/chat.ts';
-import type { ChatEvent } from '../electron/contract.ts';
+import { streamChat, type ModelSettings } from '../plugins/ai/src/models/provider.ts';
+import type { ChatEvent } from '../plugins/ai/src/models/types.ts';
 
 type Handler = (body: Record<string, unknown>, res: ServerResponse, req: IncomingMessage) => void;
 const servers: Server[] = [];

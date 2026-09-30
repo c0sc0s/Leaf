@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { atmosphereBackground, extractPalette } from '../src/lib/coverPalette';
+import { atmosphereBackground, extractPalette } from '../src/app/library/coverPalette';
 
 function cover(width: number, height: number, paint: (x: number, y: number) => number[]) {
   const data = new Uint8ClampedArray(width * height * 4);

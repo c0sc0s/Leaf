@@ -1,5 +1,5 @@
 import { _electron, expect } from '@playwright/test';
-import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { PDFDocument, PDFName } from 'pdf-lib';
@@ -19,7 +19,7 @@ const executable =
           : 'release/mac/Leaf.app/Contents/MacOS/Leaf',
       )
     : path.join(root, 'release/win-unpacked/Leaf.exe'));
-await mkdir('docs/previews', { recursive: true });
+await mkdir('test-results/desktop', { recursive: true });
 const app = await _electron.launch({
   executablePath: executable,
   // Windows CI needs a live native compositor when backdrop changes precede screenshots.
@@ -52,10 +52,10 @@ try {
     };
   });
   expect(prefs).toEqual({ sandbox: true, contextIsolation: true, nodeIntegration: false });
-  await page.screenshot({ animations: 'disabled', path: 'docs/previews/library-light.png' });
+  await page.screenshot({ animations: 'disabled', path: 'test-results/desktop/library-light.png' });
   await page.getByRole('button', { name: '阅读 The Art of Noticing', exact: true }).click();
-  await page.getByLabel('页码', { exact: true }).fill('2');
-  await page.getByLabel('页码', { exact: true }).press('Enter');
+  await page.getByLabel('位置序号', { exact: true }).fill('2');
+  await page.getByLabel('位置序号', { exact: true }).press('Enter');
   await expect(
     page.locator('.textLayer [data-start]').filter({ hasText: 'We move' }),
   ).toBeVisible();
@@ -82,15 +82,15 @@ try {
   const exported = await PDFDocument.load(await readFile(output));
   expect(exported.getPage(1).node.get(PDFName.of('Annots'))).toBeTruthy();
   await page.getByLabel('关闭通知', { exact: true }).click();
-  await page.screenshot({ animations: 'disabled', path: 'docs/previews/reader-light.png' });
+  await page.screenshot({ animations: 'disabled', path: 'test-results/desktop/reader-light.png' });
   await page.getByLabel('更多阅读操作', { exact: true }).click();
   await page.getByRole('menuitem', { name: '阅读偏好', exact: true }).click();
   await page.getByRole('radio', { name: '深色', exact: true }).click();
   await page.getByRole('button', { name: '关闭', exact: true }).click();
-  await expect(page.locator('.reading-canvas')).toHaveClass(/reader-dark/);
+  await expect(page.locator('.reading-surface')).toHaveClass(/reader-dark/);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await expect(page.locator('.note-card textarea')).toBeVisible();
-  await page.screenshot({ animations: 'disabled', path: 'docs/previews/reader-dark.png' });
+  await page.screenshot({ animations: 'disabled', path: 'test-results/desktop/reader-dark.png' });
   await page.getByLabel('关闭笔记', { exact: true }).click();
   await page.locator('.reading-canvas').evaluate((el) => {
     const next = el.querySelector('.pdf-slot[data-page="3"]');
@@ -98,14 +98,20 @@ try {
       next.getBoundingClientRect().top - el.getBoundingClientRect().top - el.clientHeight / 2;
   });
   await expect(page.locator('.pdf-paper[data-page="3"]')).toHaveAttribute('aria-busy', 'false');
-  await page.screenshot({ animations: 'disabled', path: 'docs/previews/reader-continuous.png' });
+  await page.screenshot({
+    animations: 'disabled',
+    path: 'test-results/desktop/reader-continuous.png',
+  });
   await page.getByLabel('更多阅读操作', { exact: true }).click();
   await page.getByRole('menuitem', { name: '阅读偏好', exact: true }).click();
-  await page.screenshot({ animations: 'disabled', path: 'docs/previews/reader-settings.png' });
+  await page.screenshot({
+    animations: 'disabled',
+    path: 'test-results/desktop/reader-settings.png',
+  });
   await page.getByRole('button', { name: '关闭', exact: true }).click();
 
   await page.getByLabel('返回书架', { exact: true }).click();
-  await page.screenshot({ animations: 'disabled', path: 'docs/previews/library-dark.png' });
+  await page.screenshot({ animations: 'disabled', path: 'test-results/desktop/library-dark.png' });
   await app.evaluate(
     ({ dialog }, file) => {
       dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] });
@@ -142,4 +148,5 @@ try {
   );
 } finally {
   await app.close();
+  await rm(userData, { recursive: true, force: true });
 }

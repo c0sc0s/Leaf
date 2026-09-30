@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { indexText, type RawToken } from '../src/lib/text';
+import { indexText, type RawToken } from '../plugins/pdf/src/document/text';
 function token(text: string, x: number, y: number, index = 0): RawToken {
   return {
     text,

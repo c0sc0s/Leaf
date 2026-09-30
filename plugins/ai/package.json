@@ -1,0 +1,19 @@
+{
+  "name": "@leaf/plugin-ai",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@leaf/contracts": "1.0.0",
+    "@leaf/plugin-sdk": "1.0.0",
+    "@leaf/shared": "1.0.0",
+    "@leaf/ui": "1.0.0",
+    "openai": "7.25.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}

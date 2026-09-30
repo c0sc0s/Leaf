@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { runAgent, ToolInputError, type ChatFunction, type Tool } from '../src/ai/runtime';
-import type { ChatRequest, ChatResult } from '../src/ai/types';
+import {
+  runAgent,
+  ToolInputError,
+  type ChatFunction,
+  type Tool,
+} from '../plugins/ai/src/agent/runtime';
+import type { ChatRequest, ChatResult } from '../plugins/ai/src/agent/types';
 
 const usage = { promptTokens: 10, completionTokens: 2, cachedTokens: 4 };
 const reply = (text: string, toolCalls: ChatResult['toolCalls'] = []): ChatResult => ({

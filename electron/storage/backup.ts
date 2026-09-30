@@ -11,8 +11,7 @@ export function backupLibrary(db: DatabaseSync, root: string, destination: strin
   const entries = db
     .prepare(
       `SELECT DISTINCT c.hash, c.size FROM content_objects c
-    WHERE EXISTS (SELECT 1 FROM book_contents WHERE hash=c.hash)
-    OR EXISTS (SELECT 1 FROM book_assets WHERE hash=c.hash)`,
+    WHERE EXISTS (SELECT 1 FROM document_resources WHERE hash=c.hash)`,
     )
     .all() as { hash: string; size: number }[];
   for (const entry of entries) {
@@ -26,7 +25,7 @@ export function backupLibrary(db: DatabaseSync, root: string, destination: strin
   try {
     snapshot.exec('PRAGMA foreign_keys=ON; DELETE FROM content_pins;');
     snapshot.exec(`DELETE FROM content_objects WHERE hash NOT IN
-      (SELECT hash FROM book_contents UNION SELECT hash FROM book_assets);`);
+      (SELECT hash FROM document_resources);`);
     if (
       snapshot.prepare('PRAGMA integrity_check').get()?.integrity_check !== 'ok' ||
       snapshot.prepare('PRAGMA foreign_key_check').all().length
@@ -37,7 +36,7 @@ export function backupLibrary(db: DatabaseSync, root: string, destination: strin
   }
   fs.writeFileSync(
     path.join(destination, 'manifest.json'),
-    JSON.stringify({ version: 1, entries }),
+    JSON.stringify({ format: 'leaf.reader', version: 1, entries }),
   );
   return destination;
 }

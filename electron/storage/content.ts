@@ -7,19 +7,13 @@ export const chunkSize = 1024 * 1024;
 const maxBytes = 512 * 1024 * 1024;
 const validHash = /^[a-f0-9]{64}$/;
 
-/** A stored content object as the renderer refers to it; `token` pins an upload or read. */
-export interface ContentReference {
-  hash: string;
-  size: number;
-  type: string;
-  token?: string;
-}
+import type { ContentReference } from '@leaf/contracts/transport';
 
 interface Upload {
   descriptor: number | undefined;
   filename: string;
   size: number;
-  type: string;
+  mime: string;
   written: number;
   hash: Hash;
 }
@@ -54,20 +48,19 @@ export function createContentStore(root: string, db: DatabaseSync) {
   const release = (owner: string) => {
     db.prepare('DELETE FROM content_pins WHERE owner=?').run(owner);
   };
-  const reference = (hash: string, type: string): ContentReference => {
+  const reference = (hash: string, mime: string): ContentReference => {
     const entry = db.prepare('SELECT size FROM content_objects WHERE hash=?').get(hash) as
       { size: number } | undefined;
     if (!entry || fs.statSync(file(hash)).size !== entry.size)
       throw new Error('书籍内容缺失或损坏');
-    return { hash, size: entry.size, type };
+    return { hash, size: entry.size, mime };
   };
   const collect = () => {
     const unused = db
       .prepare(
         `SELECT hash FROM content_objects c
       WHERE NOT EXISTS (SELECT 1 FROM content_pins WHERE hash=c.hash)
-      AND NOT EXISTS (SELECT 1 FROM book_contents WHERE hash=c.hash)
-      AND NOT EXISTS (SELECT 1 FROM book_assets WHERE hash=c.hash)`,
+      AND NOT EXISTS (SELECT 1 FROM document_resources WHERE hash=c.hash)`,
       )
       .all() as { hash: string }[];
     for (const { hash } of unused) {
@@ -105,8 +98,8 @@ export function createContentStore(root: string, db: DatabaseSync) {
     collect,
     release,
     abort,
-    begin({ size, type }: { size: number; type: string }) {
-      if (!Number.isSafeInteger(size) || size < 0 || size > maxBytes || typeof type !== 'string')
+    begin({ size, mime }: { size: number; mime: string }) {
+      if (!Number.isSafeInteger(size) || size < 0 || size > maxBytes || typeof mime !== 'string')
         throw new Error('Invalid content upload');
       const token = randomUUID();
       const filename = path.join(staging, `${token}.upload`);
@@ -115,7 +108,7 @@ export function createContentStore(root: string, db: DatabaseSync) {
         descriptor,
         filename,
         size,
-        type,
+        mime,
         written: 0,
         hash: createHash('sha256'),
       });
@@ -175,10 +168,10 @@ export function createContentStore(root: string, db: DatabaseSync) {
         throw error;
       }
       uploads.delete(token);
-      return { hash, size: upload.size, type: upload.type, token };
+      return { hash, size: upload.size, mime: upload.mime, token };
     },
     validateUpload(blob: ContentReference) {
-      reference(blob.hash, blob.type);
+      reference(blob.hash, blob.mime);
       if (
         typeof blob.token !== 'string' ||
         !db

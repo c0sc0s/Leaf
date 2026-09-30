@@ -20,5 +20,21 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "electron/contract.ts"]
+  "include": [
+    "src",
+    "packages",
+    "plugins/pdf/src",
+    "plugins/markdown/src",
+    "plugins/ai/src/index.tsx",
+    "plugins/ai/src/agent",
+    "plugins/ai/src/features",
+    "plugins/ai/src/document-tools",
+    "plugins/ai/src/ui"
+  ],
+  "exclude": [
+    "packages/plugin-sdk/src/backend",
+    "plugins/**/src/backend",
+    "plugins/ai/src/models/provider.ts",
+    "plugins/ai/src/models/config.ts"
+  ]
 }

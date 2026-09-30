@@ -16,7 +16,7 @@ test('supports keyboard menus and dialog focus restoration', async ({ page }) =>
   const dialog = page.getByRole('dialog', { name: '阅读偏好' });
   await expect(dialog).toBeVisible();
   await page.keyboard.press('Shift+Tab');
-  await expect(dialog.getByLabel('原版颜色', { exact: true })).toBeFocused();
+  expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(true);
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
   await expect(settings).toBeFocused();

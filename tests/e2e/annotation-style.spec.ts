@@ -6,8 +6,8 @@ for (const initialKind of ['underline', 'highlight'] as const) {
   }) => {
     await page.goto('/');
     await page.getByRole('button', { name: '阅读 The Art of Noticing', exact: true }).click();
-    await page.getByLabel('页码', { exact: true }).fill('2');
-    await page.getByLabel('页码', { exact: true }).press('Enter');
+    await page.getByLabel('位置序号', { exact: true }).fill('2');
+    await page.getByLabel('位置序号', { exact: true }).press('Enter');
     const text = page.locator('.textLayer [data-start]').filter({ hasText: 'We move' });
     await expect(page.locator('.pdf-paper[data-page="2"]')).toHaveAttribute('aria-busy', 'false');
     await expect(text).toBeVisible();
@@ -52,8 +52,15 @@ for (const initialKind of ['underline', 'highlight'] as const) {
     );
     const savedKind = () =>
       page.evaluate(async (id) => {
-        const { storage } = await import('/src/lib/db.ts');
-        return (await storage.annotations()).find((mark: { id: string }) => mark.id === id)?.kind;
+        const { StorageClient } = await import('/src/platform/transport/storage.ts');
+        const storage = new StorageClient();
+        const documents = await storage.request('library.list', undefined);
+        const saved = (
+          await Promise.all(
+            documents.map((document) => storage.request('annotations.list', document.id)),
+          )
+        ).flat();
+        return saved.find((mark: { id: string }) => mark.id === id)?.kind;
       }, markId);
     for (const kind of ['highlight', 'underline'] as const) {
       await (kind === 'highlight' ? highlight : underline).click();

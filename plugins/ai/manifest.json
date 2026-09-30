@@ -1,0 +1,19 @@
+{
+  "id": "leaf.ai",
+  "name": "AI 阅读助手",
+  "description": "基于原文的问答、总结与可跳转引用",
+  "entries": {
+    "renderer": "renderer.js",
+    "backend": "backend.js"
+  },
+  "contributes": {
+    "selectionActions": ["leaf.ai.ask"],
+    "toolbarActions": ["leaf.ai.open", "leaf.ai.summarize"],
+    "panels": ["leaf.ai.panel"],
+    "settings": ["leaf.ai.settings"]
+  },
+  "permissions": ["documents", "storage", "backend", "credentials", "network"],
+  "version": "1.0.0",
+  "hostApi": "^1.0.0",
+  "dependencies": {}
+}

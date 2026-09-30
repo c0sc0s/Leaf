@@ -19,8 +19,18 @@
     "paths": {
       "@/*": ["./src/*"],
       // Playwright specs import app modules inside page.evaluate by their dev-server URL.
-      "/src/*": ["./src/*"]
+      "/src/*": ["./src/*"],
+      "/plugins/*": ["./plugins/*"]
     }
   },
-  "include": ["vite.config.ts", "vitest.config.ts", "playwright.config.ts", "scripts/vite", "tests"]
+  "include": [
+    "vite.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "scripts/vite",
+    "scripts/build.ts",
+    "scripts/runtime.ts",
+    "src/platform/desktop.d.ts",
+    "tests"
+  ]
 }

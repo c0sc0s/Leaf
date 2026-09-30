@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
+import { emptyLibrary } from './emptyLibrary';
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('folio-initialized', '1'));
-  await page.goto('/');
+  await emptyLibrary(page);
   await expect(page.getByRole('heading', { name: '我的书架', exact: true })).toBeVisible();
 });
 
@@ -13,7 +13,7 @@ test('dragging reader images or internal content never opens book import', async
       body: '<svg xmlns="http://www.w3.org/2000/svg" width="240" height="100"><rect width="240" height="100" fill="blue"/></svg>',
     }),
   );
-  await page.getByLabel('选择 PDF 或 Markdown 文件', { exact: true }).setInputFiles({
+  await page.getByLabel('选择阅读文件', { exact: true }).setInputFiles({
     name: 'image-drag.md',
     mimeType: 'text/markdown',
     buffer: Buffer.from(

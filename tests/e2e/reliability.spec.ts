@@ -17,7 +17,7 @@ async function openSpecimen(page: Page, count = 8) {
   }
   await page.goto('/');
   await expect(page.locator('.book-card')).toHaveCount(8);
-  await page.getByLabel('选择 PDF 或 Markdown 文件', { exact: true }).setInputFiles({
+  await page.getByLabel('选择阅读文件', { exact: true }).setInputFiles({
     name: 'reliable.pdf',
     mimeType: 'application/pdf',
     buffer: Buffer.from(await pdf.save()),
@@ -29,8 +29,8 @@ async function ready(page: Page, n: number) {
   await expect(page.locator(`.pdf-paper[data-page="${n}"]`)).toHaveAttribute('aria-busy', 'false');
 }
 async function jump(page: Page, n: number) {
-  await page.getByLabel('页码', { exact: true }).fill(String(n));
-  await page.getByLabel('页码', { exact: true }).press('Enter');
+  await page.getByLabel('位置序号', { exact: true }).fill(String(n));
+  await page.getByLabel('位置序号', { exact: true }).press('Enter');
   await ready(page, n);
   await expect(page.locator(`.pdf-paper[data-page="${n}"]`)).toBeInViewport();
 }
@@ -69,10 +69,10 @@ test('renders only nearby pages of a long document and scrolls continuously acro
   const box = (await page.locator('.reading-canvas').boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.wheel(0, 450);
-  await expect(page.getByLabel('页码', { exact: true })).toHaveValue('3');
+  await expect(page.getByLabel('位置序号', { exact: true })).toHaveValue('3');
   await expect(page.locator('.pdf-paper[data-page="3"] .textLayer')).toContainText('Page 3 line 0');
   await page.mouse.wheel(0, -700);
-  await expect(page.getByLabel('页码', { exact: true })).toHaveValue('2');
+  await expect(page.getByLabel('位置序号', { exact: true })).toHaveValue('2');
   expect(await page.locator('.pdf-paper canvas').count()).toBeLessThan(8);
 });
 test('restores exact position and zoom, returns from navigation and locates bookmarks and search', async ({
@@ -112,7 +112,7 @@ test('restores exact position and zoom, returns from navigation and locates book
   await page.locator('.outline-item').filter({ hasText: '第 2 页' }).click();
   await ready(page, 2);
   await expect.poll(async () => Math.abs((await textTop(page, target)) - top)).toBeLessThan(15);
-  await page.getByLabel('搜索 PDF', { exact: true }).click();
+  await page.getByLabel('搜索文档', { exact: true }).click();
   await page.getByLabel('搜索文档内容', { exact: true }).fill('Page 7 line 20.');
   await page.locator('.search-result').click();
   await ready(page, 7);
@@ -138,10 +138,15 @@ test('saves notes without blur, supports undo and redo, and preserves original i
   await expect
     .poll(() =>
       page.evaluate(async () => {
-        const { storage } = await import('/src/lib/db.ts');
-        return (await storage.annotations()).find(
-          (m: { note: string }) => m.note === 'Saved while still editing',
-        )?.note;
+        const { StorageClient } = await import('/src/platform/transport/storage.ts');
+        const storage = new StorageClient();
+        const documents = await storage.request('library.list', undefined);
+        const saved = (
+          await Promise.all(
+            documents.map((document) => storage.request('annotations.list', document.id)),
+          )
+        ).flat();
+        return saved.find((m: { note: string }) => m.note === 'Saved while still editing')?.note;
       }),
     )
     .toBe('Saved while still editing');
@@ -170,11 +175,14 @@ test('switches desktop page layouts, restores layout on reopen and edits saved a
   await openSpecimen(page);
   await jump(page, 4);
   await page.getByLabel('连续滚动', { exact: true }).click();
-  await expect(page.getByLabel('单页', { exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByLabel('连续滚动', { exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
   await ready(page, 4);
   await expect(page.locator('.pdf-paper[data-page="4"]')).toBeInViewport();
   await expect(page.locator('.pdf-paper[data-page="3"]')).not.toBeInViewport();
-  await page.getByLabel('下一页', { exact: true }).click();
+  await page.getByLabel('下一个位置', { exact: true }).click();
   await ready(page, 5);
   await expect(page.locator('.pdf-paper[data-page="5"]')).toBeInViewport();
   await page.getByLabel('双页', { exact: true }).click();
@@ -186,7 +194,7 @@ test('switches desktop page layouts, restores layout on reopen and edits saved a
   const b = (await page.locator('.pdf-paper[data-page="6"]').boundingBox())!;
   expect(b.x).toBeGreaterThan(a.x + a.width);
   expect(Math.abs(a.y - b.y)).toBeLessThan(1);
-  await page.getByLabel('下一页', { exact: true }).click();
+  await page.getByLabel('下一个位置', { exact: true }).click();
   await ready(page, 7);
   await ready(page, 8);
   await expect(page.locator('.pdf-paper[data-page="7"]')).toBeInViewport();

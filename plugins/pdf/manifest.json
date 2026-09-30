@@ -1,0 +1,16 @@
+{
+  "id": "leaf.pdf",
+  "name": "PDF 阅读",
+  "description": "PDF 阅读、搜索、批注和导出",
+  "entries": {
+    "renderer": "renderer.js"
+  },
+  "contributes": {
+    "documentProviders": ["leaf.pdf.document"],
+    "views": ["leaf.pdf.view"]
+  },
+  "permissions": ["documents"],
+  "version": "1.0.0",
+  "hostApi": "^1.0.0",
+  "dependencies": {}
+}

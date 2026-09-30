@@ -1,44 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Book } from '../src/types';
-import { bookContent, bookMetadata } from '../src/lib/bookData';
-import { SerialQueue } from '../src/lib/serialQueue';
-
-it('keeps content separate while retaining bookmarks and progress metadata', () => {
-  const book: Book = {
-    id: 'book',
-    format: 'markdown',
-    title: 'Book',
-    author: '',
-    filename: 'book.md',
-    cover: '',
-    pages: 2,
-    page: 2,
-    addedAt: 1,
-    openedAt: 2,
-    favorite: true,
-    bookmarks: [2],
-    bookmarkLocations: { 2: { page: 2, ratio: 0.4 } },
-    blob: new Blob(['source']),
-    chapters: [{ path: 'book.md', title: 'Chapter', content: '# Chapter' }],
-    assets: [{ path: 'image.svg', blob: new Blob(['image']) }],
-  };
-  const metadata = bookMetadata(book);
-  expect(metadata).not.toHaveProperty('blob');
-  expect(metadata).not.toHaveProperty('chapters');
-  expect(metadata).not.toHaveProperty('assets');
-  expect(metadata).toMatchObject({
-    page: 2,
-    openedAt: 2,
-    favorite: true,
-    bookmarks: [2],
-    bookmarkLocations: book.bookmarkLocations,
-  });
-  expect(bookMetadata(metadata)).toEqual(metadata);
-  const content = bookContent(book);
-  expect({ ...metadata, ...content }).toEqual(book);
-  expect(content.chapters).toBe(book.chapters);
-  expect(content.blob).toBe(book.blob);
-});
+import { SerialQueue } from '@leaf/shared/async';
 
 describe('import queue', () => {
   it('serializes batches, including those added while a previous import is pending', async () => {

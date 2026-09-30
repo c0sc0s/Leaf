@@ -1,41 +1,9 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
-import { defaultSettings, glassOpacity, readSettings } from '../src/lib/appearance';
+import { glassOpacity } from '../src/platform/appearance';
+import { defaultSettings } from '../src/core/settings/service';
 
-vi.mock('../src/lib/preferences', () => ({ readPreference: vi.fn() }));
-import { readPreference } from '../src/lib/preferences';
-
-import { applyBackdrop } from '../electron/appearance.ts';
+import { applyBackdrop } from '../electron/platform/appearance.ts';
 afterEach(() => vi.unstubAllGlobals());
-
-function stored(value: string) {
-  vi.mocked(readPreference).mockReturnValue(value);
-}
-
-describe('saved glass preferences', () => {
-  it('upgrades existing preferences while retaining the chosen reading theme', () => {
-    stored('{"theme":"dark","readerTheme":"light","originalColors":true}');
-    expect(readSettings()).toEqual({
-      ...defaultSettings,
-      theme: 'dark',
-      readerTheme: 'light',
-      originalColors: true,
-    });
-  });
-  it('retains a disabled effect and zero transparency', () => {
-    stored('{"frostedGlass":false,"glassTransparency":0}');
-    expect(readSettings()).toMatchObject({ frostedGlass: false, glassTransparency: 0 });
-  });
-  it('recovers from malformed preferences and invalid control values', () => {
-    stored('broken json');
-    expect(readSettings()).toEqual(defaultSettings);
-    stored('{"frostedGlass":"false","glassTransparency":"100"}');
-    expect(readSettings()).toEqual(defaultSettings);
-    stored('{"glassTransparency":999}');
-    expect(readSettings().glassTransparency).toBe(100);
-    stored('{"glassTransparency":-10}');
-    expect(readSettings().glassTransparency).toBe(0);
-  });
-});
 
 describe('glass transparency', () => {
   const platforms = ['darwin', 'win32'] as const;

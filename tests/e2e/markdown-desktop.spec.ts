@@ -14,7 +14,7 @@ test('desktop imports Markdown files and folders through native dialogs', async 
   await writeFile(path.join(folder, '2.md'), '# Native chapter two');
   const app = await electron.launch({
     args: ['.', '--dev'],
-    env: { ...process.env, LEAF_USER_DATA: path.join(root, 'profile') },
+    env: { ...process.env, LEAF_TEST_PLUGINS: 'all', LEAF_USER_DATA: path.join(root, 'profile') },
   });
   try {
     const page = await app.firstWindow();
@@ -40,8 +40,9 @@ test('desktop imports Markdown files and folders through native dialogs', async 
     await page.getByRole('menuitem', { name: '导入文件夹', exact: true }).click();
     await expect(page.locator('.book-card')).toHaveCount(10);
     await page.getByRole('button', { name: '阅读 Desktop Book', exact: true }).click();
+    await page.getByLabel('文档导航', { exact: true }).click();
     await expect(page.locator('.outline-item.depth-0')).toHaveCount(2);
-    await expect(page.locator('.markdown-status')).toContainText('第 1 / 2 章');
+    await expect(page.getByLabel('位置序号', { exact: true })).toHaveValue('1');
     await page.getByRole('link', { name: 'Next', exact: true }).click();
     await expect(page.locator('.markdown-content h1')).toHaveText('Native chapter two');
     await page.getByLabel('返回书架', { exact: true }).click();
@@ -54,7 +55,7 @@ test('desktop imports Markdown files and folders through native dialogs', async 
         ['queued-one.md', '# Queued One\n\nFirst queued import.'],
         ['queued-two.md', '# Queued Two\n\nSecond queued import.'],
       ])
-        window.webContents.send('pdf:open', { name, data: new Uint8Array(Buffer.from(text)) });
+        window.webContents.send('document:open', { name, data: new Uint8Array(Buffer.from(text)) });
     });
     await expect(page.locator('.book-card')).toHaveCount(12);
     await page.getByRole('button', { name: '阅读 Queued One', exact: true }).click();

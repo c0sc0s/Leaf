@@ -11,3 +11,6 @@ public/vendor/
 .leaf-data/
 output/
 dist-electron/
+
+dist-plugins/
+public/runtime/

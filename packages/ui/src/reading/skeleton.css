@@ -1,0 +1,27 @@
+.page-skeleton {
+  width: min(42em, calc(100% - 48px));
+  margin: 48px auto;
+}
+.page-skeleton.paper {
+  width: min(720px, calc(100% - 48px));
+  aspect-ratio: 1 / 1.414;
+  padding: 9% 10%;
+  background: var(--reading-bg);
+  box-shadow: 0 5px 30px #25332516;
+}
+.page-skeleton-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.page-skeleton-lines i {
+  display: block;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--reading-line);
+}
+.page-skeleton-lines i:first-child {
+  height: 18px;
+  margin-bottom: 10px;
+}

@@ -1,3 +1,4 @@
+import { openReaderSettings } from './readerMenu';
 import { test, expect, type Page } from '@playwright/test';
 
 const javascript = 'const value = "hello";\n\tconsole.log(value);\n';
@@ -16,7 +17,7 @@ const markdown = [
 async function openCodeBook(page: Page) {
   await page.goto('/');
   await expect(page.locator('.book-card')).toHaveCount(8);
-  await page.getByLabel('选择 PDF 或 Markdown 文件', { exact: true }).setInputFiles({
+  await page.getByLabel('选择阅读文件', { exact: true }).setInputFiles({
     name: 'code-blocks.md',
     mimeType: 'text/markdown',
     buffer: Buffer.from(markdown),
@@ -81,7 +82,7 @@ test('highlights code in both themes, copies exact text, and keeps code searches
       (await page.evaluate(() => navigator.clipboard.readText())).replaceAll('\r\n', '\n'),
     ).toBe(source);
   }
-  await page.getByRole('button', { name: '阅读偏好', exact: true }).click();
+  await openReaderSettings(page);
   await page.getByRole('radio', { name: '深色', exact: true }).click();
   await page.keyboard.press('Escape');
   await expect(page.locator('.markdown-scroll')).toHaveClass(/markdown-dark/);
@@ -89,9 +90,9 @@ test('highlights code in both themes, copies exact text, and keeps code searches
   expect(
     await js.locator('.hljs-keyword').evaluate((node) => getComputedStyle(node).color),
   ).not.toBe(lightColor);
-  await page.getByRole('button', { name: '搜索 Markdown', exact: true }).click();
-  await page.getByLabel('搜索 Markdown 内容', { exact: true }).fill('const value');
-  await page.locator('.markdown-search-result').click();
+  await page.getByRole('button', { name: '搜索文档', exact: true }).click();
+  await page.getByLabel('搜索文档内容', { exact: true }).fill('const value');
+  await page.locator('.search-result').click();
   await expect.poll(() => js.locator('code mark').allTextContents()).toEqual(['const', ' value']);
   await expect(js.locator('code')).toHaveText(javascript);
   await expect(js.getByRole('button', { name: '复制代码', exact: true })).toBeVisible();

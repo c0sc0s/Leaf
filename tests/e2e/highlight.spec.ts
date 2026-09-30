@@ -3,7 +3,7 @@ import { PDFDocument, StandardFonts } from 'pdf-lib';
 import sharp from 'sharp';
 import { switchReaderToDark } from './readerMenu';
 
-test('composites overlapping legacy highlight rectangles at one consistent opacity in both themes', async ({
+test('composites overlapping highlight rectangles at one consistent opacity in both themes', async ({
   page,
 }) => {
   const pdf = await PDFDocument.create();
@@ -11,33 +11,49 @@ test('composites overlapping legacy highlight rectangles at one consistent opaci
   pdf.addPage([400, 500]);
   await page.goto('/');
   await expect(page.locator('.book-card')).toHaveCount(8);
-  await page.getByLabel('选择 PDF 或 Markdown 文件', { exact: true }).setInputFiles({
+  await page.getByLabel('选择阅读文件', { exact: true }).setInputFiles({
     name: 'overlap.pdf',
     mimeType: 'application/pdf',
     buffer: Buffer.from(await pdf.save()),
   });
   await expect(page.locator('.book-card')).toHaveCount(9);
   await page.evaluate(async () => {
-    const { storage } = await import('/src/lib/db.ts');
-    const book = (await storage.books()).find(
+    const { StorageClient } = await import('/src/platform/transport/storage.ts');
+    const storage = new StorageClient();
+    const book = (await storage.request('library.list', undefined)).find(
       (b: { title: string }) => b.title === 'Highlight overlap specimen',
     )!;
-    await storage.putAnnotation({
-      id: 'overlap',
-      bookId: book.id,
-      page: 1,
-      start: 0,
-      end: 0,
-      quote: 'Legacy highlight',
-      kind: 'highlight',
-      color: 'blue',
-      note: '',
-      createdAt: 0,
-      source: 'text',
-      rects: [
-        [100, 300, 200, 330],
-        [100, 320, 200, 350],
-        [100, 350, 200, 380],
+    await storage.request('annotations.commit', {
+      documentId: book.id,
+      remove: [],
+      put: [
+        {
+          id: 'overlap',
+          documentId: book.id,
+          targets: [
+            {
+              documentId: book.id,
+              revision: book.revision,
+              schema: 'leaf.pdf',
+              version: 1,
+              payload: {
+                page: 1,
+                offset: 0,
+                end: 0,
+                rects: [
+                  [100, 300, 200, 330],
+                  [100, 320, 200, 350],
+                  [100, 350, 200, 380],
+                ],
+              },
+            },
+          ],
+          quote: 'Highlight',
+          kind: 'highlight',
+          color: 'blue',
+          note: '',
+          createdAt: 0,
+        },
       ],
     });
   });
@@ -90,7 +106,7 @@ test('copies the actual selected text and creates precise multi-line highlight r
     });
   await page.goto('/');
   await expect(page.locator('.book-card')).toHaveCount(8);
-  await page.getByLabel('选择 PDF 或 Markdown 文件', { exact: true }).setInputFiles({
+  await page.getByLabel('选择阅读文件', { exact: true }).setInputFiles({
     name: 'selection.pdf',
     mimeType: 'application/pdf',
     buffer: Buffer.from(await pdf.save()),
@@ -126,77 +142,4 @@ test('copies the actual selected text and creates precise multi-line highlight r
     .locator('.annotation-overlay [data-mark-id] rect')
     .evaluateAll((rects) => rects.map((el) => Number(el.getAttribute('width'))));
   expect(widths.map(Math.round)).toEqual([...new Set(selected.widths.map(Math.round))]);
-});
-
-test('migrates old libraries to SQLite and deletes the legacy database', async ({ page }) => {
-  await page.route('http://127.0.0.1:5173/', (route) =>
-    route.fulfill({ contentType: 'text/html', body: '<html></html>' }),
-  );
-  await page.goto('/');
-  await page.evaluate(async () => {
-    await new Promise<void>((resolve, reject) => {
-      const request = indexedDB.open('folio-library', 3);
-      request.onupgradeneeded = () => {
-        const db = request.result;
-        db.createObjectStore('books', { keyPath: 'id' });
-        const marks = db.createObjectStore('annotations', { keyPath: 'id' });
-        marks.createIndex('bookId', 'bookId');
-        db.createObjectStore('ocr', { keyPath: 'id' });
-        db.createObjectStore('documents', { keyPath: 'id' });
-      };
-      request.onsuccess = () => {
-        const db = request.result;
-        const tx = db.transaction(['books', 'annotations', 'documents'], 'readwrite');
-        tx.objectStore('books').put({
-          id: 'legacy',
-          title: 'Existing library',
-          filename: 'legacy.pdf',
-          author: 'Reader',
-          blob: new Blob(['legacy pdf bytes']),
-          cover: '',
-          pages: 10,
-          page: 4,
-          bookmarks: [4],
-          category: '未分类',
-          addedAt: 0,
-          openedAt: 0,
-        });
-        tx.objectStore('annotations').put({
-          id: 'saved-note',
-          bookId: 'legacy',
-          note: 'Keep my note',
-          page: 4,
-          quote: 'Keep text',
-          createdAt: 0,
-        });
-        tx.objectStore('documents').put({ id: 'legacy', content: { pages: ['obsolete'] } });
-        tx.oncomplete = () => {
-          db.close();
-          resolve();
-        };
-        tx.onerror = () => reject(tx.error);
-      };
-    });
-  });
-  await page.unroute('http://127.0.0.1:5173/');
-  await page.reload();
-  await expect(
-    page.getByRole('button', { name: '阅读 Existing library', exact: true }),
-  ).toBeVisible();
-  const saved = await page.evaluate(async () => {
-    const { storage } = await import('/src/lib/db.ts');
-    const stores = (await indexedDB.databases()).map((db) => db.name);
-    return {
-      books: await storage.books(),
-      notes: await storage.annotations(),
-      file: await (await storage.book('legacy'))!.blob.text(),
-      stores,
-    };
-  });
-  expect(saved.stores).not.toContain('folio-library');
-  expect(saved.file).toBe('legacy pdf bytes');
-  expect(saved.books[0]).not.toHaveProperty('blob');
-  expect(saved.books[0]).not.toHaveProperty('category');
-  expect(saved.books[0].bookmarks).toEqual([4]);
-  expect(saved.notes[0].note).toBe('Keep my note');
 });

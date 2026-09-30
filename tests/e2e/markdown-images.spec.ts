@@ -8,8 +8,6 @@ test('renders remote HTTP and HTTPS images while keeping unsafe image URLs block
     'base64',
   );
   const violations: string[] = [];
-  // This image-only fixture starts with an empty library, without generating PDF covers.
-  await page.addInitScript(() => localStorage.setItem('folio-initialized', '1'));
   await page.exposeFunction('imagePolicyViolation', (url: string) => violations.push(url));
   await page.addInitScript(() =>
     document.addEventListener('securitypolicyviolation', (event) => {
@@ -29,7 +27,7 @@ test('renders remote HTTP and HTTPS images while keeping unsafe image URLs block
     );
   await page.goto('/');
   await expect(page.getByRole('heading', { name: '我的书架', exact: true })).toBeVisible();
-  await page.getByLabel('选择 PDF 或 Markdown 文件', { exact: true }).setInputFiles({
+  await page.getByLabel('选择阅读文件', { exact: true }).setInputFiles({
     name: 'remote-images.md',
     mimeType: 'text/markdown',
     buffer: Buffer.from(

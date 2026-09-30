@@ -10,8 +10,10 @@ jobs:
         include:
           - os: macos-latest
             dist: dist:mac
+            executable: release/mac-arm64/Leaf.app/Contents/MacOS/Leaf
           - os: windows-latest
             dist: dist:win
+            executable: release/win-unpacked/Leaf.exe
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -23,17 +25,21 @@ jobs:
         shell: bash
         run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
       - run: npm ci
-      - run: npm test
+      - run: npm run check
       - run: npm run ${{ matrix.dist }}
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       - run: npm run test:desktop
+      - run: node scripts/production-test.mjs
+        env:
+          LEAF_EXECUTABLE: ${{ matrix.executable }}
       - uses: actions/upload-artifact@v4
         with:
           name: installer-${{ runner.os }}
           path: |
             release/*.dmg
             release/*.exe
+            dist-plugins/*.leaf-plugin
           if-no-files-found: error
   publish:
     needs: build

@@ -2,7 +2,7 @@ import { test, expect, _electron } from '@playwright/test';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { glassOpacity, type GlassPlatform } from '../../src/lib/appearance';
+import { glassOpacity, type GlassPlatform } from '../../src/platform/appearance';
 
 test('explains unavailable native glass controls in the browser', async ({ page }) => {
   await page.goto('/');

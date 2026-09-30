@@ -12,7 +12,7 @@ test('desktop flushes SQLite on close and reopens the same library', async () =>
   const launch = () =>
     electron.launch({
       args: ['.', '--dev'],
-      env: { ...process.env, LEAF_USER_DATA: profile },
+      env: { ...process.env, LEAF_TEST_PLUGINS: 'all', LEAF_USER_DATA: profile },
     });
   let app = await launch();
   try {
@@ -25,23 +25,34 @@ test('desktop flushes SQLite on close and reopens the same library', async () =>
     await page.getByRole('menuitem', { name: /^导入文件(?!夹)/ }).click();
     await expect(page.locator('.book-card')).toHaveCount(9);
     const id = await page.evaluate(async () => {
-      const { storage } = await import('/src/lib/db.ts');
-      const book = (await storage.books()).find(
+      const { StorageClient } = await import('/src/platform/transport/storage.ts');
+      const storage = new StorageClient();
+      const book = (await storage.request('library.list', undefined)).find(
         (book: { title: string }) => book.title === 'Persistent book',
       )!;
-      await storage.putAnnotation({
-        id: 'durable-note',
-        bookId: book.id,
-        page: 1,
-        start: 0,
-        end: 10,
-        quote: 'Persistent',
-        note: 'Saved before close',
-        kind: 'highlight',
-        color: 'amber',
-        rects: [],
-        createdAt: 1,
-        source: 'text',
+      await storage.request('annotations.commit', {
+        documentId: book.id,
+        remove: [],
+        put: [
+          {
+            id: 'durable-note',
+            documentId: book.id,
+            targets: [
+              {
+                documentId: book.id,
+                revision: book.revision,
+                schema: 'leaf.markdown',
+                version: 1,
+                payload: { path: 'document.md', offset: 0, end: 10 },
+              },
+            ],
+            quote: 'Persistent',
+            note: 'Saved before close',
+            kind: 'highlight',
+            color: 'amber',
+            createdAt: 1,
+          },
+        ],
       });
       return book.id;
     });
@@ -51,26 +62,37 @@ test('desktop flushes SQLite on close and reopens the same library', async () =>
     await page.getByLabel('第 1 章批注笔记').fill('Last keystroke before closing');
     const closed = app.waitForEvent('close');
     await page.evaluate(async () => {
-      const { rememberPreference } = await import('/src/lib/preferences.ts');
-      rememberPreference('folio-mark-color', 'pink');
+      await window.desktop!.storage.request('settings.set', {
+        key: 'annotation.color',
+        value: 'pink',
+      });
       window.desktop!.closeWindow();
     });
     await closed;
-    const db = new DatabaseSync(path.join(profile, 'library', 'library.sqlite'), {
+    const db = new DatabaseSync(path.join(profile, 'reader', 'storage', 'library.sqlite'), {
       readOnly: true,
     });
     try {
-      expect(db.prepare('SELECT note FROM annotations WHERE id=?').get('durable-note')!.note).toBe(
-        'Last keystroke before closing',
-      );
       expect(
-        db.prepare('SELECT value FROM preferences WHERE key=?').get('folio-mark-color')!.value,
-      ).toBe('pink');
-      expect(db.prepare('SELECT state FROM reading_states WHERE book_id=?').get(id)).toBeTruthy();
+        db
+          .prepare("SELECT json_extract(value,'$.note') AS note FROM annotations WHERE id=?")
+          .get('durable-note')!.note,
+      ).toBe('Last keystroke before closing');
+      expect(
+        db.prepare('SELECT value FROM settings WHERE key=?').get('annotation.color')!.value,
+      ).toBe('"pink"');
+      expect(
+        db.prepare('SELECT value FROM reading_positions WHERE document_id=?').get(id),
+      ).toBeTruthy();
       expect(db.prepare('PRAGMA integrity_check').get()!.integrity_check).toBe('ok');
-      const content = db.prepare('SELECT hash FROM book_contents WHERE book_id=?').get(id)!;
+      const content = db
+        .prepare('SELECT hash FROM document_resources WHERE document_id=?')
+        .get(id)!;
       expect(
-        await readFile(path.join(profile, 'library', 'content', content.hash as string), 'utf8'),
+        await readFile(
+          path.join(profile, 'reader', 'storage', 'content', content.hash as string),
+          'utf8',
+        ),
       ).toContain('Remember this passage.');
     } finally {
       db.close();
@@ -82,7 +104,7 @@ test('desktop flushes SQLite on close and reopens the same library', async () =>
     await expect(page.locator('.markdown-content h1')).toHaveText('Persistent book');
     expect(
       await page.evaluate(async () => (await indexedDB.databases()).map((db) => db.name)),
-    ).not.toContain('folio-library');
+    ).toEqual([]);
   } finally {
     await app.close();
     await rm(root, { recursive: true, force: true });

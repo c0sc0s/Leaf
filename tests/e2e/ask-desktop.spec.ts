@@ -32,6 +32,7 @@ test('desktop streams a chat turn through the main process and cancels by closin
     args: ['.', '--dev'],
     env: {
       ...process.env,
+      LEAF_TEST_PLUGINS: 'all',
       LEAF_USER_DATA: profile,
       LEAF_AI_BASE_URL: `http://127.0.0.1:${port}/v1`,
       LEAF_AI_MODEL: 'desktop-mock',
@@ -42,10 +43,12 @@ test('desktop streams a chat turn through the main process and cancels by closin
     const page = await app.firstWindow();
     await expect(page.locator('.library-main')).toBeVisible();
     const result = await page.evaluate(async () => {
-      const { chat, readAiConfig } = await import('/src/ai/transport.ts');
-      const config = await readAiConfig();
+      const { ModelClient } = await import('/plugins/ai/src/models/client.ts');
+      const { BackendTransport } = await import('/src/platform/plugins/backend.ts');
+      const models = new ModelClient(new BackendTransport('leaf.ai', new AbortController().signal));
+      const config = await models.load();
       const streamed: string[] = [];
-      const reply = await chat(
+      const reply = await models.chat(
         { messages: [{ role: 'user', content: 'hello' }] },
         { signal: new AbortController().signal, onText: (text) => streamed.push(text) },
       );
@@ -63,9 +66,11 @@ test('desktop streams a chat turn through the main process and cancels by closin
       model: 'desktop-mock',
     });
     const cancelled = await page.evaluate(async () => {
-      const { chat } = await import('/src/ai/transport.ts');
+      const { ModelClient } = await import('/plugins/ai/src/models/client.ts');
+      const { BackendTransport } = await import('/src/platform/plugins/backend.ts');
+      const models = new ModelClient(new BackendTransport('leaf.ai', new AbortController().signal));
       const controller = new AbortController();
-      const turn = chat(
+      const turn = models.chat(
         { messages: [{ role: 'user', content: 'hang' }] },
         { signal: controller.signal, onText: () => controller.abort() },
       );

@@ -1,5 +1,5 @@
 import { parentPort, workerData } from 'node:worker_threads';
-import { openLibrary } from './library.ts';
+import { openStorage } from './repositories/index.ts';
 
 export type WorkerRequest = { id: number; operation: string; input?: unknown };
 export type WorkerReply =
@@ -7,7 +7,7 @@ export type WorkerReply =
 
 const port = parentPort!;
 const reply = (message: WorkerReply) => port.postMessage(message);
-const library = openLibrary(workerData.root);
+const library = openStorage(workerData.root);
 const collector = setInterval(() => {
   try {
     library.collect();
@@ -23,7 +23,7 @@ port.on('message', ({ id, operation, input }: WorkerRequest) => {
       reply({ id });
       port.close();
     } else if (operation === '__backup') reply({ id, result: library.backup(input as string) });
-    else reply({ id, result: library.request(operation, input) });
+    else reply({ id, result: library.requestRaw(operation, input) });
   } catch (error) {
     reply({ id, error: (error as Error).message });
   }

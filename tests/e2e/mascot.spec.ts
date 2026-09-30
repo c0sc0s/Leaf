@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { emptyLibrary } from './emptyLibrary';
 
 async function expectArt(page: import('@playwright/test').Page, scene: string) {
   const art = page.locator(`img[src$="/mascot/${scene}.png"]`);
@@ -31,14 +32,13 @@ test('uses distinct favorites, search and recent states with useful actions', as
 });
 
 test('shows the real empty library state and recovers from unknown routes', async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('folio-initialized', '1'));
-  await page.goto('/');
+  await emptyLibrary(page);
   await expectArt(page, 'empty');
   await page.evaluate(() => {
     location.hash = '/missing-page';
   });
   await expectArt(page, 'not-found');
-  await page.getByRole('button', { name: '返回上一页' }).click();
+  await page.getByRole('button', { name: '返回上一个位置' }).click();
   await expect(page.locator('.leaf-not-found')).toHaveCount(0);
   await page.goto('/#/another-missing-page');
   await page.getByRole('button', { name: '返回书架', exact: true }).click();
@@ -70,7 +70,7 @@ test('renders small sidebar illustrations and settings in both themes without mo
   await expect
     .poll(() => page.locator('.reading-canvas').evaluate((el) => el.scrollTop))
     .toBe(position);
-  await page.getByLabel('搜索 PDF', { exact: true }).click();
+  await page.getByLabel('搜索文档', { exact: true }).click();
   await page.getByLabel('搜索文档内容').fill('no-such-phrase-xyz');
   await expect(page.locator('[data-empty-scene="search"]')).toBeVisible();
   await page

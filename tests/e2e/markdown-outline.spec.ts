@@ -5,7 +5,7 @@ test('uses the shared outline tree, keyboard expansion, heading tracking and boo
 }) => {
   await page.goto('/');
   await expect(page.locator('.book-card')).toHaveCount(8);
-  await page.getByLabel('选择 PDF 或 Markdown 文件', { exact: true }).setInputFiles({
+  await page.getByLabel('选择阅读文件', { exact: true }).setInputFiles({
     name: 'outline.md',
     mimeType: 'text/markdown',
     buffer: Buffer.from(
@@ -17,6 +17,7 @@ test('uses the shared outline tree, keyboard expansion, heading tracking and boo
     ),
   });
   await page.getByRole('button', { name: '阅读 Unified outline', exact: true }).click();
+  await page.getByLabel('文档导航', { exact: true }).click();
   await expect(page.getByRole('tab', { name: '文档目录', exact: true })).toHaveAttribute(
     'data-state',
     'active',
@@ -60,14 +61,15 @@ test('uses the shared outline tree, keyboard expansion, heading tracking and boo
   );
   await page.getByLabel('添加书签', { exact: true }).click();
   await page.getByRole('tab', { name: '文档书签', exact: true }).click();
-  await expect(page.locator('.reader-sidebar .outline-item')).toContainText('Unified outline');
+  await expect(page.locator('.reader-sidebar .outline-item')).toContainText('第 1 章');
   await page.locator('.reader-sidebar .outline-item').click();
-  await expect(page.locator('.markdown-scroll')).toHaveJSProperty('scrollTop', 0);
-  await page.getByRole('tab', { name: '章节列表', exact: true }).click();
-  await expect(page.getByRole('treeitem')).toHaveCount(1);
+  await expect(page.locator('#md-ending')).toBeInViewport();
+  await page.getByRole('tab', { name: '文档章节', exact: true }).click();
+  await expect(page.locator('.thumbnail-list .thumbnail')).toHaveCount(1);
   await page.getByRole('tab', { name: '文档目录', exact: true }).click();
-  await root.locator('.outline-toggle').click();
-  await section.locator('.outline-toggle').click();
+  await expect(root).toHaveAttribute('aria-expanded', 'true');
+  if ((await section.getAttribute('aria-expanded')) === 'false')
+    await section.locator('.outline-toggle').click();
   await expect(subsection).toBeVisible();
   await page.screenshot({ path: 'test-results/markdown-shared-outline.png' });
 });

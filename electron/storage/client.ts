@@ -2,17 +2,19 @@ import { Worker } from 'node:worker_threads';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { WorkerReply, WorkerRequest } from './worker.ts';
+import type { StorageOperation, StorageInput, StorageOutput } from '@leaf/contracts/transport';
 
 // Sources run directly under Node type stripping (Vite, tests); Electron runs compiled output.
 const workerFile = new URL(
+  /* @vite-ignore */
   `./worker${path.extname(fileURLToPath(import.meta.url))}`,
   import.meta.url,
 );
 
 export type Storage = ReturnType<typeof createStorage>;
 
-export function createStorage(root: string) {
-  const worker = new Worker(workerFile, { workerData: { root } });
+export function createStorage(root: string, workerURL = workerFile) {
+  const worker = new Worker(workerURL, { workerData: { root } });
   let sequence = 0;
   let failure: Error | undefined;
   let closing: Promise<unknown> | undefined;
@@ -51,13 +53,20 @@ export function createStorage(root: string) {
       }
     });
   };
+  const requestRaw = (operation: unknown, input?: unknown) => {
+    if (closing) return Promise.reject(new Error('书库正在关闭'));
+    if (typeof operation !== 'string' || operation.startsWith('__'))
+      return Promise.reject(new Error('Invalid storage operation'));
+    return send(operation, input);
+  };
   return {
-    request(operation: unknown, input?: unknown) {
-      if (closing) return Promise.reject(new Error('书库正在关闭'));
-      if (typeof operation !== 'string' || operation.startsWith('__'))
-        return Promise.reject(new Error('Invalid storage operation'));
-      return send(operation, input);
+    request<K extends StorageOperation>(
+      operation: K,
+      input: StorageInput<K>,
+    ): Promise<StorageOutput<K>> {
+      return requestRaw(operation, input) as Promise<StorageOutput<K>>;
     },
+    requestRaw,
     backup: (destination: string) => send('__backup', destination),
     close() {
       if (!closing) closing = send('__close').finally(() => worker.terminate());

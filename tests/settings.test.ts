@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { parseSettings } from '../src/features/settings/useSettings';
-import { defaultSettings } from '../src/lib/appearance';
+import { parseSettings } from '../src/core/settings/service';
+import { defaultSettings } from '../src/core/settings/service';
 
 const defaults = defaultSettings;
 
@@ -13,12 +13,12 @@ describe('parseSettings', () => {
 
   it('keeps valid stored preferences', () => {
     const stored = { theme: 'system', readerTheme: 'dark', originalColors: true };
-    expect(parseSettings(JSON.stringify(stored))).toEqual({ ...defaults, ...stored });
+    expect(parseSettings(stored)).toEqual({ ...defaults, ...stored });
   });
 
   it('replaces unknown values field by field instead of discarding everything', () => {
     const stored = { theme: 'sepia', readerTheme: 'dark', originalColors: 'yes' };
-    expect(parseSettings(JSON.stringify(stored))).toEqual({
+    expect(parseSettings(stored)).toEqual({
       ...defaults,
       readerTheme: 'dark',
     });

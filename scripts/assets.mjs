@@ -1,9 +1,4 @@
-import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-for (const name of ['ocr', 'lang'])
-  await rm(`public/vendor/${name}`, { recursive: true, force: true });
-await mkdir('public/vendor', { recursive: true });
-for (const name of ['cmaps', 'standard_fonts', 'wasm'])
-  await cp(`node_modules/pdfjs-dist/${name}`, `public/vendor/${name}`, { recursive: true });
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 await mkdir('licenses', { recursive: true });
 for (const [name, license] of [
   ['react', 'LICENSE'],
@@ -37,4 +32,4 @@ for (const [name, license] of [
   await writeFile(`licenses/${name.replaceAll('/', '-')}.txt`, text.trimEnd() + '\n');
 }
 
-console.log('Local PDF assets and licenses prepared.');
+console.log('Third-party licenses prepared.');

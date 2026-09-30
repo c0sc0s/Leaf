@@ -44,14 +44,15 @@ test('anchors all PDF and Markdown sidebar tooltips to their tabs', async ({ pag
   await expect(outline).toHaveAttribute('data-state', 'inactive');
 
   await page.getByLabel('返回书架', { exact: true }).click();
-  await page.getByLabel('选择 PDF 或 Markdown 文件', { exact: true }).setInputFiles({
+  await page.getByLabel('选择阅读文件', { exact: true }).setInputFiles({
     name: 'tooltip.md',
     mimeType: 'text/markdown',
     buffer: Buffer.from('# Tooltip 示例\n\n正文'),
   });
   await page.getByRole('button', { name: '阅读 Tooltip 示例', exact: true }).click();
   await expect(page.locator('.reader-stage')).not.toHaveClass(/pending/, { timeout: 30000 });
-  for (const label of ['章节列表', '文档目录', '文档书签']) {
+  await page.getByLabel('文档导航', { exact: true }).click();
+  for (const label of ['文档章节', '文档目录', '文档书签']) {
     await expectAnchoredTooltip(page, label);
   }
 });

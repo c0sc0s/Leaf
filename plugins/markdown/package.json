@@ -1,0 +1,22 @@
+{
+  "name": "@leaf/plugin-markdown",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@leaf/contracts": "1.0.0",
+    "@leaf/plugin-sdk": "1.0.0",
+    "@leaf/shared": "1.0.0",
+    "@leaf/ui": "1.0.0",
+    "react-markdown": "^10.1.0",
+    "rehype-highlight": "^7.0.2",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
+    "unified": "^11.0.5"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}
