@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 test('desktop imports Markdown files and folders through native dialogs', async () => {
+  // Windows CI runs this full import flow close to the default limit, including cleanup.
+  test.setTimeout(120_000);
   const root = await mkdtemp(path.join(tmpdir(), 'leaf-md-desktop-'));
   const folder = path.join(root, 'Desktop Book');
   await mkdir(folder);
