@@ -8,6 +8,10 @@ export default defineConfig({
   expect: { timeout: process.env.CI ? 30000 : 5000 },
   fullyParallel: false,
   workers: 1,
+  projects: [
+    { name: 'browser', testMatch: '**/browser/**/*.spec.ts' },
+    { name: 'desktop', testMatch: '**/desktop/**/*.spec.ts' },
+  ],
   reporter: process.env.CI ? [['line'], ['html', { open: 'never' }]] : 'list',
   use: {
     viewport: { width: 1440, height: 960 },
@@ -21,7 +25,7 @@ export default defineConfig({
     env: {
       VITE_LEAF_SEED_SAMPLES: '1',
       LEAF_TEST_PLUGINS: 'all',
-      // ask.spec.ts serves a scripted OpenAI-compatible model here.
+      // The AI browser spec serves a scripted OpenAI-compatible model here.
       LEAF_AI_BASE_URL: 'http://127.0.0.1:5199/v1',
       LEAF_AI_MODEL: 'mock-model',
       LEAF_AI_API_KEY: 'test-key',

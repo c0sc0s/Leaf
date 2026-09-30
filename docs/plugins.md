@@ -71,6 +71,6 @@ React 视图使用 `mountReact`，确保共享 React 与 UI Context。`@leaf/ui/
 
 插件把解析器和业务依赖打入自己的模块；将 React、Motion 及公开包设为 external，使用宿主 import map。Worker 和资源采用相对模块 URL，放在插件包中。不要依赖宿主源码路径、全局格式对象或主进程实现。
 
-新增插件需验证导入、阅读、定位、关闭、取消、安装停用卸载，以及私有数据恢复。`tests/fixtures/plugin.ts` 是仅依赖协议的独立文本阅读插件，`tests/e2e/plugins.spec.ts` 验证它的动态安装、PDF 卸载、最后一个阅读插件约束和重新安装后的数据保留。实际内置实现分别位于 `plugins/pdf`、`plugins/markdown`、`plugins/ai`。
+新增插件需验证导入、阅读、定位、关闭、取消、安装停用卸载，以及私有数据恢复。`tests/fixtures/plugin.ts` 是仅依赖协议的独立文本阅读插件，`tests/e2e/browser/app/plugins.spec.ts` 验证它的动态安装、PDF 卸载、最后一个阅读插件约束和重新安装后的数据保留。实际内置实现分别位于 `plugins/pdf`、`plugins/markdown`、`plugins/ai`。
 
 当前安装从本地文件选择包，没有在线市场或签名校验。后台进程用于生命周期和故障隔离，不能隔离恶意 Node 代码；只安装可信插件。

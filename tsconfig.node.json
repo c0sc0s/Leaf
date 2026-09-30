@@ -8,6 +8,7 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "types": ["node"],
+    "jsx": "react-jsx",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
@@ -31,6 +32,8 @@
     "scripts/build.ts",
     "scripts/runtime.ts",
     "src/platform/desktop.d.ts",
-    "tests"
+    "tests",
+    "packages/*/tests",
+    "plugins/*/tests"
   ]
 }

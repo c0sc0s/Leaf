@@ -1,10 +1,26 @@
 import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
-    include: [
-      'tests/**/*.test.ts',
-      'packages/**/tests/**/*.test.ts',
-      'plugins/**/tests/**/*.test.ts',
+    projects: [
+      {
+        test: {
+          name: 'unit',
+          include: [
+            'tests/unit/**/*.test.{ts,tsx}',
+            'packages/*/tests/unit/**/*.test.{ts,tsx}',
+            'plugins/*/tests/unit/**/*.test.{ts,tsx}',
+          ],
+        },
+      },
+      {
+        test: {
+          name: 'integration',
+          include: [
+            'tests/integration/**/*.test.{ts,tsx}',
+            'plugins/*/tests/integration/**/*.test.{ts,tsx}',
+          ],
+        },
+      },
     ],
   },
 });

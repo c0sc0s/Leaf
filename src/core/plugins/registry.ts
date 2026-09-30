@@ -21,10 +21,12 @@ export class PluginRegistry {
   ): Disposable {
     const key = `${kind}:${id}`;
     if (this.entries.has(key)) throw new Error(`Duplicate contribution: ${key}`);
-    this.entries.set(key, { pluginId, kind, id, implementation });
+    const entry = { pluginId, kind, id, implementation };
+    this.entries.set(key, entry);
     this.changed();
     return {
       dispose: () => {
+        if (this.entries.get(key) !== entry) return;
         this.entries.delete(key);
         this.changed();
       },

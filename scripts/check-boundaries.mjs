@@ -12,6 +12,16 @@ async function inspect(directory) {
     if (!/\.[cm]?[jt]sx?$/.test(entry.name) || entry.name.endsWith('.d.ts')) continue;
     const relative = path.relative(root, file).split(path.sep).join('/'),
       source = await readFile(file, 'utf8');
+    const unit = /^(?:tests\/unit\/|(?:packages|plugins)\/[^/]+\/tests\/unit\/)/.test(relative);
+    const testFile = /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(relative);
+    if (
+      testFile &&
+      !/^(?:tests\/(?:unit|integration)\/|(?:packages|plugins)\/[^/]+\/tests\/(?:unit|integration)\/).*\.test\.tsx?$/.test(
+        relative,
+      ) &&
+      !/^tests\/e2e\/(?:browser|desktop)\/.*\.spec\.ts$/.test(relative)
+    )
+      violations.push(`${relative}: test has no declared layer`);
     for (const match of source.matchAll(
       /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s*)['"]([^'"]+)['"]/g,
     )) {
@@ -54,16 +64,46 @@ async function inspect(directory) {
         reason = 'core imports UI or platform code';
       if (
         (relative.startsWith('packages/shared/') || relative.startsWith('packages/contracts/')) &&
+        !testFile &&
         !target.startsWith('packages/shared/') &&
         !target.startsWith('packages/contracts/') &&
         !target.startsWith('@leaf/shared')
       )
         reason = 'shared primitives or contracts import runtime implementations';
+      if (
+        unit &&
+        relative.startsWith('tests/unit/core/') &&
+        (target.startsWith('src/app/') ||
+          target.startsWith('src/platform/') ||
+          target.startsWith('electron/') ||
+          target.startsWith('plugins/') ||
+          target.startsWith('packages/ui/') ||
+          target.startsWith('packages/plugin-sdk/') ||
+          target.startsWith('@leaf/ui') ||
+          target.startsWith('@leaf/plugin-'))
+      )
+        reason = 'domain unit test imports UI, platform, or a plugin implementation';
+      if (
+        unit &&
+        relative.startsWith('tests/unit/platform/') &&
+        (target.startsWith('electron/') ||
+          target.startsWith('plugins/') ||
+          /^@leaf\/plugin-(?!sdk(?:\/|$))/.test(target))
+      )
+        reason = 'renderer platform unit test imports native or plugin code';
+      if (
+        unit &&
+        relative.startsWith('tests/unit/electron/') &&
+        (target.startsWith('src/') ||
+          target.startsWith('plugins/') ||
+          /^@leaf\/plugin-(?!sdk(?:\/|$))/.test(target))
+      )
+        reason = 'native unit test imports renderer or plugin code';
       if (reason) violations.push(`${relative}: ${reason}: ${imported}`);
     }
   }
 }
-for (const directory of ['src', 'electron', 'packages', 'plugins'])
+for (const directory of ['src', 'electron', 'packages', 'plugins', 'tests'])
   await inspect(path.join(root, directory));
 if (violations.length) {
   console.error(violations.join('\n'));

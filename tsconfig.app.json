@@ -22,7 +22,7 @@
   },
   "include": [
     "src",
-    "packages",
+    "packages/*/src",
     "plugins/pdf/src",
     "plugins/markdown/src",
     "plugins/ai/src/index.tsx",

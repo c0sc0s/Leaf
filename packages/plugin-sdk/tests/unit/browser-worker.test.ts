@@ -1,0 +1,20 @@
+import { expect, it, vi } from 'vitest';
+import { browserWorker } from '@leaf/plugin-sdk/workers';
+it('ignores obsolete worker replies and rejects pending requests on shutdown', async () => {
+  const worker = { postMessage: vi.fn(), terminate: vi.fn() } as unknown as Worker;
+  const client = browserWorker<string>(worker);
+  const controller = new AbortController();
+  const first = client.run('old', controller.signal);
+  const rejected = expect(first).rejects.toMatchObject({ name: 'AbortError' });
+  controller.abort();
+  await rejected;
+  worker.onmessage!({ data: { id: 1, value: 'obsolete' } } as MessageEvent);
+  const second = client.run('new');
+  worker.onmessage!({ data: { id: 2, value: 'current' } } as MessageEvent);
+  await expect(second).resolves.toBe('current');
+  const pending = client.run('unfinished');
+  const closed = expect(pending).rejects.toThrow('已关闭');
+  client.dispose();
+  await closed;
+  expect(worker.terminate).toHaveBeenCalledOnce();
+});
