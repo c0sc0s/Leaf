@@ -1,7 +1,7 @@
 {
   "name": "leaf-reader",
   "version": "1.5.2",
-  "description": "Leaf — a quiet space for your PDFs and Markdown books",
+  "description": "Leaf \u2014 a quiet space for your PDFs and Markdown books",
   "private": true,
   "type": "module",
   "main": "dist-electron/main.js",
@@ -39,7 +39,10 @@
     "test:unit": "vitest run --project unit",
     "test:integration": "vitest run --project integration",
     "test:browser": "playwright test --project browser",
-    "test:electron": "npm run build:electron && playwright test --project desktop"
+    "test:electron": "npm run build:electron && playwright test --project desktop",
+    "catalog:build": "node scripts/catalog.ts",
+    "catalog:publish": "node scripts/publish-catalog.mjs",
+    "test:catalog": "node tests/packaged/catalog.mjs"
   },
   "build": {
     "appId": "app.leaf.reader",

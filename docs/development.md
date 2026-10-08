@@ -19,7 +19,7 @@ npm run pack
 npm run test:desktop
 ```
 
-`check` 包含源码与测试的依赖边界、静态检查、类型、格式，以及全部单元和集成测试。端到端测试使用 Chromium 和隐藏的 Electron 窗口，验证阅读交互、存储、插件安装卸载和 AI；测试环境在新书库中安装全部内置插件并导入八份样本。
+`check` 包含源码与测试的依赖边界、静态检查、类型、格式，以及全部单元和集成测试。端到端测试使用 Chromium 和隐藏的 Electron 窗口，验证阅读交互、存储、插件发现／安装／更新／取消和 AI；测试环境在新书库中安装全部内置插件并导入八份样本。
 
 ## 测试归属
 
@@ -84,3 +84,7 @@ macOS arm64 安装包使用 `npm run dist:mac`，Windows x64 使用 `npm run dis
 AI 插件可在界面保存 OpenAI 兼容服务地址、模型和 API Key。`LEAF_AI_BASE_URL`、`LEAF_AI_MODEL`、`LEAF_AI_API_KEY` 同时配置时使用受环境管理的配置。桌面凭据使用系统 `safeStorage`；浏览器开发服务使用本地加密文件。
 
 备份使用 `node scripts/library-backup.mjs backup SOURCE_DIRECTORY NEW_DESTINATION`，恢复使用同一命令的 `restore` 操作。只处理当前 `leaf.reader` 备份格式；备份内容包括 SQLite 和文档内容文件，插件代码与凭据需要单独保管。
+
+在线目录测试分别位于 `tests/unit/core/plugins/catalog.test.ts`（依赖计划与安装协调）、`tests/integration/electron/plugins/catalog.test.ts`（签名、缓存、下载校验与取消）和 `tests/e2e/browser/app/catalog.spec.ts`（发现、确认、安装、更新与失败恢复）。官方目录发布流程见 [插件文档](plugins.md#发布官方目录)。
+
+`npm run test:catalog` 在独立桌面数据目录中访问真实官方签名目录，经 HTTPS 在线安装 Markdown 与 AI 并验证重启恢复。它需要网络，作为发布后的公网验收单独执行；可以通过 `LEAF_EXECUTABLE` 指定实际安装包中的程序。

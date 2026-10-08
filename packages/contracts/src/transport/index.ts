@@ -104,6 +104,17 @@ export interface BackendRequest {
 export type BackendEvent =
   { type: 'event'; value: JsonValue } | { type: 'done' } | { type: 'error'; message: string };
 export interface DesktopAPI {
+  catalog: {
+    list(refresh?: boolean): Promise<import('../plugins/catalog.ts').CatalogSnapshot>;
+    download(requestId: string, id: string, sha256: string): Promise<Uint8Array>;
+    cancel(requestId: string): void;
+    onProgress(
+      listener: (
+        requestId: string,
+        progress: import('../plugins/catalog.ts').DownloadProgress,
+      ) => void,
+    ): () => void;
+  };
   storage: StorageTransport & { onBeforeClose(callback: () => Promise<void>): () => void };
   plugins: {
     list(): Promise<import('../plugins/index.ts').PluginBinding[]>;

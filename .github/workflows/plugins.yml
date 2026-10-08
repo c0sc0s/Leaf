@@ -1,0 +1,33 @@
+name: Publish plugin catalog
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: official-plugin-catalog
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm run build:plugins
+      - name: Sign catalog
+        env:
+          LEAF_PLUGIN_SIGNING_KEY: ${{ secrets.LEAF_PLUGIN_SIGNING_KEY }}
+        shell: bash
+        run: |
+          test -n "$LEAF_PLUGIN_SIGNING_KEY"
+          umask 077
+          printf '%s' "$LEAF_PLUGIN_SIGNING_KEY" > "$RUNNER_TEMP/leaf-catalog-signing.pem"
+          npm run catalog:build -- --key-file "$RUNNER_TEMP/leaf-catalog-signing.pem"
+          rm "$RUNNER_TEMP/leaf-catalog-signing.pem"
+      - run: npm run catalog:publish
+        env:
+          GH_TOKEN: ${{ github.token }}

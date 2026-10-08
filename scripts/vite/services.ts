@@ -5,6 +5,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin, PreviewServer, ViteDevServer } from 'vite';
 import { createStorage } from '../../electron/storage/client.ts';
 import { PluginInstaller } from '../../electron/plugins/installer.ts';
+import { CatalogService } from '../../electron/plugins/catalog.ts';
+import { officialCatalogSource } from '../../electron/plugins/catalog-source.ts';
 import { BackendManager } from '../../electron/plugins/backend/manager.ts';
 import { nodeBackendProcess } from '../../electron/plugins/backend/node.ts';
 import { CredentialVault, developmentCipher } from '../../electron/platform/credentials.ts';
@@ -17,6 +19,7 @@ interface Profile {
   storage: ReturnType<typeof createStorage>;
   plugins: PluginInstaller;
   backend: BackendManager;
+  catalog: CatalogService;
   active: number;
   timer?: ReturnType<typeof setTimeout>;
   closing?: Promise<void>;
@@ -56,7 +59,13 @@ export default function localServices(): Plugin {
           ? bundled.map((file) => path.basename(file, '.leaf-plugin'))
           : ['leaf.pdf'];
       await plugins.initialize(bundled, defaults);
-      return { storage, plugins, backend, active: 0 };
+      return {
+        storage,
+        plugins,
+        backend,
+        catalog: new CatalogService(path.join(root, 'catalog.json'), officialCatalogSource),
+        active: 0,
+      };
     } catch (error) {
       await storage.close();
       throw error;
@@ -96,7 +105,9 @@ export default function localServices(): Plugin {
       const url = new URL(req.url || '/', `http://${req.headers.host}`),
         pathname = url.pathname;
       if (
-        !['/__leaf_storage', '/__leaf_plugins', '/__leaf_backend'].includes(pathname) &&
+        !['/__leaf_storage', '/__leaf_plugins', '/__leaf_backend', '/__leaf_catalog'].includes(
+          pathname,
+        ) &&
         !pathname.startsWith('/__leaf_plugins/')
       )
         return next();
@@ -109,9 +120,11 @@ export default function localServices(): Plugin {
             req,
             pathname === '/__leaf_storage'
               ? 'x-leaf-storage'
-              : pathname === '/__leaf_plugins'
-                ? 'x-leaf-plugins'
-                : 'x-leaf-backend',
+              : pathname === '/__leaf_catalog'
+                ? 'x-leaf-catalog'
+                : pathname === '/__leaf_plugins'
+                  ? 'x-leaf-plugins'
+                  : 'x-leaf-backend',
           )
         ) {
           res.writeHead(403).end();
@@ -146,7 +159,47 @@ export default function localServices(): Plugin {
           req,
           pathname === '/__leaf_plugins' ? 90 * 1024 * 1024 : 8 * 1024 * 1024,
         );
-        if (pathname === '/__leaf_storage') {
+        if (pathname === '/__leaf_catalog') {
+          if (
+            input.operation === 'list' &&
+            (input.refresh === undefined || typeof input.refresh === 'boolean')
+          )
+            sendJson(res, 200, { result: await profile.catalog.list(input.refresh) });
+          else if (
+            input.operation === 'download' &&
+            typeof input.id === 'string' &&
+            typeof input.sha256 === 'string'
+          ) {
+            const controller = new AbortController();
+            const abort = () => controller.abort();
+            res.on('close', abort);
+            res.writeHead(200, {
+              'Content-Type': 'application/x-ndjson',
+              'Cache-Control': 'no-store',
+            });
+            const emit = (event: import('@leaf/contracts/catalog').CatalogDownloadEvent) => {
+              if (!res.destroyed) res.write(JSON.stringify(event) + '\n');
+            };
+            try {
+              const data = await profile.catalog.download(
+                input.id,
+                input.sha256,
+                controller.signal,
+                (progress) => emit({ type: 'progress', ...progress }),
+              );
+              emit({ type: 'done', data: Buffer.from(data).toString('base64') });
+            } catch (error) {
+              if (!controller.signal.aborted)
+                emit({
+                  type: 'error',
+                  message: error instanceof Error ? error.message : String(error),
+                });
+            } finally {
+              res.removeListener('close', abort);
+              res.end();
+            }
+          } else throw new Error('无效的目录操作');
+        } else if (pathname === '/__leaf_storage') {
           if (privateStorage.has(input.operation))
             throw new Error('请通过插件管理服务修改安装状态');
           sendJson(res, 200, {

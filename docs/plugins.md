@@ -73,4 +73,29 @@ React 视图使用 `mountReact`，确保共享 React 与 UI Context。`@leaf/ui/
 
 新增插件需验证导入、阅读、定位、关闭、取消、安装停用卸载，以及私有数据恢复。`tests/fixtures/plugin.ts` 是仅依赖协议的独立文本阅读插件，`tests/e2e/browser/app/plugins.spec.ts` 验证它的动态安装、PDF 卸载、最后一个阅读插件约束和重新安装后的数据保留。实际内置实现分别位于 `plugins/pdf`、`plugins/markdown`、`plugins/ai`。
 
-当前安装从本地文件选择包，没有在线市场或签名校验。后台进程用于生命周期和故障隔离，不能隔离恶意 Node 代码；只安装可信插件。
+## 在线目录与安装
+
+「设置 → 插件」提供已安装和发现两个标签。发现页支持名称、功能与作者搜索，以及阅读格式／功能扩展筛选。详情显示发布者、版本、大小、权限和依赖；用户确认后开始下载。下载可取消，安装和启用阶段不可取消。
+
+`@leaf/contracts/catalog` 定义目录、签名封装、快照与下载事件。`src/core/plugins/catalog.ts` 负责确认安装计划、解析依赖、禁止降级、协调启停和延迟重新加载；平台提供目录读取和下载端口。`electron/plugins/catalog.ts` 在主进程校验 Ed25519 签名、有效期、目录版本、包大小、SHA-256 和完整 manifest，随后交给现有安装器。浏览器开发服务使用同一校验实现。
+
+目录与插件包使用 HTTPS；重定向也必须保持 HTTPS。目录 URL 和信任公钥由 `electron/plugins/catalog-source.ts` 固定，渲染端只能选择目录中的插件 ID 和已确认的包哈希。网络不可用时可展示尚未过期、签名有效的缓存目录；实际下载仍需要网络。目录变更后必须重新确认。更新完成后保留插件数据并重新加载，原本停用的插件在更新后仍保持停用。
+
+所需包全部下载并校验成功后才开始修改安装状态，按依赖顺序逐个安装或启用；每个包继续使用安装器的事务与回滚。下载阶段失败不会安装任何包，安装阶段失败时已完成的依赖会保留，可修复后重试。
+
+官方目录的信任范围是 Leaf 签名审核的插件。后台进程用于生命周期和故障隔离，不能隔离恶意 Node 代码；本地文件安装仍由用户自行判断发布者可信性。
+
+## 发布官方目录
+
+先执行完整检查与插件构建，再使用仓库外的 Ed25519 私钥签名：
+
+```sh
+npm run check
+npm run build:plugins
+npm run catalog:build -- --key-file /path/outside/repository/catalog-signing.pem
+npm run catalog:publish
+```
+
+签名器会检查私钥对应的公钥是否与应用内的信任公钥一致。发布脚本把带版本和内容哈希的包先上传到 GitHub 的 `plugins-v1` 发布，再上传签名目录；这个发布不会成为应用的 Latest 发布。既有包保留，以支持缓存目录中的下载地址。
+
+仓库的「Publish plugin catalog」手动工作流使用 `LEAF_PLUGIN_SIGNING_KEY` 仓库 Secret。私钥不进入源码、插件包或应用安装包；轮换签名公钥需要先发布信任新公钥的应用。目录当前仅收录 PDF、Markdown 和 AI 三个插件，不自动收录未经审核的第三方包。

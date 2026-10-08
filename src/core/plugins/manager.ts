@@ -41,7 +41,7 @@ export class PluginManager {
     }
   }
 
-  install(data?: Uint8Array) {
+  install(data?: Uint8Array, { reload = true }: { reload?: boolean } = {}) {
     return this.queue.enqueue(async () => {
       const prepared = await this.platform.prepare(data);
       if (!prepared) return;
@@ -57,8 +57,12 @@ export class PluginManager {
         { ...binding, status: 'inactive' },
       ]);
       if (binding.enabled) await this.activate(binding.manifest.id, new Set());
-      if (previous) await this.loader.reload();
+      if (previous && reload) await this.loader.reload();
     });
+  }
+
+  reload() {
+    return this.loader.reload();
   }
 
   setEnabled(id: string, enabled: boolean) {

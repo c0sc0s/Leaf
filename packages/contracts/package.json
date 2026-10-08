@@ -11,7 +11,8 @@
     "./plugins": "./src/plugins/index.ts",
     "./host": "./src/host/index.ts",
     "./transport": "./src/transport/index.ts",
-    "./validation": "./src/transport/validation.ts"
+    "./validation": "./src/transport/validation.ts",
+    "./catalog": "./src/plugins/catalog.ts"
   },
   "dependencies": {
     "@leaf/shared": "1.0.0"
