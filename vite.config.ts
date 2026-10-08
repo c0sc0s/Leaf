@@ -61,6 +61,8 @@ export default defineConfig({
   server: {
     host: '127.0.0.1',
     strictPort: true,
+    // Plugin installation renames staged directories; development data must not be watched.
+    watch: { ignored: ['**/.leaf-data', '**/.leaf-data/**'] },
     hmr: { protocol: 'ws', host: '127.0.0.1', clientPort: 5173 },
   },
   build: { chunkSizeWarningLimit: 1500, rolldownOptions: { external: sharedModule } },
