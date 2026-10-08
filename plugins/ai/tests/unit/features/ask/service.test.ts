@@ -56,6 +56,27 @@ function setup(stream: BackendClient['stream']) {
 }
 
 describe('AI session harness', () => {
+  it('publishes the completed reply and ends streaming in one observable transition', async () => {
+    const { service } = setup(async (_method, _input, { onEvent }) => {
+      onEvent({ type: 'text', text: 'Completed answer' });
+      onEvent({ type: 'done', model: 'test', finishReason: 'stop', toolCalls: [], usage: null });
+    });
+    const overlapping: boolean[] = [];
+    const stop = service.state.subscribe(() => {
+      const { threads, run } = service.state.get();
+      overlapping.push(
+        !!run &&
+          threads.some((thread) => thread.messages.some((message) => message.runId === run.runId)),
+      );
+    });
+    await service.begin(null);
+    await service.ask('Question');
+    expect(service.state.get().threads[0].messages[1].content).toBe('Completed answer');
+    expect(service.state.get().run).toBeNull();
+    expect(overlapping).not.toContain(true);
+    stop();
+    await service.dispose();
+  });
   it('persists protocol-based references, model usage and trace, and reloads the completed thread', async () => {
     const { service, session, host, models, saved, events, locator } = setup(
       async (_method, input, { onEvent }) => {

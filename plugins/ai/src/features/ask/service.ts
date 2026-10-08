@@ -218,6 +218,7 @@ export class AskService {
     return pending;
   }
   private async execute(thread: AskThread, runId: string, signal: AbortSignal) {
+    let completed: AskThread | undefined;
     const events: Promise<void>[] = [],
       report = (event: Parameters<PluginHostAPI['tasks']['report']>[0]) => {
         const write = this.host.tasks.report(event);
@@ -274,7 +275,7 @@ export class AskService {
         },
       });
       signal.throwIfAborted();
-      const completed = {
+      const answered: AskThread = {
         ...thread,
         references: catalog.all(),
         messages: [
@@ -289,11 +290,8 @@ export class AskService {
           },
         ],
       };
-      await this.save(completed);
-      this.state.update((state) => ({
-        ...state,
-        threads: state.threads.map((entry) => (entry.id === thread.id ? completed : entry)),
-      }));
+      await this.save(answered);
+      completed = answered;
       report({
         runId,
         name: 'ask.run',
@@ -323,7 +321,13 @@ export class AskService {
       if (results.some((result) => result.status === 'rejected') && !this.stopped)
         this.host.notify('部分任务记录未能保存');
       this.controller = undefined;
-      this.state.update((state) => ({ ...state, run: null }));
+      this.state.update((state) => ({
+        ...state,
+        threads: state.threads.map((entry) =>
+          completed && entry.id === thread.id ? completed : entry,
+        ),
+        run: null,
+      }));
     }
   }
   trace(runId: string) {
