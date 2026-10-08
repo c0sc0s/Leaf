@@ -27,6 +27,7 @@ import { fileResponse, applicationFile } from './platform/resources.ts';
 import { PluginInstaller } from './plugins/installer.ts';
 import { CatalogService } from './plugins/catalog.ts';
 import { officialCatalogSource } from './plugins/catalog-source.ts';
+import { catalogFetch } from './platform/catalogFetch.ts';
 import { BackendManager } from './plugins/backend/manager.ts';
 import { electronBackendProcess } from './plugins/backend/electron.ts';
 import { CredentialVault } from './platform/credentials.ts';
@@ -228,7 +229,7 @@ else {
       const catalog = new CatalogService(
         path.join(app.getPath('userData'), 'reader/catalog.json'),
         officialCatalogSource,
-        net.fetch,
+        catalogFetch,
       );
       const catalogRequests = new Map<string, AbortController>();
       ipcMain.handle('catalog:list', (event, refresh) => {
