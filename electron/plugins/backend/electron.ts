@@ -1,11 +1,12 @@
 import { utilityProcess } from 'electron';
 import type { BackendProcess, ChildMessage } from './protocol.ts';
+import { childEnvironment } from '../../platform/processEnvironment.ts';
 
 export function electronBackendProcess(file: string): BackendProcess {
   const child = utilityProcess.fork(file, [], {
     serviceName: 'Leaf Plugin',
     stdio: 'pipe',
-    env: { NODE_ENV: 'production' },
+    env: childEnvironment(),
   });
   let exited = false;
   const exit = new Promise<void>((resolve) =>

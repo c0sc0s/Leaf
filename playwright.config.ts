@@ -10,8 +10,8 @@ export default defineConfig({
   workers: 1,
   maxFailures: process.env.CI ? 1 : 0,
   projects: [
-    { name: 'browser', testMatch: '**/browser/**/*.spec.ts' },
     { name: 'desktop', testMatch: '**/desktop/**/*.spec.ts' },
+    { name: 'browser', testMatch: '**/browser/**/*.spec.ts' },
   ],
   reporter: process.env.CI ? [['line'], ['html', { open: 'never' }]] : 'list',
   use: {

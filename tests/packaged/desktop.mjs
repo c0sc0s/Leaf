@@ -60,6 +60,9 @@ try {
     page.locator('.textLayer [data-start]').filter({ hasText: 'We move' }),
   ).toBeVisible();
   const body = page.locator('.textLayer [data-start]').filter({ hasText: 'We move' });
+  await expect(page.locator('.pdf-paper[data-page="2"]')).toHaveAttribute('aria-busy', 'false');
+  await page.evaluate(() => document.fonts.ready);
+  await body.click({ trial: true });
   await body.evaluate((el) => {
     const range = document.createRange();
     range.setStart(el.firstChild, 0);
