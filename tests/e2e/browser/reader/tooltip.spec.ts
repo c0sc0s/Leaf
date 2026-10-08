@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 
 async function expectAnchoredTooltip(page: Page, label: string) {
   const trigger = page.getByRole('tab', { name: label, exact: true });
+  await page.mouse.move(700, 400, { steps: 5 });
   await trigger.hover();
   const tooltip = page.getByRole('tooltip');
   await expect(tooltip).toBeVisible();
