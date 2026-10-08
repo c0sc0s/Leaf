@@ -30,6 +30,7 @@ for (const initialKind of ['underline', 'highlight'] as const) {
     const overlay = page.locator('.annotation-overlay [data-mark-id]');
     await expect(overlay).toHaveAttribute('data-kind', initialKind);
     const markId = (await overlay.getAttribute('data-mark-id'))!;
+    await overlay.scrollIntoViewIfNeeded();
     const box = (await overlay.boundingBox())!;
     await page.mouse.click(
       box.x + 20,

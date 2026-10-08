@@ -47,7 +47,8 @@ test('shows the cover atmosphere over the sidebar in Windows glass and opaque th
       );
     };
     expect(difference(20), mode).toBeGreaterThan(50);
-    expect(difference(before.info.height - 20), mode).toBe(0);
+    // Keep the control sample above footer buttons, which animate their theme colours separately.
+    expect(difference(before.info.height - 80), mode).toBe(0);
     await page.screenshot({ path: test.info().outputPath(`${mode}.png`), animations: 'disabled' });
   }
   await sidebar.getByRole('button', { name: '收藏', exact: false }).click();
