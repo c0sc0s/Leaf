@@ -8,6 +8,7 @@ export default defineConfig({
   expect: { timeout: process.env.CI ? 30000 : 5000 },
   fullyParallel: false,
   workers: 1,
+  maxFailures: process.env.CI ? 1 : 0,
   projects: [
     { name: 'browser', testMatch: '**/browser/**/*.spec.ts' },
     { name: 'desktop', testMatch: '**/desktop/**/*.spec.ts' },

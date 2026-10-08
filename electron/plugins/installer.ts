@@ -1,14 +1,4 @@
-import {
-  mkdir,
-  readFile,
-  readdir,
-  rm,
-  rename,
-  writeFile,
-  realpath,
-  stat,
-  lstat,
-} from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, writeFile, realpath, stat, lstat } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
@@ -18,6 +8,7 @@ import { identifier, resourcePath } from '@leaf/contracts/validation';
 import type { InstalledPlugin, StorageTransport } from '@leaf/contracts/transport';
 import { SerialQueue } from '@leaf/shared/async';
 import { readPackage } from './package.ts';
+import { renameWithRetry } from '../platform/filesystem.ts';
 
 export class PluginInstaller {
   private queue = new SerialQueue();
@@ -93,19 +84,19 @@ export class PluginInstaller {
         if (await this.matches(directory, verified.files)) await rm(temporary, { recursive: true });
         else {
           try {
-            await rename(directory, displaced);
+            await renameWithRetry(directory, displaced);
             moved = true;
           } catch (error) {
             if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
           }
-          await rename(temporary, directory);
+          await renameWithRetry(temporary, directory);
           replaced = true;
         }
         await this.storage.request('plugins.bind', entry);
       } catch (error) {
         await rm(temporary, { recursive: true, force: true });
         if (replaced) await rm(directory, { recursive: true, force: true });
-        if (moved) await rename(displaced, directory);
+        if (moved) await renameWithRetry(displaced, directory);
         throw error;
       }
       if (moved) await rm(displaced, { recursive: true, force: true });

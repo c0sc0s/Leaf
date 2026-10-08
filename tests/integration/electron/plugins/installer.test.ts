@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdtemp, readFile, rm, symlink, mkdir, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, symlink, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { PluginManifest } from '@leaf/contracts/plugins';
@@ -127,5 +127,26 @@ describe('plugin packages', () => {
     await installer.install(bytes);
     expect(await readFile(file, 'utf8')).toContain('activate');
     await expect(readFile(path.join(path.dirname(file), 'unexpected.js'))).rejects.toThrow();
+  });
+  it('restores displaced resources when saving the installation fails', async () => {
+    const { installer, root, storage } = await setup(),
+      bytes = archive(descriptor('test.reader'));
+    const entry = await installer.install(bytes),
+      file = await installer.resource(entry.manifest.id, entry.packageHash, 'renderer.js');
+    await writeFile(file, 'original damaged content');
+    const failing = new PluginInstaller(
+      path.join(root, 'plugins'),
+      {
+        request: async (operation, input) => {
+          if (operation === 'plugins.bind') throw new Error('Storage unavailable');
+          return storage.request(operation, input);
+        },
+      },
+      (entry, resource) => `/${entry.manifest.id}/${entry.packageHash}/${resource}`,
+    );
+    await expect(failing.install(bytes)).rejects.toThrow('Storage unavailable');
+    expect(await readFile(file, 'utf8')).toBe('original damaged content');
+    expect(storage.request('plugins.list', undefined)[0].packageHash).toBe(entry.packageHash);
+    expect(await readdir(path.join(root, 'plugins'))).toEqual(['test.reader']);
   });
 });
