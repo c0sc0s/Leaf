@@ -5,6 +5,8 @@ for (const initialKind of ['underline', 'highlight'] as const) {
     page,
   }) => {
     await page.goto('/');
+    await expect(page.locator('.book-card')).toHaveCount(8);
+    await expect(page.locator('.busy-overlay')).toHaveCount(0);
     await page.getByRole('button', { name: '阅读 The Art of Noticing', exact: true }).click();
     await page.getByLabel('位置序号', { exact: true }).fill('2');
     await page.getByLabel('位置序号', { exact: true }).press('Enter');
