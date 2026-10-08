@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readdir, readFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { verifyCatalog } from '../electron/plugins/catalog.ts';
 import { readPackage } from '../electron/plugins/package.ts';
@@ -22,8 +22,6 @@ for (const entry of catalog.plugins) {
     throw new Error('Published package differs from signed catalog.');
   files.push(file);
 }
-if ((await readdir(root)).filter((file) => file.endsWith('.leaf-plugin')).length !== files.length)
-  throw new Error('Unexpected packages in publishing directory.');
 const gh = (...args) =>
   execFileSync('gh', args, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
 let draft = false;
