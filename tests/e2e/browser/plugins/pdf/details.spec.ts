@@ -138,6 +138,37 @@ test('distinguishes search matches, navigates internal references and shows prin
   await expect(page.locator('.location-detail')).toContainText('2');
 });
 
+test('keeps a stationary annotation press near the edge from scrolling or dismissing its tools', async ({
+  page,
+}) => {
+  await openBook(page);
+  await selectLine(page, 23);
+  await page.getByRole('button', { name: '划线标注', exact: true }).click();
+  const line = page
+    .locator('.pdf-paper[data-page="1"] [data-start]')
+    .filter({ hasText: 'Page 1 line 23.' });
+  await line.evaluate((element) => {
+    const container = element.closest('.reading-canvas')!;
+    const text = element.getBoundingClientRect();
+    container.scrollTop +=
+      text.top + text.height / 2 - (container.getBoundingClientRect().bottom - 20);
+  });
+  const canvas = page.locator('.reading-canvas');
+  const box = (await line.boundingBox())!;
+  const before = await canvas.evaluate((element) => element.scrollTop);
+  await page.mouse.move(box.x + 20, box.y + box.height / 2);
+  await page.mouse.down();
+  // A held click must stay still even across several edge-controller animation frames.
+  await page.waitForTimeout(200);
+  expect(await canvas.evaluate((element) => element.scrollTop)).toBe(before);
+  await page.mouse.up();
+  await page
+    .getByRole('toolbar', { name: '编辑批注', exact: true })
+    .getByRole('button', { name: '编辑这条笔记', exact: true })
+    .click();
+  await expect(page.locator('.note-card textarea')).toBeFocused();
+});
+
 test('scrolls at a bounded speed while extending selection near a page edge and stops on release', async ({
   page,
 }) => {

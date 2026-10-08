@@ -10,6 +10,21 @@ import type {
 const { contextBridge, ipcRenderer } = require('electron') as typeof import('electron');
 
 const desktop: DesktopAPI = {
+  catalog: {
+    list: (refresh) => ipcRenderer.invoke('catalog:list', refresh),
+    download: (requestId, id, sha256) =>
+      ipcRenderer.invoke('catalog:download', requestId, id, sha256),
+    cancel: (requestId) => ipcRenderer.send('catalog:cancel', requestId),
+    onProgress: (callback) => {
+      const listener = (
+        _event: unknown,
+        requestId: string,
+        progress: import('@leaf/contracts/catalog').DownloadProgress,
+      ) => callback(requestId, progress);
+      ipcRenderer.on('catalog:progress', listener);
+      return () => ipcRenderer.removeListener('catalog:progress', listener);
+    },
+  },
   storage: {
     request: (operation, input) => ipcRenderer.invoke('storage:request', operation, input),
     onBeforeClose: (callback) => {

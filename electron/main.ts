@@ -25,6 +25,9 @@ import type { Theme } from '@leaf/contracts/host';
 import { readDocument, readFolder } from './platform/files.ts';
 import { fileResponse, applicationFile } from './platform/resources.ts';
 import { PluginInstaller } from './plugins/installer.ts';
+import { CatalogService } from './plugins/catalog.ts';
+import { officialCatalogSource } from './plugins/catalog-source.ts';
+import { catalogFetch } from './platform/catalogFetch.ts';
 import { BackendManager } from './plugins/backend/manager.ts';
 import { electronBackendProcess } from './plugins/backend/electron.ts';
 import { CredentialVault } from './platform/credentials.ts';
@@ -222,6 +225,49 @@ else {
         )
           throw new Error('Unauthorized storage request');
         return library.requestRaw(operation, input);
+      });
+      const catalog = new CatalogService(
+        path.join(app.getPath('userData'), 'reader/catalog.json'),
+        officialCatalogSource,
+        catalogFetch,
+      );
+      const catalogRequests = new Map<string, AbortController>();
+      ipcMain.handle('catalog:list', (event, refresh) => {
+        if (!trusted(event) || (refresh !== undefined && typeof refresh !== 'boolean'))
+          throw new Error('Unauthorized catalog request');
+        return catalog.list(refresh);
+      });
+      ipcMain.handle('catalog:download', async (event, requestId, id, sha256) => {
+        if (
+          !trusted(event) ||
+          typeof requestId !== 'string' ||
+          !/^[a-f0-9-]{36}$/.test(requestId) ||
+          typeof id !== 'string' ||
+          typeof sha256 !== 'string' ||
+          catalogRequests.size ||
+          catalogRequests.has(requestId)
+        )
+          throw new Error('Invalid catalog request');
+        const controller = new AbortController();
+        catalogRequests.set(requestId, controller);
+        try {
+          return await catalog.download(id, sha256, controller.signal, (progress) => {
+            if (!win.webContents.isDestroyed())
+              win.webContents.send('catalog:progress', requestId, progress);
+          });
+        } finally {
+          catalogRequests.delete(requestId);
+        }
+      });
+      ipcMain.on('catalog:cancel', (event, requestId) => {
+        if (trusted(event)) catalogRequests.get(requestId)?.abort();
+      });
+      win.webContents.on('did-start-navigation', (_event, _url, inPlace, mainFrame) => {
+        if (mainFrame && !inPlace)
+          for (const controller of catalogRequests.values()) controller.abort();
+      });
+      win.on('closed', () => {
+        for (const controller of catalogRequests.values()) controller.abort();
       });
       ipcMain.handle('plugins:list', (event) => {
         if (!trusted(event)) throw new Error('Unauthorized request');

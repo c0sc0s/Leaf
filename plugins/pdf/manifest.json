@@ -10,7 +10,7 @@
     "views": ["leaf.pdf.view"]
   },
   "permissions": ["documents"],
-  "version": "1.0.0",
+  "version": "1.0.1",
   "hostApi": "^1.0.0",
   "dependencies": {}
 }

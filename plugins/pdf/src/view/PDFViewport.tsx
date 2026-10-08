@@ -74,8 +74,11 @@ export const PDFViewport = forwardRef<PDFViewportHandle, Props>(function PDFView
   useEffect(() => {
     const container = scrollContainer;
     let dragging = false,
+      moved = false,
       y = 0,
       x = 0,
+      startX = 0,
+      startY = 0,
       raf = 0,
       previous = 0;
     const tick = (now: number) => {
@@ -88,7 +91,7 @@ export const PDFViewport = forwardRef<PDFViewportHandle, Props>(function PDFView
           : y > box.bottom - edge
             ? Math.min(1, (y - box.bottom + edge) / edge)
             : 0;
-      if (direction) {
+      if (direction && moved) {
         container.scrollTop += direction * 7 * Math.min(2, (now - previous || 16) / 16);
         const caret = document.caretRangeFromPoint(
           Math.max(box.left + 2, Math.min(box.right - 2, x)),
@@ -115,8 +118,11 @@ export const PDFViewport = forwardRef<PDFViewportHandle, Props>(function PDFView
         selection?.addRange(caret);
       }
       dragging = true;
+      moved = false;
       x = event.clientX;
       y = event.clientY;
+      startX = x;
+      startY = y;
       previous = 0;
       setDragPage(Number(target.closest<HTMLElement>('.pdf-paper')!.dataset.page));
       raf = requestAnimationFrame(tick);
@@ -125,6 +131,9 @@ export const PDFViewport = forwardRef<PDFViewportHandle, Props>(function PDFView
       x = event.clientX;
       y = event.clientY;
       if (dragging) {
+        // A stationary press on an annotation near the edge must not start drag autoscroll.
+        moved ||= Math.hypot(x - startX, y - startY) > 3;
+        if (!moved) return;
         event.preventDefault();
         const box = container.getBoundingClientRect();
         const caret = document.caretRangeFromPoint(

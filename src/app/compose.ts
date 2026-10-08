@@ -1,3 +1,5 @@
+import { PluginCatalog } from '../core/plugins/catalog';
+import { CatalogClient } from '../platform/plugins/catalog';
 import type { PluginHostAPI, ScopedStorage, TaskEvent } from '@leaf/contracts/host';
 import type { PluginBinding } from '@leaf/contracts/plugins';
 import type { JsonValue } from '@leaf/shared/types';
@@ -178,6 +180,7 @@ export async function compose() {
       await reader.closePlugin(id);
     },
   );
+  const catalog = new PluginCatalog(new CatalogClient(), plugins);
   await plugins.initialize();
   await library.initialize();
   const flush = async () => {
@@ -189,6 +192,7 @@ export async function compose() {
     persistence,
     registry,
     plugins,
+    catalog,
     documents,
     interactions,
     library,
