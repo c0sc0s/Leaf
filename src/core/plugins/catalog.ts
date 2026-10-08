@@ -88,13 +88,22 @@ export class PluginCatalog {
         entries.push(entry);
       else if (current.status !== 'active') enable.add(id);
       if (entries.some((entry) => entry.manifest.id === id) || enable.has(id)) order.push(id);
-      if (
-        entries.length + enable.size > 20 ||
-        entries.reduce((size, entry) => size + entry.download.size, 0) > 256 * 1024 * 1024
-      )
-        throw new Error('插件依赖或下载总量超过限制');
     };
     visit(id, new Set());
+    if (
+      order.length > 20 ||
+      entries.reduce((size, entry) => size + entry.download.size, 0) > 256 * 1024 * 1024
+    )
+      throw new Error('插件依赖或下载总量超过限制');
+    const replacements = new Set(entries.map((entry) => entry.manifest.id));
+    for (const plugin of installed.filter(
+      (plugin) => plugin.enabled && !replacements.has(plugin.manifest.id),
+    ))
+      for (const [dependency, range] of Object.entries(plugin.manifest.dependencies)) {
+        const version = checked.get(dependency);
+        if (version && !compatibleVersion(version, range))
+          throw new Error(`请先停用 ${plugin.manifest.name}：它需要 ${dependency} ${range}`);
+      }
     return { entries, enable: [...enable], order };
   }
   cancel() {

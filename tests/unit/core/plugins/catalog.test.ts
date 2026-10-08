@@ -156,6 +156,40 @@ describe('online plugin installation', () => {
     expect(platform.install).not.toHaveBeenCalled();
     expect(catalog.state.get().progress).toBeUndefined();
   });
+  it('rejects an update that would break an enabled dependent before downloading', async () => {
+    const previous = entry('test.dep'),
+      updated = entry('test.dep', {}, '2.0.0'),
+      dependent = entry('test.main', { 'test.dep': '^1.0.0' });
+    const { catalog, source, platform } = await setup(
+      [updated],
+      [binding(previous), binding(dependent)],
+    );
+    await expect(
+      catalog.install('test.dep', { entries: [updated], enable: [], order: ['test.dep'] }),
+    ).rejects.toThrow('请先停用 test.main');
+    expect(source.download).not.toHaveBeenCalled();
+    expect(platform.install).not.toHaveBeenCalled();
+    const disabled = await setup([updated], [binding(previous), binding(dependent, false)]);
+    expect(disabled.catalog.plan('test.dep').entries).toEqual([updated]);
+  });
+  it('limits changes when enabling installed dependencies without downloading them', async () => {
+    const dependencies = Array.from({ length: 20 }, (_, index) =>
+      entry(`test.dep${index}`, index ? { [`test.dep${index - 1}`]: '^1.0.0' } : {}),
+    );
+    const main = entry('test.main', { 'test.dep19': '^1.0.0' });
+    const { catalog, source, platform } = await setup(
+      [main],
+      dependencies.map((dependency) => binding(dependency, false)),
+    );
+    expect(() => catalog.plan('test.main')).toThrow('超过限制');
+    expect(source.download).not.toHaveBeenCalled();
+    expect(platform.enable).not.toHaveBeenCalled();
+    const allowed = await setup(
+      [main],
+      dependencies.map((dependency, index) => binding(dependency, index === 0)),
+    );
+    expect(allowed.catalog.plan('test.main').order).toHaveLength(20);
+  });
   it('rejects changed approvals and downgrades, then reloads only after an update batch finishes', async () => {
     const first = entry('test.a'),
       updated = entry('test.a', {}, '1.1.0');
