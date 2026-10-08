@@ -11,6 +11,7 @@ import { Library, type LibraryView } from './library/Library';
 import { LibrarySidebar } from './library/LibrarySidebar';
 import { DeleteBookDialog } from './library/DeleteBookDialog';
 import { AboutDialog } from './about/AboutDialog';
+import { UpdateNotice } from './about/UpdatePanel';
 import { SettingsModal } from './settings/SettingsModal';
 import { WindowControls } from './components/WindowControls';
 import { InteractionDialog } from './components/InteractionDialog';
@@ -312,7 +313,8 @@ export default function App({ services }: { services: AppServices }) {
           onClose={() => setSettingsOpen(false)}
         />
       )}
-      {aboutOpen && <AboutDialog onClose={() => setAboutOpen(false)} />}
+      <UpdateNotice updates={services.updates} onOpen={() => setAboutOpen(true)} />
+      {aboutOpen && <AboutDialog updates={services.updates} onClose={() => setAboutOpen(false)} />}
       {deleting && (
         <DeleteBookDialog
           book={deleting}

@@ -60,5 +60,7 @@ jobs:
             release/*.dmg
             release/*.zip
             release/*.exe
+            release/*.yml
+            release/*.blockmap
             dist-plugins/*.leaf-plugin
           if-no-files-found: error

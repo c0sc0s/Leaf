@@ -2,6 +2,8 @@
 
 Leaf 需要在增加文档格式和功能时复用同一套阅读体验，并允许用户卸载不需要的能力。因此应用持有文档数据和阅读会话，插件通过公开协议提供格式实现或功能扩展。只有应用入口负责组装各层。
 
+应用更新属于桌面平台能力：`electron/platform/updater.ts` 管理检查、下载与安装状态，`updateRuntime.ts` 适配原生更新器、签名能力、可信 IPC 与检查定时器；`rendererFlush.ts` 管理关闭和升级共用的保存握手。渲染端通过 `UpdatesClient` 订阅状态，关于页面只负责展示与触发操作。更新协议位于 `@leaf/contracts/transport`，不对插件暴露安装权限。
+
 ```text
 src/
   app/                         React 页面、交互与服务组装

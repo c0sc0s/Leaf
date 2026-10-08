@@ -1,6 +1,7 @@
 import { defineConfig } from '@playwright/test';
 // Desktop specs launch Electron with this environment; keep their windows off screen.
 process.env.LEAF_HIDDEN_WINDOW ??= '1';
+process.env.LEAF_DISABLE_UPDATES = '1';
 export default defineConfig({
   testDir: 'tests/e2e',
   timeout: 60000,

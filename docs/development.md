@@ -84,3 +84,21 @@ macOS arm64 安装包使用 `npm run dist:mac`，Windows x64 使用 `npm run dis
 AI 插件可在界面保存 OpenAI 兼容服务地址、模型和 API Key。`LEAF_AI_BASE_URL`、`LEAF_AI_MODEL`、`LEAF_AI_API_KEY` 同时配置时使用受环境管理的配置。桌面凭据使用系统 `safeStorage`；浏览器开发服务使用本地加密文件。
 
 备份使用 `node scripts/library-backup.mjs backup SOURCE_DIRECTORY NEW_DESTINATION`，恢复使用同一命令的 `restore` 操作。只处理当前 `leaf.reader` 备份格式；备份内容包括 SQLite 和文档内容文件，插件代码与凭据需要单独保管。
+
+## 应用更新
+
+正式桌面应用从 `package.json` 的 `build.publish` 指定的 GitHub Releases 检查更新，启动后延迟 15 秒检查，运行期间每 6 小时检查一次。用户也可以在「关于 Leaf → 应用更新」手动检查。稳定版忽略预发布版本和降级；发现更新后由用户选择下载，下载完成后选择「重启并更新」。开发环境和隐藏窗口测试不访问更新源，浏览器界面不提供桌面更新。
+
+`LEAF_DISABLE_UPDATES=1` 可禁用在线检查与安装。自动化测试显式设置此值，即使测试需要显示原生窗口也不连接真实更新源。
+
+更新安装前复用关闭前的渲染端保存握手，等待笔记、阅读位置与 SQLite 保存完成，并停止插件后台请求。保存失败或超时时保留窗口与已下载的更新，可以重试。下载或安装失败也可通过发布页面手动安装。安装不会更改现有 `userData` 路径；应用更新不负责单独升级用户安装的 `.leaf-plugin` 包。
+
+`electron-updater` 是正式运行时依赖，Electron 构建保留外部导入，由 electron-builder 将依赖及其传递依赖装入安装包。`build.publish` 同时生成安装包内的 `app-update.yml` 与发布目录中的 `latest.yml` / `latest-mac.yml`；保留 `--publish never`，由发布工作流在两平台构建、验收完成后集中上传。
+
+Release 包含 DMG、ZIP、NSIS EXE、更新 YAML、生成的 blockmap 和独立插件包。发布前执行 `node scripts/verify-update-assets.mjs installers`，验证两平台元数据版本与包版本一致、引用的文件存在、大小及 SHA-512 匹配。更新元数据应和安装包来自同一轮构建。
+
+macOS 正式签名使用 `npm run dist:mac:signed`，要求 Developer ID Application 证书，开启 Hardened Runtime 并强制签名。Release 工作流读取 `MAC_CSC_LINK` / `MAC_CSC_KEY_PASSWORD`，公证使用 `APPLE_ID` / `APPLE_APP_SPECIFIC_PASSWORD` / `APPLE_TEAM_ID`。这些值由仓库 Secrets 提供；没有证书时沿用 ad-hoc 打包，运行时提供版本检查与发布页面下载，不尝试应用内安装。已安装的 ad-hoc 版本需要手动安装一次正式签名版本。
+
+Windows 的 `npm run dist:win:signed` 强制签名，Release 工作流读取 `WIN_CSC_LINK` / `WIN_CSC_KEY_PASSWORD`；未配置证书时沿用未签名 NSIS 安装包。签名证书和发布令牌不会写入客户端配置。
+
+完整升级验收需要在 macOS 正式签名包及 Windows NSIS 安装包上安装旧版，再发布更高版本，验证检查、下载、保存、安装、重启后的版本及书库恢复。还应验证断网、损坏下载、保存失败与更新器安装错误。组件与服务测试不能代替这项正式安装验证。

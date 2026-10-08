@@ -19,7 +19,6 @@ import { writeFile, readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { release } from 'node:os';
 import { existsSync, statSync } from 'node:fs';
-import { randomUUID } from 'node:crypto';
 import type { DesktopFile, BackendRequest, BackendEvent } from '@leaf/contracts/transport';
 import type { Theme } from '@leaf/contracts/host';
 import { readDocument, readFolder } from './platform/files.ts';
@@ -31,6 +30,8 @@ import { CredentialVault } from './platform/credentials.ts';
 import { applyBackdrop } from './platform/appearance.ts';
 import { placeWindow, readWindowState, writeWindowState } from './platform/windowState.ts';
 import { createStorage, type Storage } from './storage/client.ts';
+import { RendererFlush } from './platform/rendererFlush.ts';
+import { attachUpdater, createUpdater } from './platform/updateRuntime.ts';
 
 const development = process.argv.includes('--dev');
 // Automated runs render into a window that is never shown, so tests do not take over the desktop.
@@ -257,6 +258,7 @@ else {
       });
       const backendRequests = new Map<string, AbortController>();
       const controllerFor = (request: BackendRequest) => {
+        if (preparingInstall) throw new Error('应用正在准备更新，请稍后重试。');
         if (
           !request?.requestId ||
           typeof request.requestId !== 'string' ||
@@ -322,29 +324,60 @@ else {
         backendRequests.clear();
       });
       let canClose = false;
-      let closeRequest: { id: string; timer: NodeJS.Timeout } | undefined;
-      let storageReady = false;
+      let preparingInstall = false;
+      let saving: Promise<void> | undefined;
+      const rendererFlush = new RendererFlush((id) => win.webContents.send('storage:flush', id));
+      const saveBeforeExit = () => {
+        if (saving) return saving;
+        writeWindowState(windowStateFile, win);
+        // Hiding prevents edits during saving without attaching a macOS sheet.
+        win.hide();
+        saving = rendererFlush
+          .flush()
+          .then(() => library.request('flush', undefined))
+          .finally(() => {
+            saving = undefined;
+          });
+        return saving;
+      };
       win.webContents.on('did-start-loading', () => {
-        storageReady = false;
+        rendererFlush.reset();
       });
       win.webContents.on('render-process-gone', () => {
-        storageReady = false;
+        rendererFlush.reset();
       });
       ipcMain.on('storage:ready', (event) => {
-        if (trusted(event)) storageReady = true;
+        if (trusted(event)) rendererFlush.markReady();
       });
-      ipcMain.on('storage:flushed', async (event, id, error) => {
-        if (!trusted(event) || !closeRequest || closeRequest.id !== id) return;
-        clearTimeout(closeRequest.timer);
-        closeRequest = undefined;
-        try {
-          if (error) throw new Error(error);
-          await library.request('flush', undefined);
-          canClose = true;
-          win.close();
-        } catch (error) {
-          window?.show();
-          dialog.showErrorBox('书库尚未保存', (error as Error).message);
+      ipcMain.on('storage:flushed', (event, id, error) => {
+        if (trusted(event)) rendererFlush.acknowledge(id, error);
+      });
+      const updater = await createUpdater(
+        development || hiddenWindow || process.env.LEAF_DISABLE_UPDATES === '1',
+        async () => {
+          if (saving || !ready) throw new Error('阅读窗口正在关闭或尚未准备好，请稍后重试。');
+          preparingInstall = true;
+          try {
+            await saveBeforeExit();
+            for (const controller of backendRequests.values()) controller.abort();
+            await backend?.dispose();
+            // Cancellation can enqueue final task records after the first save handshake.
+            await rendererFlush.flush();
+            await library.request('flush', undefined);
+            // The updater closes windows before before-quit; the renderer has already saved.
+            canClose = true;
+          } catch (error) {
+            preparingInstall = false;
+            if (!hiddenWindow) win.show();
+            throw error;
+          }
+        },
+      );
+      const startUpdateChecks = attachUpdater(updater, win, trusted, () => {
+        if (preparingInstall) {
+          preparingInstall = false;
+          canClose = false;
+          if (!hiddenWindow) win.show();
         }
       });
       let revealed = false;
@@ -356,26 +389,22 @@ else {
         win.show();
         if (savedWindow?.fullScreen) win.setFullScreen(true);
       };
-      // Record the placement as the user asks to close; by the deferred close the window is hidden
-      // and no longer reports whether it was maximised.
-      win.on('close', () => {
-        if (!canClose && !closeRequest) writeWindowState(windowStateFile, win);
-      });
       win.on('close', (event) => {
-        if (canClose || !storageReady || !ready) return;
+        if (canClose || !ready) return;
         event.preventDefault();
-        if (closeRequest) return;
-        // Hiding rather than setEnabled(false): on macOS that attaches a sheet which lingers as a
-        // second layer while the window closes.
-        win.hide();
-        const id = randomUUID();
-        const timer = setTimeout(() => {
-          closeRequest = undefined;
-          window?.show();
-          dialog.showErrorBox('书库尚未保存', '保存未完成，窗口已保留。请稍后重试。');
-        }, 30000);
-        closeRequest = { id, timer };
-        win.webContents.send('storage:flush', id);
+        if (saving || preparingInstall) return;
+        void saveBeforeExit()
+          .then(() => {
+            canClose = true;
+            win.close();
+          })
+          .catch((error: unknown) => {
+            if (!hiddenWindow) win.show();
+            dialog.showErrorBox(
+              '书库尚未保存',
+              error instanceof Error ? error.message : String(error),
+            );
+          });
       });
       const updateBackdrop = () => {
         if (window)
@@ -477,6 +506,7 @@ else {
       });
       ipcMain.on('renderer:ready', (event) => {
         if (!trusted(event)) return;
+        startUpdateChecks();
         ready = true;
         revealWindow();
         pending.splice(0).forEach((data) => win.webContents.send('document:open', data));

@@ -28,7 +28,10 @@ async function nodeEntry(entry: string, output: string, format: 'es' | 'cjs' = '
       lib: { entry: path.join(root, entry), formats: [format], fileName: () => output },
       rolldownOptions: {
         external: (id) =>
-          id === 'electron' || id.startsWith('node:') || builtinModules.includes(id),
+          id === 'electron' ||
+          id === 'electron-updater' ||
+          id.startsWith('node:') ||
+          builtinModules.includes(id),
         output: { codeSplitting: false },
       },
       minify: false,

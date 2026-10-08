@@ -5,11 +5,24 @@ import type {
   DesktopAPI,
   DesktopFile,
   WindowState,
+  UpdateState,
 } from '@leaf/contracts/transport';
 
 const { contextBridge, ipcRenderer } = require('electron') as typeof import('electron');
 
 const desktop: DesktopAPI = {
+  updates: {
+    getState: () => ipcRenderer.invoke('updates:state'),
+    check: () => ipcRenderer.invoke('updates:check'),
+    download: () => ipcRenderer.invoke('updates:download'),
+    install: () => ipcRenderer.invoke('updates:install'),
+    openRelease: () => ipcRenderer.invoke('updates:open-release'),
+    subscribe: (callback) => {
+      const listener = (_event: unknown, state: UpdateState) => callback(state);
+      ipcRenderer.on('updates:state', listener);
+      return () => ipcRenderer.removeListener('updates:state', listener);
+    },
+  },
   storage: {
     request: (operation, input) => ipcRenderer.invoke('storage:request', operation, input),
     onBeforeClose: (callback) => {

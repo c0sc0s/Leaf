@@ -27,6 +27,7 @@ for (const [name, license] of [
   ['motion', 'LICENSE.md'],
   ['tw-animate-css', 'LICENSE'],
   ['openai', 'LICENSE'],
+  ['electron-updater', 'LICENSE'],
 ]) {
   const text = await readFile(`node_modules/${name}/${license}`, 'utf8');
   await writeFile(`licenses/${name.replaceAll('/', '-')}.txt`, text.trimEnd() + '\n');

@@ -13,3 +13,5 @@ AI Q&A connects to OpenAI-compatible model services through the OpenAI Node SDK 
 Markdown typography includes shadcn/typeset (MIT), Public Sans, IBM Plex Sans, and JetBrains Mono (SIL Open Font License 1.1). Font license files are included in `licenses/`.
 
 The sample documents and cover graphics were written and drawn for Leaf. They contain no excerpts or covers from commercially published books.
+
+Desktop update checks, downloads and installation use electron-updater (MIT); its license file is included in `licenses/`.

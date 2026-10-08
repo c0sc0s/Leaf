@@ -1,14 +1,17 @@
 import { version } from '../../../package.json';
 import { BookOpen, Command, FolderOpen, NotebookPen, Sun } from '@leaf/ui/icons';
 import { Modal } from '@leaf/ui/primitives/composition';
+import type { UpdatesClient } from '../../platform/updates';
+import { UpdatePanel } from './UpdatePanel';
 
-export function AboutDialog({ onClose }: { onClose: () => void }) {
+export function AboutDialog({ onClose, updates }: { onClose: () => void; updates: UpdatesClient }) {
   return (
     <Modal title="关于 Leaf" onClose={onClose}>
       <div className="about-logo">
         Leaf<span>{version}</span>
       </div>
       <p>轻量本地阅读器，通过插件扩展文档格式和阅读能力。</p>
+      <UpdatePanel updates={updates} />
       <div className="about-features">
         <span>
           <FolderOpen size={17} />

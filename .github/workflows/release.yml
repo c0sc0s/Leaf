@@ -10,9 +10,13 @@ jobs:
         include:
           - os: macos-latest
             dist: dist:mac
+            certificate: MAC_CSC_LINK
+            password: MAC_CSC_KEY_PASSWORD
             executable: release/mac-arm64/Leaf.app/Contents/MacOS/Leaf
           - os: windows-latest
             dist: dist:win
+            certificate: WIN_CSC_LINK
+            password: WIN_CSC_KEY_PASSWORD
             executable: release/win-unpacked/Leaf.exe
     runs-on: ${{ matrix.os }}
     steps:
@@ -26,9 +30,20 @@ jobs:
         run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
       - run: npm ci
       - run: npm run check
-      - run: npm run ${{ matrix.dist }}
+      - name: Build installers
+        shell: bash
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          CSC_LINK: ${{ secrets[matrix.certificate] }}
+          CSC_KEY_PASSWORD: ${{ secrets[matrix.password] }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [[ -n "$CSC_LINK" ]]; then
+            npm run ${{ matrix.dist }}:signed
+          else
+            npm run ${{ matrix.dist }}
+          fi
       - run: npm run test:desktop
       - run: node tests/packaged/production.mjs
         env:
@@ -38,7 +53,10 @@ jobs:
           name: installer-${{ runner.os }}
           path: |
             release/*.dmg
+            release/*.zip
             release/*.exe
+            release/*.yml
+            release/*.blockmap
             dist-plugins/*.leaf-plugin
           if-no-files-found: error
   publish:
@@ -47,6 +65,12 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
       - uses: actions/download-artifact@v4
         with:
           path: installers
@@ -55,6 +79,8 @@ jobs:
         run: |
           test -s installers/Leaf-mac-arm64.dmg
           test -s installers/Leaf-win-x64.exe
+      - name: Verify update metadata and checksums
+        run: node scripts/verify-update-assets.mjs installers
       - run: gh release create "$GITHUB_REF_NAME" installers/* --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes --verify-tag
         env:
           GH_TOKEN: ${{ github.token }}

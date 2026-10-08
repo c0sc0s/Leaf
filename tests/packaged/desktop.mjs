@@ -26,6 +26,7 @@ const app = await _electron.launch({
   env: {
     LEAF_HIDDEN_WINDOW: process.env.CI && process.platform === 'win32' ? '0' : '1',
     ...process.env,
+    LEAF_DISABLE_UPDATES: '1',
     LEAF_USER_DATA: userData,
   },
   timeout: 30000,

@@ -18,12 +18,16 @@ import { LibraryService } from '../core/library/service';
 import { ReadingController } from '../core/reader/controller';
 import { SettingsService } from '../core/settings/service';
 import { configureUIPreferences } from '@leaf/ui/preferences';
+import { UpdatesClient } from '../platform/updates';
+import { version } from '../../package.json';
 
 export async function compose() {
   const persistence = new PersistenceCoordinator(),
     storage = new StorageClient();
   const notices = new Store<string | null>(null),
     notify = (message: string) => notices.set(message);
+  const updates = new UpdatesClient(window.desktop?.updates, version);
+  await updates.connect().catch((error: unknown) => notify(String(error)));
   const settings = new SettingsService(storage);
   await settings.initialize();
   configureUIPreferences({
@@ -186,6 +190,7 @@ export async function compose() {
   };
   return {
     storage,
+    updates,
     persistence,
     registry,
     plugins,

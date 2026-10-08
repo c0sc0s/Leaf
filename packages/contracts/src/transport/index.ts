@@ -4,6 +4,9 @@ import type { DocumentMetadata, DocumentRecord, ResourceReference } from '../doc
 import type { Bookmark, ViewPosition } from '../reader/index.ts';
 import type { PluginManifest, PluginDataEntry } from '../plugins/index.ts';
 import type { Theme, TaskEvent } from '../host/index.ts';
+import type { UpdatesAPI } from './updates.ts';
+
+export type { UpdateState, UpdateRelease, UpdateStatus, UpdatesAPI } from './updates.ts';
 
 export interface ContentReference {
   hash: string;
@@ -104,6 +107,7 @@ export interface BackendRequest {
 export type BackendEvent =
   { type: 'event'; value: JsonValue } | { type: 'done' } | { type: 'error'; message: string };
 export interface DesktopAPI {
+  updates: UpdatesAPI;
   storage: StorageTransport & { onBeforeClose(callback: () => Promise<void>): () => void };
   plugins: {
     list(): Promise<import('../plugins/index.ts').PluginBinding[]>;

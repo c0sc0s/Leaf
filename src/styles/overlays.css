@@ -68,6 +68,66 @@
   color: var(--muted-foreground);
   font-size: 12px;
 }
+.update-panel {
+  margin: 18px 0;
+  padding: 16px 0;
+  border-block: 1px solid var(--border);
+  font-size: 12px;
+}
+.update-heading,
+.update-actions,
+.update-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.update-heading {
+  justify-content: space-between;
+}
+.update-heading h3 {
+  font-size: 13px;
+  font-weight: 500;
+}
+.update-heading p {
+  margin-top: 6px;
+  color: var(--muted-foreground);
+}
+.update-actions,
+.update-notes,
+.update-error {
+  margin-top: 12px;
+}
+.update-notes p,
+.update-error {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.7;
+}
+.update-notes p {
+  max-height: 180px;
+  overflow-y: auto;
+  margin-top: 8px;
+}
+.update-error {
+  color: var(--destructive);
+}
+.update-panel progress {
+  width: 100%;
+  margin-top: 12px;
+  accent-color: var(--primary);
+}
+.update-notice {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  z-index: 120;
+  max-width: calc(100vw - 40px);
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--background);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+}
 .about-features span {
   display: flex;
   align-items: center;

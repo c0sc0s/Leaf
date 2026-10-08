@@ -71,6 +71,7 @@ const launch = () =>
     env: {
       LEAF_HIDDEN_WINDOW: '1',
       ...process.env,
+      LEAF_DISABLE_UPDATES: '1',
       LEAF_USER_DATA: path.join(directory, 'profile'),
       LEAF_AI_BASE_URL: `http://127.0.0.1:${server.address().port}/v1`,
       LEAF_AI_MODEL: 'production-mock',
